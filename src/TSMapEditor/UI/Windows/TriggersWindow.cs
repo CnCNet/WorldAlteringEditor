@@ -102,6 +102,7 @@ namespace TSMapEditor.UI.Windows
         private SelectStringWindow selectStringWindow;
         private SelectSpeechWindow selectSpeechWindow;
         private SelectSoundWindow selectSoundWindow;
+        private SelectSuperWeaponTypeWindow selectSuperWeaponTypeWindow;
         private SelectParticleSystemTypeWindow selectParticleSystemTypeWindow;
         private CreateRandomTriggerSetWindow createRandomTriggerSetWindow;
 
@@ -306,6 +307,10 @@ namespace TSMapEditor.UI.Windows
             selectParticleSystemTypeWindow = new SelectParticleSystemTypeWindow(WindowManager, map);
             var particleSystemTypeDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectParticleSystemTypeWindow);
             particleSystemTypeDarkeningPanel.Hidden += ParticleSystemTypeDarkeningPanel_Hidden;
+
+            selectSuperWeaponTypeWindow = new SelectSuperWeaponTypeWindow(WindowManager, map);
+            var swDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectSuperWeaponTypeWindow);
+            swDarkeningPanel.Hidden += SuperWeaponDarkeningPanel_Hidden;
 
             createRandomTriggerSetWindow = new CreateRandomTriggerSetWindow(WindowManager, map);
             var createRandomTriggersSetDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, createRandomTriggerSetWindow);
@@ -937,10 +942,17 @@ namespace TSMapEditor.UI.Windows
                     ctxEventParameterPresetValues.Open(GetCursorPoint());
                     break;
                 case TriggerParamType.SuperWeapon:
-                    ctxEventParameterPresetValues.ClearItems();
-                    ctxEventParameterPresetValues.Width = 250;
-                    map.Rules.SuperWeaponTypes.ForEach(sw => ctxEventParameterPresetValues.AddItem(sw.GetDisplayString()));
-                    ctxEventParameterPresetValues.Open(GetCursorPoint());
+                    int swTypeIndex = Conversions.IntFromString(triggerEvent.Parameters[paramIndex], -1);
+                    selectSuperWeaponTypeWindow.IsForEvent = true;
+                    selectSuperWeaponTypeWindow.UseININameAsValue = false;
+                    if (swTypeIndex > -1 && swTypeIndex < map.Rules.SuperWeaponTypes.Count)
+                        selectSuperWeaponTypeWindow.Open(map.Rules.SuperWeaponTypes[swTypeIndex]);
+                    break;
+                case TriggerParamType.SuperWeaponName:
+                    string swTypeID = triggerEvent.Parameters[paramIndex];
+                    selectSuperWeaponTypeWindow.IsForEvent = true;
+                    selectSuperWeaponTypeWindow.UseININameAsValue = true;
+                    selectSuperWeaponTypeWindow.Open(map.Rules.SuperWeaponTypes.Find(swType => swType.ININame.Equals(swTypeID, StringComparison.Ordinal)));
                     break;
                 case TriggerParamType.TeamType:
                     TeamType existingTeamType = map.TeamTypes.Find(tt => tt.ININame == triggerEvent.Parameters[paramIndex]);
@@ -1058,10 +1070,18 @@ namespace TSMapEditor.UI.Windows
                     selectStringWindow.Open(existingString);
                     break;
                 case TriggerParamType.SuperWeapon:
-                    ctxActionParameterPresetValues.ClearItems();
-                    ctxActionParameterPresetValues.Width = 250;
-                    map.Rules.SuperWeaponTypes.ForEach(sw => ctxActionParameterPresetValues.AddItem(sw.GetDisplayString()));
-                    ctxActionParameterPresetValues.Open(GetCursorPoint());
+                    int swTypeIndex = Conversions.IntFromString(triggerAction.Parameters[paramIndex], -1);
+                    selectSuperWeaponTypeWindow.IsForEvent = false;
+                    selectSuperWeaponTypeWindow.UseININameAsValue = false;
+                    if (swTypeIndex > -1 && swTypeIndex < map.Rules.SuperWeaponTypes.Count)
+                        selectSuperWeaponTypeWindow.Open(map.Rules.SuperWeaponTypes[swTypeIndex]);
+                    break;
+                case TriggerParamType.SuperWeaponName:
+                    string swTypeID = triggerAction.Parameters[paramIndex];
+                    selectSuperWeaponTypeWindow.IsForEvent = false;
+                    selectSuperWeaponTypeWindow.UseININameAsValue = true;
+                    if (!string.IsNullOrEmpty(swTypeID))
+                        selectSuperWeaponTypeWindow.Open(map.Rules.SuperWeaponTypes.Find(swType => swType.ININame.Equals(swTypeID, StringComparison.Ordinal)));
                     break;
                 case TriggerParamType.ParticleSystem:
                     ParticleSystemType existingParticleSystemType = map.Rules.ParticleSystemTypes.Find(pst => pst.Index == Conversions.IntFromString(triggerAction.Parameters[paramIndex], -1));
@@ -1270,6 +1290,19 @@ namespace TSMapEditor.UI.Windows
                 return;
 
             AssignParamValue(selectParticleSystemTypeWindow.IsForEvent, selectParticleSystemTypeWindow.SelectedObject.Index);
+        }
+
+        private void SuperWeaponDarkeningPanel_Hidden(object sender, EventArgs e)
+        {
+            if (selectSuperWeaponTypeWindow.SelectedObject == null)
+                return;
+
+            var swType = selectSuperWeaponTypeWindow.SelectedObject;
+
+            if (selectSuperWeaponTypeWindow.UseININameAsValue)
+                AssignParamValue(selectSuperWeaponTypeWindow.IsForEvent, swType.ININame);
+            else
+                AssignParamValue(selectSuperWeaponTypeWindow.IsForEvent, swType.Index);
         }
 
         private void AssignParamValue(bool isForEvent, int paramValue)
@@ -2252,6 +2285,13 @@ namespace TSMapEditor.UI.Windows
                         return intValue + " - nonexistent super weapon";
 
                     return intValue + " " + map.Rules.SuperWeaponTypes[intValue].GetDisplayStringWithoutIndex();
+                case TriggerParamType.SuperWeaponName:
+                    var swType = map.Rules.SuperWeaponTypes.Find(sw => sw.ININame.Equals(paramValue, StringComparison.Ordinal));
+
+                    if (swType == null)
+                        return paramValue;
+
+                    return swType.GetDisplayStringWithoutIndex();
                 case TriggerParamType.ParticleSystem:
                     if (!intParseSuccess)
                         return paramValue;
