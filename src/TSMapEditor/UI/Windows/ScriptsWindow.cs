@@ -52,10 +52,12 @@ namespace TSMapEditor.UI.Windows
         private XNALabel lblParameterDescription;
         private EditorNumberTextBox tbParameterValue;
         private MenuButton btnEditorPresetValues;
+        private EditorButton btnEditorPresetValuesWindow;
         private XNALabel lblActionDescriptionValue;
         private XNADropDown ddScriptColor;
 
         private SelectScriptActionWindow selectScriptActionWindow;
+        private SelectScriptActionPresetOptionWindow selectScriptActionPresetOptionWindow;
         private EditorContextMenu actionListContextMenu;
 
         private SelectBuildingTargetWindow selectBuildingTargetWindow;
@@ -92,6 +94,7 @@ namespace TSMapEditor.UI.Windows
             lblParameterDescription = FindChild<XNALabel>(nameof(lblParameterDescription));
             tbParameterValue = FindChild<EditorNumberTextBox>(nameof(tbParameterValue));
             btnEditorPresetValues = FindChild<MenuButton>(nameof(btnEditorPresetValues));
+            btnEditorPresetValuesWindow = FindChild<EditorButton>(nameof(btnEditorPresetValuesWindow));
             lblActionDescriptionValue = FindChild<XNALabel>(nameof(lblActionDescriptionValue));
             ddScriptColor = FindChild<XNADropDown>(nameof(ddScriptColor));            
 
@@ -108,6 +111,9 @@ namespace TSMapEditor.UI.Windows
             btnEditorPresetValues.ContextMenu = presetValuesContextMenu;
             btnEditorPresetValues.ContextMenu.OptionSelected += ContextMenu_OptionSelected;
             btnEditorPresetValues.LeftClick += BtnEditorPresetValues_LeftClick;
+
+            btnEditorPresetValuesWindow.LeftClick += BtnEditorPresetValuesWindow_LeftClick;
+            btnEditorPresetValuesWindow.Disable();
 
             tbName.TextChanged += TbName_TextChanged;
             tbParameterValue.TextChanged += TbParameterValue_TextChanged;
@@ -142,6 +148,10 @@ namespace TSMapEditor.UI.Windows
             selectScriptActionWindow = new SelectScriptActionWindow(WindowManager, map.EditorConfig);
             var selectScriptActionDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectScriptActionWindow);
             selectScriptActionDarkeningPanel.Hidden += SelectScriptActionDarkeningPanel_Hidden;
+
+            selectScriptActionPresetOptionWindow = new SelectScriptActionPresetOptionWindow(WindowManager, map);
+            var selectScriptActionPresetDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectScriptActionPresetOptionWindow);
+            selectScriptActionPresetDarkeningPanel.Hidden += SelectScriptActionPresetDarkeningPanel_Hidden;
 
             selectBuildingTargetWindow = new SelectBuildingTargetWindow(WindowManager, map);
             var buildingTargetWindowDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectBuildingTargetWindow);
@@ -292,6 +302,18 @@ namespace TSMapEditor.UI.Windows
                 var (index, property) = SplitBuildingWithProperty(entry.Argument);
                 selectBuildingTargetWindow.Open(index, property);
             }
+        }
+
+        private void BtnEditorPresetValuesWindow_LeftClick(object sender, EventArgs e)
+        {
+            if (editedScript == null)
+                return;
+
+            if (lbActions.SelectedItem == null)
+                return;
+
+            var item = selectScriptActionPresetOptionWindow.GetMatchingItem(tbParameterValue.Text);
+            selectScriptActionPresetOptionWindow.Open(item);
         }
 
         private void ShowScriptReferences()
@@ -502,6 +524,18 @@ namespace TSMapEditor.UI.Windows
             InputIgnoreTime = TimeSpan.FromSeconds(Constants.UIAccidentalClickPreventionTime);
         }
 
+
+        private void SelectScriptActionPresetDarkeningPanel_Hidden(object sender, EventArgs e)
+        {
+            if (lbActions.SelectedItem == null || editedScript == null)
+            {
+                return;
+            }
+
+            if (selectScriptActionPresetOptionWindow.SelectedObject != null)
+                tbParameterValue.Text = selectScriptActionPresetOptionWindow.GetSelectedItemText();
+        }
+
         private void LbActions_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (lbActions.SelectedItem == null || editedScript == null)
@@ -526,7 +560,23 @@ namespace TSMapEditor.UI.Windows
             lblParameterDescription.Text = action == null ? "Parameter:" : action.ParamDescription + ":";
             lblActionDescriptionValue.Text = GetActionDescriptionFromIndex(entry.Action);
 
-            FillPresetContextMenu(entry, action);
+            string text = null;
+
+            if (action.UseWindowSelection && action.PresetOptions.Count > 0)
+            {
+                btnEditorPresetValues.Disable();
+                btnEditorPresetValuesWindow.Enable();
+                text = selectScriptActionPresetOptionWindow.FillPresetOptions(entry, action);
+            }
+            else
+            {
+                btnEditorPresetValues.Enable();
+                btnEditorPresetValuesWindow.Disable();
+                text = FillPresetContextMenu(entry, action);
+            }
+
+            if (text != null)
+                tbParameterValue.Text = text;
         }
 
         private void SetParameterEntryText(ScriptActionEntry scriptActionEntry, ScriptAction action)
@@ -585,13 +635,13 @@ namespace TSMapEditor.UI.Windows
             return GetBuildingWithPropertyText(index, property);
         }
 
-        private void FillPresetContextMenu(ScriptActionEntry entry, ScriptAction action)
+        private string FillPresetContextMenu(ScriptActionEntry entry, ScriptAction action)
         {
             btnEditorPresetValues.ContextMenu.ClearItems();
 
             if (action == null)
             {
-                return;
+                return null;
             }
 
             action.PresetOptions.ForEach(p => btnEditorPresetValues.ContextMenu.AddItem(new XNAContextMenuItem() { Text = p.GetOptionText() }));
@@ -630,7 +680,9 @@ namespace TSMapEditor.UI.Windows
                 fittingItem = btnEditorPresetValues.ContextMenu.Items.Find(item => item.Text.StartsWith(entry.Argument.ToString()));
 
             if (fittingItem != null)
-                tbParameterValue.Text = fittingItem.Text;
+                return fittingItem.Text;
+
+            return null;
         }
 
         private void LbScriptTypes_SelectedIndexChanged(object sender, EventArgs e) => RefreshSelectedScript();
@@ -734,9 +786,9 @@ namespace TSMapEditor.UI.Windows
             for (int i = 0; i < editedScript.Actions.Count; i++)
             {
                 var actionEntry = editedScript.Actions[i];
-                lbActions.AddItem(new XNAListBoxItem() 
-                { 
-                    Text = GetActionEntryText(i, actionEntry), 
+                lbActions.AddItem(new XNAListBoxItem()
+                {
+                    Text = GetActionEntryText(i, actionEntry),
                     Tag = actionEntry
                 });
             }
@@ -754,7 +806,7 @@ namespace TSMapEditor.UI.Windows
         {
             ScriptAction action = GetScriptAction(entry.Action);
             if (action == null)
-                return "#" + index + " - Unknown (" +  entry.Argument.ToString(CultureInfo.InvariantCulture) + ")";
+                return "#" + index + " - Unknown (" + entry.Argument.ToString(CultureInfo.InvariantCulture) + ")";
 
             return "#" + index + " - " + action.Name + " (" + entry.Argument.ToString(CultureInfo.InvariantCulture) + ")";
         }
