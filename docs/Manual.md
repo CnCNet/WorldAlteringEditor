@@ -1,5 +1,7 @@
 # World-Altering Editor User Manual
 
+English | [简体中文](./Manual-zh-Hans.md)
+
 We try to make the editor's user interface intuitive, but in case it is not enough, this guide contains some helpful tips and tricks.
 
 **Note:** Most keybinds mentioned here can be changed in the *Keyboard Options* menu. This guide assumes you use the defaults.
@@ -12,7 +14,7 @@ To paint terrain, select a tile from either the top bar or from the TileSet sele
 
 ### Painting water
 
-To paint water, select the Water TileSet from the TileSet selector in the bottom of the screen. Then a tile and paint. You can increase the brush size to cover larger areas, or use the fill functionality mentioned above.
+To paint water, select the Water TileSet from the TileSet selector in the bottom of the screen. Then, select a tile and paint. You can increase the brush size to cover larger areas, or use the fill functionality mentioned above.
 
 Note that the fill functonality only works with 1x1 sized tiles.
 
