@@ -589,7 +589,7 @@ namespace TSMapEditor.Rendering
                         AddStructureToRender(structure);
 
                         if (structure.ObjectType.AlphaShape != null && IsRenderFlagEnabled(RenderObjectFlags.AlphaLights))
-                            alphaImagesToRender.Add(new AlphaImageRenderStruct(structure.Position, structure.ObjectType.AlphaShape));
+                            alphaImagesToRender.Add(new AlphaImageRenderStruct(structure.Position, structure.ObjectType.AlphaShape, structure));
                     }
                 }
             }
@@ -608,7 +608,7 @@ namespace TSMapEditor.Rendering
                 AddGameObjectToRender(tile.TerrainObject);
 
                 if (tile.TerrainObject.TerrainType.AlphaShape != null && IsRenderFlagEnabled(RenderObjectFlags.AlphaLights))
-                    alphaImagesToRender.Add(new AlphaImageRenderStruct(tile.TerrainObject.Position, tile.TerrainObject.TerrainType.AlphaShape));
+                    alphaImagesToRender.Add(new AlphaImageRenderStruct(tile.TerrainObject.Position, tile.TerrainObject.TerrainType.AlphaShape, tile.TerrainObject));
             }
         }
 
@@ -1625,10 +1625,20 @@ namespace TSMapEditor.Rendering
                 for (int i = 0; i < alphaImagesToRender.Count; i++)
                 {
                     var alphaShape = alphaImagesToRender[i].AlphaImage;
-                    if (alphaShape.GetFrameCount() <= 0)
+                    int frameCount = alphaShape.GetFrameCount();
+
+                    if (frameCount <= 0)
                         continue;
 
-                    var alphaTexture = alphaShape.GetFrame(0);
+                    int frame = 0;
+
+                    if (frameCount > 1)
+                    {
+                        if (alphaImagesToRender[i].OwnerObject is TechnoBase ownerTechno)
+                            frame = ownerTechno.Facing / (256 / frameCount);
+                    }
+
+                    var alphaTexture = alphaShape.GetFrame(frame);
                     if (alphaTexture == null)
                         continue;
 
