@@ -39,15 +39,17 @@ namespace TSMapEditor.Models
                    (IsBuildingAnim ? BuildingAnimDrawConfig.X : 0);
         }
 
+        // Turret anims have their facing frames reversed
+        // Turret anims also only have 32 facings
+        // Game uses lookup table containing frame indices (frame index 28 at array index 0,
+        // decrementing and wrapping around to 31 after 0) to determine the correct frame from
+        // direction normalized to range 0-31, the formula is replicated here without the LUT - Starkku
+        private int GetTurretAnimFrameIndex() => (28 - Facing / 8 + 32) % 32;
+
         public override int GetFrameIndex(int frameCount)
         {
             if (IsTurretAnim)
-            {
-                // Turret anims have their facing frames reversed
-                // Turret anims also only have 32 facings
-                byte facing = (byte)(255 - Facing - 31);
-                return facing / (256 / 32);
-            }
+                return GetTurretAnimFrameIndex();
 
             if (IsBuildingAnim && ParentBuilding != null)
             {
@@ -60,6 +62,9 @@ namespace TSMapEditor.Models
 
         public override int GetShadowFrameIndex(int frameCount)
         {
+            if (IsTurretAnim)
+                return GetTurretAnimFrameIndex() + frameCount / 2;
+
             if (IsBuildingAnim && ParentBuilding != null)
             {
                 if (ParentBuilding.HP < Constants.ConditionYellowHP)

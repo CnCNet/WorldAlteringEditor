@@ -111,15 +111,7 @@ namespace TSMapEditor.Rendering.ObjectRenderers
 
             var drawParams = GetDrawParams(gameObject);
             var drawPoint = GetDrawPoint(gameObject);
-
             int shadowFrameIndex = gameObject.GetShadowFrameIndex(drawParams.ShapeImage.GetFrameCount());
-
-            if (gameObject.IsTurretAnim)
-            {
-                // Turret anims have their facing frames reversed
-                byte facing = (byte)(255 - gameObject.Facing - 31);
-                shadowFrameIndex += facing / (512 / drawParams.ShapeImage.GetFrameCount());
-            }
 
             if (shadowFrameIndex > 0 && shadowFrameIndex < drawParams.ShapeImage.GetFrameCount())
             {
