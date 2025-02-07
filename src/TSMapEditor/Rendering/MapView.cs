@@ -1635,7 +1635,7 @@ namespace TSMapEditor.Rendering
                     if (frameCount > 1)
                     {
                         if (alphaImagesToRender[i].OwnerObject is TechnoBase ownerTechno)
-                            frame = ownerTechno.Facing / (256 / frameCount);
+                            frame = ownerTechno.Facing / ((Constants.FacingMax + 1) / frameCount);
                     }
 
                     var alphaTexture = alphaShape.GetFrame(frame);
