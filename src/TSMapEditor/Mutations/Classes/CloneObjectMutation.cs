@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.UI;
