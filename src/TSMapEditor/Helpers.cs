@@ -16,7 +16,7 @@ namespace TSMapEditor
 {
     public static class Helpers
     {
-        public static readonly RTTIType[] SupportedCloneTypes = [RTTIType.Terrain, RTTIType.CellTag];
+        public static readonly RTTIType[] SupportedCloneTypes = [ RTTIType.Terrain, RTTIType.CellTag ];
 
         public static bool IsStringNoneValue(string str)
         {

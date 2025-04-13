@@ -13,7 +13,7 @@ namespace TSMapEditor.Mutations.Classes
         public CloneObjectMutation(IMutationTarget mutationTarget, IMovable movable, Point2D clonePosition) : base(mutationTarget)
         {
             if (!Helpers.IsCloningSupported(movable))
-                throw new NotSupportedException(nameof(CloneObjectMutation) + " only supports cloning Technos, TerrainObjects and Cell Tags!");
+                throw new NotSupportedException(nameof(CloneObjectMutation) + " only supports cloning Technos, TerrainObjects and CellTags!");
 
             this.objectToClone = (AbstractObject)movable;
             this.clonePosition = clonePosition;

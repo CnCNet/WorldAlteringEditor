@@ -1091,6 +1091,12 @@ namespace TSMapEditor.Models
             if (movable.WhatAmI() == RTTIType.Waypoint)
                 return true;
 
+            MapTile cell = GetTile(newCoords);
+            if (movable.WhatAmI() == RTTIType.CellTag)
+            {
+                return cell.CellTag == null;
+            }
+
             if (movable.WhatAmI() == RTTIType.Building)
             {
                 var buildingArtConfig = ((Structure)movable).ObjectType.ArtConfig;
@@ -1108,13 +1114,6 @@ namespace TSMapEditor.Models
                 });
 
                 return canPlace;
-            }
-
-            MapTile cell = GetTile(newCoords);
-
-            if (movable.WhatAmI() == RTTIType.CellTag)
-            {
-                return cell.CellTag == null;
             }
 
             return cell.CanAddObject((GameObject)movable, blocksSelf, overlapObjects);
