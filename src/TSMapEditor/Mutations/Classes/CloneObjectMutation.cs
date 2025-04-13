@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.UI;
@@ -12,10 +13,10 @@ namespace TSMapEditor.Mutations.Classes
     {
         public CloneObjectMutation(IMutationTarget mutationTarget, IMovable movable, Point2D clonePosition) : base(mutationTarget)
         {
-            this.objectToClone = (AbstractObject)movable;
-            if (!objectToClone.IsTechno() && objectToClone.WhatAmI() != RTTIType.Terrain)
-                throw new NotSupportedException(nameof(CloneObjectMutation) + " only supports cloning Technos and TerrainObjects!");
+            if (!Helpers.IsCloningSupported(movable))
+                throw new NotSupportedException(nameof(CloneObjectMutation) + " only supports cloning Technos, TerrainObjects and Cell Tags!");
 
+            this.objectToClone = (AbstractObject)movable;
             this.clonePosition = clonePosition;
         }
 
@@ -60,6 +61,11 @@ namespace TSMapEditor.Mutations.Classes
                     terrainObject.Position = clonePosition;
                     MutationTarget.Map.AddTerrainObject(terrainObject);
                     break;
+                case RTTIType.CellTag:
+                    var cellTag = (CellTag)clone;
+                    cellTag.Position = clonePosition;
+                    MutationTarget.Map.AddCellTag(cellTag);
+                    break;
             }
 
             placedClone = clone;
@@ -90,6 +96,9 @@ namespace TSMapEditor.Mutations.Classes
                     break;
                 case RTTIType.Terrain:
                     Map.RemoveTerrainObject((TerrainObject)placedClone);
+                    break;
+                case RTTIType.CellTag:
+                    Map.RemoveCellTagFrom(clonePosition);
                     break;
             }
         }

@@ -1071,6 +1071,13 @@ namespace TSMapEditor.Models
             AddWaypoint(waypoint);
         }
 
+        public void MoveCellTag(CellTag cellTag, Point2D newCoords)
+        {
+            RemoveCellTagFrom(cellTag.Position);
+            cellTag.Position = newCoords;
+            AddCellTag(cellTag);
+        }
+
         /// <summary>
         /// Determines whether an object can be moved to a specific location.
         /// </summary>
@@ -1104,6 +1111,12 @@ namespace TSMapEditor.Models
             }
 
             MapTile cell = GetTile(newCoords);
+
+            if (movable.WhatAmI() == RTTIType.CellTag)
+            {
+                return cell.CellTag == null;
+            }
+
             return cell.CanAddObject((GameObject)movable, blocksSelf, overlapObjects);
         }
 

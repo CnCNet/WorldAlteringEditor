@@ -1255,8 +1255,10 @@ namespace TSMapEditor.Rendering
 
                 Color lineColor = isCloning ? new Color(0, 255, 255) : Color.White;
                 if (!Map.CanPlaceObjectAt(draggedOrRotatedObject, tileUnderCursor.CoordsToPoint(), isCloning, overlapObjects) ||
-                    (isCloning && !draggedOrRotatedObject.IsTechno() && draggedOrRotatedObject.WhatAmI() != RTTIType.Terrain))
+                    (isCloning && !Helpers.IsCloningSupported(draggedOrRotatedObject)))
+                {
                     lineColor = Color.Red;
+                }
 
                 Point2D cameraAndCellCenterOffset = new Point2D(-Camera.TopLeftPoint.X + Constants.CellSizeX / 2,
                                                  -Camera.TopLeftPoint.Y + Constants.CellSizeY / 2);

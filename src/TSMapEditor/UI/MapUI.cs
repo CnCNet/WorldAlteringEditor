@@ -421,7 +421,7 @@ namespace TSMapEditor.UI
                             bool overlapObjects = KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(Keyboard);
                             if (KeyboardCommands.Instance.CloneObject.AreKeysOrModifiersDown(Keyboard))
                             {
-                                if ((draggedOrRotatedObject.IsTechno() || draggedOrRotatedObject.WhatAmI() == RTTIType.Terrain) &&
+                                if (Helpers.IsCloningSupported(draggedOrRotatedObject) &&
                                     Map.CanPlaceObjectAt(draggedOrRotatedObject, tileUnderCursor.CoordsToPoint(), true, overlapObjects))
                                 {
                                     var mutation = new CloneObjectMutation(MutationTarget, draggedOrRotatedObject, tileUnderCursor.CoordsToPoint());
@@ -473,6 +473,11 @@ namespace TSMapEditor.UI
                 else if (tileUnderCursor.Waypoints.Count > 0)
                 {
                     draggedOrRotatedObject = tileUnderCursor.Waypoints[0];
+                    isDraggingObject = true;
+                }
+                else if (tileUnderCursor.CellTag != null)
+                {
+                    draggedOrRotatedObject = tileUnderCursor.CellTag;
                     isDraggingObject = true;
                 }
             }
