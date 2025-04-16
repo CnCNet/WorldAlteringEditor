@@ -99,6 +99,7 @@ namespace TSMapEditor.Models
         {
             var script = new Script(iniName);
             script.Name = Name + " (Clone)";
+            script.EditorColor = EditorColor;
 
             foreach (var action in Actions)
             {
