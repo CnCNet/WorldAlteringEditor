@@ -9,6 +9,7 @@ using Rampastring.XNAUI;
 using Microsoft.Xna.Framework;
 using System.Linq;
 using TSMapEditor.UI.Controls;
+using System.IO;
 
 namespace TSMapEditor.UI.CursorActions
 {
@@ -96,7 +97,27 @@ namespace TSMapEditor.UI.CursorActions
                 return;
             }
 
-            byte[] data = (byte[])System.Windows.Forms.Clipboard.GetData(Constants.ClipboardMapDataFormatValue);
+            byte[] data;
+            object dataObject = (byte[])System.Windows.Forms.Clipboard.GetData(Constants.ClipboardMapDataFormatValue);
+            if (dataObject is byte[] byteArray)
+            {
+                data = byteArray;
+            }
+            else if (dataObject is MemoryStream memoryStream)
+            {
+                // Some users have reported that clipboard data is retrieved as MemoryStream for them,
+                // despite that the editor always saves them in byte[] format.
+                Logger.Log("Warning: Handling clipboard data as MemoryStream");
+                data = new byte[memoryStream.Length];
+                memoryStream.Read(data, 0, (int)memoryStream.Length);
+                memoryStream.Dispose();
+            }
+            else
+            {
+                Logger.Log($"{nameof(PasteTerrainCursorAction)}: unknown object type {dataObject.GetType().Name} stored to clipboard, exiting action");
+                ExitAction();
+                return;
+            }
 
             try
             {
