@@ -76,7 +76,7 @@ namespace TSMapEditor.Rendering.ObjectRenderers
             foreach (var section in vxl.Sections)
             {
                 byte[] normalIndexToVplPage =
-                    PreCalculateLighting(section.GetNormals(), section.NormalsMode, rotationFromFacing);
+                    PreCalculateLighting(section.GetNormals(), rotationFromFacing);
 
                 var sectionHvaTransform = hva.LoadMatrix(section.Index);
                 sectionHvaTransform.M41 *= section.HvaMatrixScale;
@@ -194,10 +194,10 @@ namespace TSMapEditor.Rendering.ObjectRenderers
             const float radius = 0.5f;
 
             // Set up the coordinates of the voxel's corners
-            Span<Vector3> vertexCoordinates = stackalloc Vector3[]
-            {
+            Span<Vector3> vertexCoordinates =
+            [
                 new(-1, 1, -1), // A1 // 0
-                new(1, 1, -1), // B1 // 1           
+                new(1, 1, -1), // B1 // 1
                 new(1, 1, 1), // C1 // 2
                 new(-1, 1, 1), // D1 // 3
 
@@ -205,7 +205,7 @@ namespace TSMapEditor.Rendering.ObjectRenderers
                 new(1, -1, -1), // B2 // 5
                 new(1, -1, 1), // C2 // 6
                 new(-1, -1, 1) // D2 // 7
-            };
+            ];
 
             for (int i = 0; i < vertexCoordinates.Length; i++)
             {
@@ -226,26 +226,44 @@ namespace TSMapEditor.Rendering.ObjectRenderers
             }
         }
 
-        private static byte[] PreCalculateLighting(Vector3[] normalsTable, int normalsMode, float rotation)
+        // This uses the Blinn-Phong reflection model
+        // Used sometimes in YR, present but not used in TS
+        private static byte[] PreCalculateLighting(Vector3[] normalsTable, float rotation)
         {
             Vector3 light = Constants.IsRA2YR ?
                 Vector3.Transform(YRLight, Matrix.CreateRotationZ(rotation - MathHelper.ToRadians(45))) : 
                 Vector3.Transform(TSLight, Matrix.CreateRotationZ(rotation - MathHelper.ToRadians(45)));
 
-            // Center the lighting around this page to make vehicles darker in RA2
-            const byte centerPage = 7;
-            // Assume 8 pages per normals mode
-            int maxPage = normalsMode * 8 - 1;
+            Vector3 viewer = Vector3.UnitZ;
+
+            // Halfway vector between light direction and view direction (Blinn-Phong model)
+            Vector3 halfway = light + viewer;
+            halfway.Normalize();
+
+            // Constant used in YR
+            const float specularStrength = 3.0f;
 
             byte[] normalIndexToVplPage = new byte[256];
 
             for (int i = 0; i < normalsTable.Length; i++)
             {
-                float dot = (Vector3.Dot(normalsTable[i], light) + 1) / 2;
+                // Lambertian diffuse term: cosine of angle between normal and light
+                float diffuse = Vector3.Dot(normalsTable[i], light);
 
-                byte page = dot <= 0.5 ?
-                    Convert.ToByte(dot * 2 * centerPage) :
-                    Convert.ToByte(2 * (maxPage - centerPage) * (dot - 0.5f) + centerPage);
+                // Specular term: cosine of angle between normal and halfway vector
+                float halfwayDot = Vector3.Dot(normalsTable[i], halfway);
+
+                // Specular boost (empirical) - the formula adjusts how specular highlights behave
+                float specular = halfwayDot / (specularStrength - halfwayDot * specularStrength + halfwayDot);
+
+                // Clamp both values to [0, inf)
+                specular = specular >= 0.0f ? specular : 0.0f;
+                diffuse = diffuse >= 0.0f ? diffuse : 0.0f;
+
+                // Final brightness contribution
+                float brightness = diffuse + specular;
+
+                byte page = Math.Clamp((byte)(brightness * 16.0), (byte)0, (byte)255);
 
                 normalIndexToVplPage[i] = page;
             }
