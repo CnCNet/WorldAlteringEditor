@@ -9,7 +9,9 @@ namespace TSMapEditor.UI.Windows
     {
         public SelectTriggerWindow(WindowManager windowManager, Map map) : base(windowManager)
         {
-            this.map = map;
+            MinimumFuzzySearchScore = 25;
+
+            this.map = map;            
         }
 
         private readonly Map map;

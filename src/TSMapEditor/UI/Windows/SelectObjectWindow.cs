@@ -3,6 +3,8 @@ using Rampastring.XNAUI;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.UI.Controls;
+using Rampastring.XNAUI.XNAControls;
+using System.Collections.Generic;
 
 namespace TSMapEditor.UI.Windows
 {
@@ -17,6 +19,13 @@ namespace TSMapEditor.UI.Windows
 
         protected EditorSuggestionTextBox tbSearch;
         protected EditorListBox lbObjectList;
+        private readonly List<XNAListBoxItem> originalObjectList = [];
+        /// <summary>
+        /// The minimum score required for a Fuzzy Search item to appear. 
+        /// Higher scores filters more heavily and increases precision,
+        /// while lower scores allow for more results.
+        /// </summary>
+        protected int MinimumFuzzySearchScore { get; set; } = 50;
 
         /// <summary>
         /// If the object is being selected for a trigger event or action,
@@ -93,28 +102,28 @@ namespace TSMapEditor.UI.Windows
         private void TbSearch_TextChanged(object sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(tbSearch.Text) || tbSearch.Text == tbSearch.Suggestion)
-            {
-                foreach (var item in lbObjectList.Items)
-                {
-                    if (!item.Visible)
-                        lbObjectList.ViewTop = 0;
+            {                
+                RestoreFromOriginalList();
 
-                    item.Visible = true;
-                }
+                lbObjectList.ViewTop = 0;
             }
             else
             {
-                lbObjectList.ViewTop = 0;
+                var fuzzySearchItems = Helpers.FuzzySearch(tbSearch.Text, originalObjectList, item => item.Text, MinimumFuzzySearchScore, true);
 
+                lbObjectList.Clear();
+
+                lbObjectList.ViewTop = 0;
                 lbObjectList.SelectedIndex = -1;
 
-                for (int i = 0; i < lbObjectList.Items.Count; i++)
-                {
-                    var item = lbObjectList.Items[i];
-                    item.Visible = item.Text.Contains(tbSearch.Text, StringComparison.OrdinalIgnoreCase);
+                foreach (var fuzzySearchItem in fuzzySearchItems)
+                {   
+                    var listBoxItem = fuzzySearchItem.Item;
 
-                    if (item.Visible && lbObjectList.SelectedIndex == -1)
-                        lbObjectList.SelectedIndex = i;
+                    lbObjectList.AddItem(listBoxItem);
+
+                    if (lbObjectList.SelectedIndex == -1)
+                        lbObjectList.SelectedIndex = 0;
                 }
             }
 
@@ -145,6 +154,7 @@ namespace TSMapEditor.UI.Windows
             this.initialSelection = SelectedObject;
             OnOpen();
             ListObjects();
+            SaveToOriginalList();
 
             if (lbObjectList.SelectedItem == null)
             {
@@ -196,6 +206,26 @@ namespace TSMapEditor.UI.Windows
             infoPanel.Open(itemAsHintable.GetHeaderText(),
                 itemAsHintable.GetHintText(),
                 new Point2D(Width, GetCursorPoint().Y));
+        }
+
+        private void SaveToOriginalList()
+        {
+            originalObjectList.Clear();
+
+            foreach (var item in lbObjectList.Items)
+            {
+                originalObjectList.Add(item);
+            }
+        }
+
+        private void RestoreFromOriginalList()
+        {
+            lbObjectList.Clear();
+
+            foreach (var item in originalObjectList)
+            {
+                lbObjectList.AddItem(item);
+            }
         }
 
         protected abstract void ListObjects();

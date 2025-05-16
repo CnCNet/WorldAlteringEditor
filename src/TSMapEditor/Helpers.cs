@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework;
+﻿using FuzzySharp;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
@@ -735,6 +736,105 @@ namespace TSMapEditor
                 return true;
 
             return false;
+        }
+
+        /// <summary>
+        /// Calculates a fuzzy search score between a search string and a target string.
+        /// The score is based on similarity and optionally checks individual parts of the target string.
+        /// Significantly improves score of exact matches and partial matches of the search string.
+        /// </summary>
+        /// <param name="searchString">The string to search for.</param>
+        /// <param name="targetString">The string to compare against.</param>
+        /// <param name="checkParts">Whether to check multiple parts separated by a space. Useful for texts that has ININame or ID, followed by the object name.</param>
+        /// <returns>An integer score representing the similarity between the strings.</returns>
+        public static int CalculateFuzzySearchScore(string searchString, string targetString, bool checkParts)
+        {
+            targetString = targetString.ToLowerInvariant();
+
+            if (string.IsNullOrWhiteSpace(searchString))
+                return 100;
+
+            // Fuzzy Search method, used to calculate initial score
+            int score = Fuzz.Ratio(searchString, targetString);
+
+            List<string> nameParts = [];
+
+            if (checkParts)
+            {
+                int spaceIndex = targetString.IndexOf(" ");
+                if (spaceIndex >= 0)
+                {
+                    string firstPart = targetString.Substring(0, spaceIndex);
+                    string secondPart = targetString.Substring(spaceIndex + 1);
+                    nameParts.Add(firstPart);
+                    nameParts.Add(secondPart);
+                } 
+                else
+                {
+                    nameParts.Add(targetString);
+                }
+            }
+            else
+            {
+                nameParts.Add(targetString);
+            }
+
+            foreach (var namePart in nameParts)
+            {
+                if (namePart == searchString)
+                {
+                    score += 100;
+                    break;
+                }
+                else if (namePart.StartsWith(searchString))
+                {
+                    score += 75;
+                    break;
+                }
+                else if (namePart.Contains(searchString))
+                {
+                    score += 35;
+                    break;
+                }
+            }
+
+            return score;
+        }
+
+        /// <summary>
+        /// Performs a fuzzy search on a list of items and returns a list of results with their scores.
+        /// Items are filtered by a minimum score and optionally checked for partial matches.
+        /// </summary>
+        /// <typeparam name="T">The type of items in the list.</typeparam>
+        /// <param name="searchString">The string to search for.</param>
+        /// <param name="itemsList">The list of items to search through.</param>
+        /// <param name="extractTextFromItem">A function to extract the name or relevant representation of an item.</param>
+        /// <param name="minimumScore">The minimum score required for an item to be included in the results.</param>
+        /// <param name="checkParts">Whether to check multiple parts separated by a space. Useful for texts that has ININame or ID, followed by the object name.</param>
+        /// <returns>A list of fuzzy search results, each containing an item and a score.
+        public static List<FuzzySearchItem<T>> FuzzySearch<T>(string searchString, List<T> itemsList, Func<T, string> extractTextFromItem, int minimumScore, bool checkParts)
+        {
+            searchString = searchString.ToLowerInvariant();
+
+            if (string.IsNullOrWhiteSpace(searchString))
+                return itemsList.Select(item => new FuzzySearchItem<T>(item, 100)).ToList();
+
+            var results = itemsList
+                .Select(item =>
+                {
+                    string itemText = extractTextFromItem(item);
+
+                    if (itemText == Constants.NoneValue1 || itemText == Constants.NoneValue2)
+                        return new FuzzySearchItem<T>(item, 0);
+
+                    int score = CalculateFuzzySearchScore(searchString, itemText, checkParts);
+                    return new FuzzySearchItem<T>(item, score);
+                })
+                .Where(item => item.Score >= minimumScore)
+                .OrderByDescending(item => item.Score)
+                .ToList();
+
+            return results;
         }
     }
 }

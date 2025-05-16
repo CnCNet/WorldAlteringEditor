@@ -43,6 +43,7 @@ namespace TSMapEditor.UI.Windows
         private readonly EditorState editorState;
         private readonly INotificationManager notificationManager;
         private SelectCellCursorAction selectCellCursorAction;
+        private readonly int minimumFuzzySearchScore = 50;
 
         private EditorListBox lbScriptTypes;
         private EditorSuggestionTextBox tbFilter;
@@ -669,27 +670,34 @@ namespace TSMapEditor.UI.Windows
             IEnumerable<Script> sortedScripts = map.Scripts;
 
             bool shouldViewTop = false; // when filtering the scroll bar should update so we use a flag here
+            bool filtering = false;
             if (tbFilter.Text != string.Empty && tbFilter.Text != tbFilter.Suggestion)
             {
-                sortedScripts = sortedScripts.Where(script => script.Name.Contains(tbFilter.Text, StringComparison.CurrentCultureIgnoreCase));
+                var fuzzySearchScripts = Helpers.FuzzySearch(tbFilter.Text, sortedScripts.ToList(), script => script.Name, minimumFuzzySearchScore, false);
+                sortedScripts = fuzzySearchScripts.Select(fuzzySearchScript => fuzzySearchScript.Item);
+
                 shouldViewTop = true;
+                filtering = true;
             }
 
-            switch (ScriptSortMode)
+            if (!filtering)
             {
-                case ScriptSortMode.Color:
-                    sortedScripts = sortedScripts.OrderBy(script => script.EditorColor).ThenBy(script => script.ININame);
-                    break;
-                case ScriptSortMode.Name:
-                    sortedScripts = sortedScripts.OrderBy(script => script.Name).ThenBy(script => script.ININame);
-                    break;
-                case ScriptSortMode.ColorThenName:
-                    sortedScripts = sortedScripts.OrderBy(script => script.EditorColor).ThenBy(script => script.Name);
-                    break;
-                case ScriptSortMode.ID:
-                default:
-                    sortedScripts = sortedScripts.OrderBy(script => script.ININame);
-                    break;
+                switch (ScriptSortMode)
+                {
+                    case ScriptSortMode.Color:
+                        sortedScripts = sortedScripts.OrderBy(script => script.EditorColor).ThenBy(script => script.ININame);
+                        break;
+                    case ScriptSortMode.Name:
+                        sortedScripts = sortedScripts.OrderBy(script => script.Name).ThenBy(script => script.ININame);
+                        break;
+                    case ScriptSortMode.ColorThenName:
+                        sortedScripts = sortedScripts.OrderBy(script => script.EditorColor).ThenBy(script => script.Name);
+                        break;
+                    case ScriptSortMode.ID:
+                    default:
+                        sortedScripts = sortedScripts.OrderBy(script => script.ININame);
+                        break;
+                }
             }
 
             foreach (var script in sortedScripts)

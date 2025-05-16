@@ -50,6 +50,7 @@ namespace TSMapEditor.UI.Windows
             TriggerParamType.Waypoint,
             TriggerParamType.WaypointZZ
         };
+        private readonly int minimumFuzzySearchScore = 50;
 
         private XNADropDown ddActions;
 
@@ -138,8 +139,8 @@ namespace TSMapEditor.UI.Windows
             tbName = FindChild<EditorTextBox>(nameof(tbName));
             tbName.AllowComma = false;
 
-            tbFilter = FindChild<EditorSuggestionTextBox>(nameof(tbFilter));            
-            tbFilter.TextChanged += TbFilter_TextChanged;            
+            tbFilter = FindChild<EditorSuggestionTextBox>(nameof(tbFilter));
+            tbFilter.TextChanged += TbFilter_TextChanged;
 
             ddHouseType = FindChild<XNADropDown>(nameof(ddHouseType));
             ddType = FindChild<XNADropDown>(nameof(ddType));
@@ -1569,28 +1570,35 @@ namespace TSMapEditor.UI.Windows
 
             IEnumerable<Trigger> sortedTriggers = map.Triggers;
 
-            var shouldViewTop = false; // when filtering the scroll bar should update so we use a flag here
+            bool shouldViewTop = false; // when filtering the scroll bar should update so we use a flag here
+            bool filtering = false;
             if (tbFilter.Text != string.Empty && tbFilter.Text != tbFilter.Suggestion)
-            {
-                sortedTriggers = sortedTriggers.Where(sortedTrigger => sortedTrigger.Name.Contains(tbFilter.Text, StringComparison.CurrentCultureIgnoreCase));
+            {                
+                var fuzzySearchTriggers = Helpers.FuzzySearch(tbFilter.Text, sortedTriggers.ToList(), trigger => trigger.Name, minimumFuzzySearchScore, false);
+                sortedTriggers = fuzzySearchTriggers.Select(fuzzySearchTrigger => fuzzySearchTrigger.Item);
+
                 shouldViewTop = true;
+                filtering = true;
             }
 
-            switch (TriggerSortMode)
+            if (!filtering)
             {
-                case TriggerSortMode.Color:
-                    sortedTriggers = sortedTriggers.OrderBy(t => t.EditorColor).ThenBy(t => t.ID);
-                    break;
-                case TriggerSortMode.Name:
-                    sortedTriggers = sortedTriggers.OrderBy(t => t.Name).ThenBy(t => t.ID);
-                    break;                
-                case TriggerSortMode.ColorThenName:
-                    sortedTriggers = sortedTriggers.OrderBy(t => t.EditorColor).ThenBy(t => t.Name);
-                    break;
-                case TriggerSortMode.ID:
-                default:
-                    sortedTriggers = sortedTriggers.OrderBy(t => t.ID);
-                    break;
+                switch (TriggerSortMode)
+                {
+                    case TriggerSortMode.Color:
+                        sortedTriggers = sortedTriggers.OrderBy(t => t.EditorColor).ThenBy(t => t.ID);
+                        break;
+                    case TriggerSortMode.Name:                    
+                        sortedTriggers = sortedTriggers.OrderBy(t => t.Name).ThenBy(t => t.ID);
+                        break;                
+                    case TriggerSortMode.ColorThenName:
+                        sortedTriggers = sortedTriggers.OrderBy(t => t.EditorColor).ThenBy(t => t.Name);
+                        break;
+                    case TriggerSortMode.ID:
+                    default:
+                        sortedTriggers = sortedTriggers.OrderBy(t => t.ID);
+                        break;
+                }
             }
 
             foreach (Trigger trigger in sortedTriggers)

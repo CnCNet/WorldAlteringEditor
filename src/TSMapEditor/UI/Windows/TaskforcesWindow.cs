@@ -31,6 +31,7 @@ namespace TSMapEditor.UI.Windows
         }
 
         private readonly Map map;
+        private readonly int minimumFuzzySearchScore = 50;
 
         private EditorSuggestionTextBox tbFilter;
         private EditorListBox lbTaskForces;
@@ -511,28 +512,35 @@ namespace TSMapEditor.UI.Windows
             lbTaskForces.Clear();
 
             bool shouldViewTop = false; // when filtering the scroll bar should update so we use a flag here
+            bool filtering = false;
             IEnumerable<TaskForce> sortedTaskForces = map.TaskForces;
             if (tbFilter.Text != string.Empty && tbFilter.Text != tbFilter.Suggestion)
             {
-                sortedTaskForces = sortedTaskForces.Where(script => script.Name.Contains(tbFilter.Text, StringComparison.CurrentCultureIgnoreCase));
+                var fuzzySearchTaskForces = Helpers.FuzzySearch(tbFilter.Text, sortedTaskForces.ToList(), taskForce => taskForce.Name, minimumFuzzySearchScore, false);
+                sortedTaskForces = fuzzySearchTaskForces.Select(fuzzySearchTaskForce => fuzzySearchTaskForce.Item);
+
                 shouldViewTop = true;
+                filtering = true;
             }
 
-            switch (TaskForceSortMode)
+            if (!filtering)
             {
-                case TaskForceSortMode.Color:
-                    sortedTaskForces = sortedTaskForces.OrderBy(taskForce => GetTaskForceColor(taskForce).ToString()).ThenBy(taskForce => taskForce.ININame);
-                    break;
-                case TaskForceSortMode.Name:
-                    sortedTaskForces = sortedTaskForces.OrderBy(taskForce => taskForce.Name).ThenBy(taskForce => taskForce.ININame);
-                    break;
-                case TaskForceSortMode.ColorThenName:
-                    sortedTaskForces = sortedTaskForces.OrderBy(taskForce => GetTaskForceColor(taskForce).ToString()).ThenBy(taskForce => taskForce.Name);
-                    break;
-                case TaskForceSortMode.ID:
-                default:
-                    sortedTaskForces = sortedTaskForces.OrderBy(taskForce => taskForce.ININame);
-                    break;
+                switch (TaskForceSortMode)
+                {
+                    case TaskForceSortMode.Color:
+                        sortedTaskForces = sortedTaskForces.OrderBy(taskForce => GetTaskForceColor(taskForce).ToString()).ThenBy(taskForce => taskForce.ININame);
+                        break;
+                    case TaskForceSortMode.Name:
+                        sortedTaskForces = sortedTaskForces.OrderBy(taskForce => taskForce.Name).ThenBy(taskForce => taskForce.ININame);
+                        break;
+                    case TaskForceSortMode.ColorThenName:
+                        sortedTaskForces = sortedTaskForces.OrderBy(taskForce => GetTaskForceColor(taskForce).ToString()).ThenBy(taskForce => taskForce.Name);
+                        break;
+                    case TaskForceSortMode.ID:
+                    default:
+                        sortedTaskForces = sortedTaskForces.OrderBy(taskForce => taskForce.ININame);
+                        break;
+                }
             }
 
             foreach (var taskForce in sortedTaskForces)
