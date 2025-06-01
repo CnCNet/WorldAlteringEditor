@@ -357,6 +357,21 @@ namespace TSMapEditor.Models
         {
             PreSave?.Invoke(this, EventArgs.Empty);
 
+            // Determine if we need to save as NewINIFormat == 5
+            // If any of the overlays on the map have a heap ID > 255,
+            // then we have to use shorts to save OverlayPack
+            bool needsExtendedOverlayPack = false;
+            DoForAllValidTiles(tile =>
+            {
+                if (tile.Overlay?.OverlayType == null)
+                    return;
+
+                if (tile.Overlay.OverlayType.Index > 255)
+                    needsExtendedOverlayPack = true;
+            });
+
+            Basic.NewINIFormat = needsExtendedOverlayPack ? 5 : 4;
+
             LoadedINI.Comment = "Written by the World-Altering Editor (WAE)\r\n; all comments have been truncated\r\n; github.com/Rampastring/WorldAlteringEditor\r\n; if you wish to support the editor, you can subscribe at patreon.com/rampastring\r\n; or buy me a coffee at ko-fi.com/rampastring";
 
             MapWriter.WriteMapSection(this, LoadedINI);

@@ -1,4 +1,4 @@
-﻿using CNCMaps.FileFormats.Encodings;
+using CNCMaps.FileFormats.Encodings;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using System;
@@ -672,10 +672,12 @@ namespace TSMapEditor.Initialization
             if (overlayPackSection == null || overlayDataPackSection == null)
                 return;
 
+            bool needsExtendedOverlayPack = map.Basic.NewINIFormat >= 5;
+
             var stringBuilder = new StringBuilder();
             overlayPackSection.Keys.ForEach(kvp => stringBuilder.Append(kvp.Value));
             byte[] compressedData = Convert.FromBase64String(stringBuilder.ToString());
-            byte[] uncompressedOverlayPack = new byte[Constants.MAX_MAP_LENGTH_IN_DIMENSION * Constants.MAX_MAP_LENGTH_IN_DIMENSION];
+            byte[] uncompressedOverlayPack = new byte[Constants.MAX_MAP_LENGTH_IN_DIMENSION * Constants.MAX_MAP_LENGTH_IN_DIMENSION * (needsExtendedOverlayPack ? 2 : 1)];
             Format5.DecodeInto(compressedData, uncompressedOverlayPack, Constants.OverlayPackFormat);
 
             stringBuilder.Clear();
@@ -693,7 +695,19 @@ namespace TSMapEditor.Initialization
                         continue;
 
                     int overlayDataIndex = (tile.Y * Constants.MAX_MAP_LENGTH_IN_DIMENSION) + tile.X;
-                    int overlayTypeIndex = uncompressedOverlayPack[overlayDataIndex];
+
+                    int overlayTypeIndex;
+                    if (needsExtendedOverlayPack)
+                    {
+                        ushort index = (ushort)(uncompressedOverlayPack[overlayDataIndex * 2] | (uncompressedOverlayPack[overlayDataIndex * 2 + 1] << 8));
+                        overlayTypeIndex = index != ushort.MaxValue ? index : Constants.NO_OVERLAY;
+                    }
+                    else
+                    {
+                        byte index = uncompressedOverlayPack[overlayDataIndex];
+                        overlayTypeIndex = index != byte.MaxValue ? index : Constants.NO_OVERLAY;
+                    }
+
                     if (overlayTypeIndex == Constants.NO_OVERLAY)
                         continue;
 

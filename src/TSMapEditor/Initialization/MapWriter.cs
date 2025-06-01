@@ -117,9 +117,11 @@ namespace TSMapEditor.Initialization
             mapIni.RemoveSection(overlayPackSectionName);
             mapIni.RemoveSection(overlayDataPackSectionName);
 
-            var overlayArray = new byte[Constants.MAX_MAP_LENGTH_IN_DIMENSION * Constants.MAX_MAP_LENGTH_IN_DIMENSION];
+            bool needsExtendedOverlayPack = map.Basic.NewINIFormat >= 5;
+
+            var overlayArray = new byte[Constants.MAX_MAP_LENGTH_IN_DIMENSION * Constants.MAX_MAP_LENGTH_IN_DIMENSION * (needsExtendedOverlayPack ? 2 : 1)];
             for (int i = 0; i < overlayArray.Length; i++)
-                overlayArray[i] = Constants.NO_OVERLAY;
+                overlayArray[i] = 0xFF; // fill the entire array with 0xFF, which will be (char)-1 or (short)-1, regardless of what format we're writing in
 
             var overlayDataArray = new byte[Constants.MAX_MAP_LENGTH_IN_DIMENSION * Constants.MAX_MAP_LENGTH_IN_DIMENSION];
 
@@ -130,7 +132,16 @@ namespace TSMapEditor.Initialization
 
                 int dataIndex = (tile.Y * Constants.MAX_MAP_LENGTH_IN_DIMENSION) + tile.X;
 
-                overlayArray[dataIndex] = (byte)tile.Overlay.OverlayType.Index;
+                if (needsExtendedOverlayPack)
+                {
+                    overlayArray[dataIndex * 2] = (byte)(tile.Overlay.OverlayType.Index & 0xFF);
+                    overlayArray[dataIndex * 2 + 1] = (byte)((tile.Overlay.OverlayType.Index >> 8) & 0xFF);
+                }
+                else
+                {
+                    overlayArray[dataIndex] = (byte)tile.Overlay.OverlayType.Index;
+                }
+
                 overlayDataArray[dataIndex] = (byte)tile.Overlay.FrameIndex;
             });
 
