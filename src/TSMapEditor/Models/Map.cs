@@ -366,7 +366,7 @@ namespace TSMapEditor.Models
                 if (tile.Overlay?.OverlayType == null)
                     return;
 
-                if (tile.Overlay.OverlayType.Index > 255)
+                if (tile.Overlay.OverlayType.Index > byte.MaxValue)
                     needsExtendedOverlayPack = true;
             });
 

@@ -2,6 +2,7 @@ using CNCMaps.FileFormats.Encodings;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -699,7 +700,7 @@ namespace TSMapEditor.Initialization
                     int overlayTypeIndex;
                     if (needsExtendedOverlayPack)
                     {
-                        ushort index = (ushort)(uncompressedOverlayPack[overlayDataIndex * 2] | (uncompressedOverlayPack[overlayDataIndex * 2 + 1] << 8));
+                        ushort index = BinaryPrimitives.ReadUInt16LittleEndian(new ReadOnlySpan<byte>(uncompressedOverlayPack, overlayDataIndex * 2, 2));
                         overlayTypeIndex = index != ushort.MaxValue ? index : Constants.NO_OVERLAY;
                     }
                     else
