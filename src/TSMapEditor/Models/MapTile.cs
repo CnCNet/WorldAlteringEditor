@@ -450,5 +450,14 @@ namespace TSMapEditor.Models
         public Point2D CoordsToPoint() => new Point2D(X, Y);
 
         public Point2D GetTileCenter() => new Point2D(Constants.CellSizeX / 2, Constants.CellSizeY / 2);
+
+        public bool MatchesLandType(LandType landType)
+        {
+            if (TileImage == null || TileImage.TMPImages == null) return false;
+
+            var subCellImage = SubTileIndex < TileImage.TMPImages.Length ? TileImage.TMPImages[SubTileIndex] : null;
+            var terrainType = subCellImage?.TmpImage?.TerrainType;
+            return terrainType == Helpers.LandTypeToInt(landType);
+        }
     }
 }
