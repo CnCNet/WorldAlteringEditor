@@ -1,0 +1,472 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\topbar\\editorcontrolspanel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\topbar\\editorcontrolspanel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\selecttechnotypewindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\selecttechnotypewindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\aitriggerswindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\aitriggerswindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\mainmenu.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\mainmenu.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\copiedentrytypeswindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\copiedentrytypeswindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\selectscriptwindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\selectscriptwindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\models\\taskforce.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\models\\taskforce.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\selecttaskforcewindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\selecttaskforcewindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\teamtypeswindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\teamtypeswindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\sidebar\\treeview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\sidebar\\treeview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\selectscriptactionwindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\selectscriptactionwindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\extensions\\triggerparamtypeextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\extensions\\triggerparamtypeextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\triggerswindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\triggerswindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\sidebar\\objectlistpanel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\sidebar\\objectlistpanel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\uimanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\uimanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\selectactionwindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\selectactionwindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\topbar\\topbarmenu.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\topbar\\topbarmenu.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\selecteventwindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\selecteventwindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\terraingenerator\\terraingeneratorconfigwindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\terraingenerator\\terraingeneratorconfigwindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\selectthemewindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\selectthemewindow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\sidebar\\terrainobjectlistpanel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\sidebar\\terrainobjectlistpanel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\windows\\windowcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\windows\\windowcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\translations\\technonamemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\translations\\technonamemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\translations\\initranslationmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\translations\\initranslationmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\settingspanel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\settingspanel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\translations\\overlaynames.ini||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\translations\\overlaynames.ini||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\Translations\\TechnoNames.ini||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|c:\\users\\mr\\onedrive\\\u684C\u9762\\wae-mo\\src\\tsmapeditor\\ui\\tileinfodisplay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7F1101DE-6849-404C-9141-0DF6A6BF12E7}|TSMapEditor\\TSMapEditor.csproj|solutionrelative:tsmapeditor\\ui\\tileinfodisplay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 6,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "TaskForce.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\Models\\TaskForce.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\Models\\TaskForce.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\Models\\TaskForce.cs",
+              "RelativeToolTip": "TSMapEditor\\Models\\TaskForce.cs",
+              "ViewState": "AgIAAIEAAAAAAAAAAAAQwIQAAAAWAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-13T10:19:35.987Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "SelectTaskForceWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectTaskForceWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\SelectTaskForceWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectTaskForceWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\SelectTaskForceWindow.cs",
+              "ViewState": "AgIAAAMAAAAAAAAAAADwvwgAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-13T10:11:59.489Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "TeamTypesWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\TeamTypesWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\TeamTypesWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\TeamTypesWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\TeamTypesWindow.cs",
+              "ViewState": "AgIAAMEDAAAAAAAAAAAuwMYDAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-13T08:27:04.605Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "SelectScriptActionWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectScriptActionWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\SelectScriptActionWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectScriptActionWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\SelectScriptActionWindow.cs",
+              "ViewState": "AgIAADwAAAAAAAAAAAAswEAAAAALAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-12T16:32:18.501Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "TriggerParamTypeExtensions.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\Extensions\\TriggerParamTypeExtensions.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\Extensions\\TriggerParamTypeExtensions.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\Extensions\\TriggerParamTypeExtensions.cs",
+              "RelativeToolTip": "TSMapEditor\\Extensions\\TriggerParamTypeExtensions.cs",
+              "ViewState": "AgIAAEgAAAAAAAAAAAAmwFAAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-10T17:00:27.671Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "EditorControlsPanel.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\TopBar\\EditorControlsPanel.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\TopBar\\EditorControlsPanel.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\TopBar\\EditorControlsPanel.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\TopBar\\EditorControlsPanel.cs",
+              "ViewState": "AgIAAAUCAAAAAAAAAAAmwBwCAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-30T17:45:44.931Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "SelectScriptWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectScriptWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\SelectScriptWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectScriptWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\SelectScriptWindow.cs",
+              "ViewState": "AgIAABIAAAAAAAAAAAAgwBYAAAAnAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-13T10:44:42.838Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "AITriggersWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\AITriggersWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\AITriggersWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\AITriggersWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\AITriggersWindow.cs",
+              "ViewState": "AgIAABQDAAAAAAAAAAAswBkDAAA1AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-13T15:06:59.412Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "MainMenu.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\MainMenu.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\MainMenu.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\MainMenu.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\MainMenu.cs",
+              "ViewState": "AgIAAHYBAAAAAAAAAAAmwHoBAAAUAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-30T07:26:33.918Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "SelectTechnoTypeWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectTechnoTypeWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\SelectTechnoTypeWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectTechnoTypeWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\SelectTechnoTypeWindow.cs",
+              "ViewState": "AgIAABsAAAAAAAAAAAAAABwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-13T16:20:45.28Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "CopiedEntryTypesWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\CopiedEntryTypesWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\CopiedEntryTypesWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\CopiedEntryTypesWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\CopiedEntryTypesWindow.cs",
+              "ViewState": "AgIAABQAAAAAAAAAAAAswBkAAAAdAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-13T15:07:06.125Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "SelectActionWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectActionWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\SelectActionWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectActionWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\SelectActionWindow.cs",
+              "ViewState": "AgIAAAcAAAAAAAAAAAAswDEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-07T18:11:09.111Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "TreeView.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Sidebar\\TreeView.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Sidebar\\TreeView.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Sidebar\\TreeView.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Sidebar\\TreeView.cs",
+              "ViewState": "AgIAACoAAAAAAAAAAAAswC8AAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-07T18:10:49.322Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "TriggersWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\TriggersWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\TriggersWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\TriggersWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\TriggersWindow.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAmwA4AAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-07T17:32:46.626Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "SelectEventWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectEventWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\SelectEventWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectEventWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\SelectEventWindow.cs",
+              "ViewState": "AgIAAC0AAAAAAAAAAAAowC8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-07T17:09:03.064Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "TerrainGeneratorConfigWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\TerrainGenerator\\TerrainGeneratorConfigWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\TerrainGenerator\\TerrainGeneratorConfigWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\TerrainGenerator\\TerrainGeneratorConfigWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\TerrainGenerator\\TerrainGeneratorConfigWindow.cs",
+              "ViewState": "AgIAAPIAAAAAAAAAAAAiwPkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-07T14:01:34.762Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "TopBarMenu.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\TopBar\\TopBarMenu.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\TopBar\\TopBarMenu.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\TopBar\\TopBarMenu.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\TopBar\\TopBarMenu.cs",
+              "ViewState": "AgIAAPEAAAAAAAAAAAAiwP8AAABiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-07T13:28:59.294Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "UIManager.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\UIManager.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\UIManager.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\UIManager.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\UIManager.cs",
+              "ViewState": "AgIAABcDAAAAAAAAAAAiwCQDAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-07T13:18:38.568Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "SelectThemeWindow.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectThemeWindow.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\SelectThemeWindow.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\SelectThemeWindow.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\SelectThemeWindow.cs",
+              "ViewState": "AgIAAJEAAAAAAAAAAAAiwJwAAAAxAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-07T12:28:08.76Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "ObjectListPanel.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Sidebar\\ObjectListPanel.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Sidebar\\ObjectListPanel.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Sidebar\\ObjectListPanel.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Sidebar\\ObjectListPanel.cs",
+              "ViewState": "AgIAAKEGAAAAAAAAAAA1wBwIAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-01T04:01:49.531Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "SettingsPanel.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\SettingsPanel.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\SettingsPanel.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\SettingsPanel.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\SettingsPanel.cs",
+              "ViewState": "AgIAAF0CAAAAAAAAAAAiwFYCAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-05T11:23:59.064Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "OverlayNames.ini",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\Translations\\OverlayNames.ini",
+              "RelativeDocumentMoniker": "TSMapEditor\\Translations\\OverlayNames.ini",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\Translations\\OverlayNames.ini",
+              "RelativeToolTip": "TSMapEditor\\Translations\\OverlayNames.ini",
+              "ViewState": "AgIAACQAAAAAAAAAAAAAADUAAAAKAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002768|",
+              "WhenOpened": "2025-06-04T14:50:08.805Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "TechnoNames.ini",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\Translations\\TechnoNames.ini",
+              "RelativeDocumentMoniker": "..\\Translations\\TechnoNames.ini",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\Translations\\TechnoNames.ini",
+              "RelativeToolTip": "..\\Translations\\TechnoNames.ini",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAALAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002768|",
+              "WhenOpened": "2025-06-04T14:11:23.962Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "IniTranslationManager.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\Translations\\IniTranslationManager.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\Translations\\IniTranslationManager.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\Translations\\IniTranslationManager.cs",
+              "RelativeToolTip": "TSMapEditor\\Translations\\IniTranslationManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAuwAoAAAAYAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-04T14:04:12.095Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "TechnoNameManager.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\Translations\\TechnoNameManager.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\Translations\\TechnoNameManager.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\Translations\\TechnoNameManager.cs",
+              "RelativeToolTip": "TSMapEditor\\Translations\\TechnoNameManager.cs",
+              "ViewState": "AgIAAAEAAAAAAAAAAAAvwA8AAAAyAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-04T13:43:16.077Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "WindowController.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\WindowController.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Windows\\WindowController.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Windows\\WindowController.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Windows\\WindowController.cs",
+              "ViewState": "AgIAAF4AAAAAAAAAAAA2wF4AAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-04T10:44:29.762Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "TerrainObjectListPanel.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Sidebar\\TerrainObjectListPanel.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\Sidebar\\TerrainObjectListPanel.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\Sidebar\\TerrainObjectListPanel.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\Sidebar\\TerrainObjectListPanel.cs",
+              "ViewState": "AgIAAIcAAAAAAAAAAAAiwJYAAAAKAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-02T16:58:26.016Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": "TileInfoDisplay.cs",
+              "DocumentMoniker": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\TileInfoDisplay.cs",
+              "RelativeDocumentMoniker": "TSMapEditor\\UI\\TileInfoDisplay.cs",
+              "ToolTip": "C:\\Users\\MR\\OneDrive\\\u684C\u9762\\WAE-MO\\src\\TSMapEditor\\UI\\TileInfoDisplay.cs",
+              "RelativeToolTip": "TSMapEditor\\UI\\TileInfoDisplay.cs",
+              "ViewState": "AgIAALcAAAAAAAAAAAAlwKMAAAATAQAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-31T05:33:28.82Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

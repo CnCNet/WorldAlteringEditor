@@ -1,0 +1,2 @@
+C:\Users\MR\OneDrive\桌面\WorldAlteringEditor-yr\src\MapEditorLauncher\obj\Release\net8.0-windows\win-x64\MapEditorLauncher.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\MR\OneDrive\桌面\WorldAlteringEditor-yr\src\MapEditorLauncher\obj\Release\net8.0-windows\win-x64\MapEditorLauncher.csproj.CoreCompileInputs.cache

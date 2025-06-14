@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SourceFileCollection xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Profile>HiDef</Profile>
+  <Platform>Windows</Platform>
+  <Config />
+  <SourceFiles>
+    <File>C:/Users/MR/OneDrive/桌面/WAE-MO/src/TSMapEditor/Content/Shaders/AlphaImageToAlphaMap.fx</File>
+    <File>C:/Users/MR/OneDrive/桌面/WAE-MO/src/TSMapEditor/Content/Shaders/AlphaMapApply.fx</File>
+    <File>C:/Users/MR/OneDrive/桌面/WAE-MO/src/TSMapEditor/Content/Shaders/ColorDraw.fx</File>
+    <File>C:/Users/MR/OneDrive/桌面/WAE-MO/src/TSMapEditor/Content/Shaders/CombineWithDepth.fx</File>
+    <File>C:/Users/MR/OneDrive/桌面/WAE-MO/src/TSMapEditor/Content/Shaders/DepthApply.fx</File>
+    <File>C:/Users/MR/OneDrive/桌面/WAE-MO/src/TSMapEditor/Content/Shaders/PalettedColorDraw.fx</File>
+    <File>C:/Users/MR/OneDrive/桌面/WAE-MO/src/TSMapEditor/Content/Shaders/PalettedDrawNoDepth.fx</File>
+    <File>C:/Users/MR/OneDrive/桌面/WAE-MO/src/TSMapEditor/Content/SpriteFont0.spritefont</File>
+    <File>C:/Users/MR/OneDrive/桌面/WAE-MO/src/TSMapEditor/Content/SpriteFont1.spritefont</File>
+  </SourceFiles>
+  <DestFiles>
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
+  </DestFiles>
+</SourceFileCollection>

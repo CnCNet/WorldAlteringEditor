@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<XnaContent xmlns:Graphics="Microsoft.Xna.Framework.Content.Pipeline.Graphics">
+  <Asset Type="Graphics:LocalizedFontDescription">
+    <FontName>Microsoft YaHei</FontName>
+    <Size>10</Size>
+    <Spacing>1</Spacing>
+    <UseKerning>false</UseKerning>
+    <Style>Bold</Style>
+    <DefaultCharacter>?</DefaultCharacter>
+    <CharacterRegions>
+      <!-- ASCII -->
+      <CharacterRegion>
+        <Start>&#32;</Start>
+        <End>&#126;</End>
+      </CharacterRegion>
+      <!-- 汉字：〇 -->
+      <CharacterRegion>
+        <Start>&#x3007;</Start>
+        <End>&#x3007;</End>
+      </CharacterRegion>
+      <!-- 假名 -->
+      <CharacterRegion>
+        <Start>&#x3040;</Start>
+        <End>&#x30FF;</End>
+      </CharacterRegion>
+      <!-- 汉字扩展A -->
+      <CharacterRegion>
+        <Start>&#x3400;</Start>
+        <End>&#x4DBF;</End>
+      </CharacterRegion>
+      <!-- 基本汉字 -->
+      <CharacterRegion>
+        <Start>&#x4E00;</Start>
+        <End>&#x9FFF;</End>
+      </CharacterRegion>
+      <CharacterRegion><Start>（</Start><End>（</End></CharacterRegion>
+      <CharacterRegion><Start>）</Start><End>）</End></CharacterRegion>
+      <CharacterRegion><Start>【</Start><End>【</End></CharacterRegion>
+      <CharacterRegion><Start>】</Start><End>】</End></CharacterRegion>
+      <CharacterRegion><Start>《</Start><End>《</End></CharacterRegion>
+      <CharacterRegion><Start>》</Start><End>》</End></CharacterRegion>
+      <CharacterRegion><Start>"</Start><End>"</End></CharacterRegion>
+      <CharacterRegion><Start>"</Start><End>"</End></CharacterRegion>
+      <CharacterRegion><Start>'</Start><End>'</End></CharacterRegion>
+      <CharacterRegion><Start>'</Start><End>'</End></CharacterRegion>
+      <CharacterRegion><Start>、</Start><End>、</End></CharacterRegion>
+      <CharacterRegion><Start>，</Start><End>，</End></CharacterRegion>
+      <CharacterRegion><Start>。</Start><End>。</End></CharacterRegion>
+      <CharacterRegion><Start>？</Start><End>？</End></CharacterRegion>
+      <CharacterRegion><Start>！</Start><End>！</End></CharacterRegion>
+      <CharacterRegion><Start>：</Start><End>：</End></CharacterRegion>
+      <CharacterRegion><Start>；</Start><End>；</End></CharacterRegion>
+      <CharacterRegion><Start>…</Start><End>…</End></CharacterRegion>
+    </CharacterRegions>
+  </Asset>
+</XnaContent>

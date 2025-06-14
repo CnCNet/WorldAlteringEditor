@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "dgSpecHash": "uLnXDAfojtc=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\MR\\OneDrive\\桌面\\WAE-MO\\src\\MapEditorLauncher\\MapEditorLauncher.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\MR\\.nuget\\packages\\microsoft.csharp\\4.7.0\\microsoft.csharp.4.7.0.nupkg.sha512",
+    "C:\\Users\\MR\\.nuget\\packages\\microsoft.dotnet.upgradeassistant.extensions.default.analyzers\\0.4.355802\\microsoft.dotnet.upgradeassistant.extensions.default.analyzers.0.4.355802.nupkg.sha512",
+    "C:\\Users\\MR\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.16\\microsoft.net.illink.tasks.8.0.16.nupkg.sha512",
+    "C:\\Users\\MR\\.nuget\\packages\\system.data.datasetextensions\\4.5.0\\system.data.datasetextensions.4.5.0.nupkg.sha512",
+    "C:\\Users\\MR\\.nuget\\packages\\microsoft.netcore.app.crossgen2.win-x64\\8.0.16\\microsoft.netcore.app.crossgen2.win-x64.8.0.16.nupkg.sha512",
+    "C:\\Users\\MR\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.16\\microsoft.aspnetcore.app.runtime.win-x64.8.0.16.nupkg.sha512",
+    "C:\\Users\\MR\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.16\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.16.nupkg.sha512",
+    "C:\\Users\\MR\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.16\\microsoft.netcore.app.runtime.win-x64.8.0.16.nupkg.sha512"
+  ],
+  "logs": []
+}

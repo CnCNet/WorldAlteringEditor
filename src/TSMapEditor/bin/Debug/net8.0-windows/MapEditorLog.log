@@ -1,0 +1,195 @@
+14.06. 21:31:24.824    C&C World-Altering Editor (WAE) build 1.4.9296.38741
+14.06. 21:31:24.831    Release version: 1.4.11
+14.06. 21:31:24.834    从 yr 加载配置: Constants.ini
+14.06. 21:31:24.852    从 yr 加载配置: UI/UIConstants.ini
+14.06. 21:31:24.853    已为游戏版本 Yuri's Revenge 重新初始化常量，可执行文件名: ra2md.exe, gamemd.exe
+14.06. 21:31:24.863    Purging old auto-saves.
+14.06. 21:31:24.878    Found 12 autosaves to purge.
+14.06. 21:31:25.312    InitGraphicsMode: 1200x900
+14.06. 21:31:25.324    从 MO 加载配置: EditorThemes.ini
+14.06. 21:31:25.352    初始化加载MO游戏目录: D:\Mental Omega
+14.06. 21:31:25.373    已更新游戏可执行文件期望值: MentalOmegaClient.exe (游戏版本: MentalOmegaClient)
+14.06. 21:31:25.374    初始化时触发游戏版本配置同步: MentalOmegaClient
+14.06. 21:31:25.375    获取到当前游戏目录: D:\Mental Omega
+14.06. 21:31:25.375    保存MO目录: D:\Mental Omega
+14.06. 21:31:25.382    已更新游戏可执行文件期望值: MentalOmegaClient.exe (游戏版本: MentalOmegaClient)
+14.06. 21:31:25.382    读取到MO目录: D:\Mental Omega
+14.06. 21:31:25.384    游戏目录验证结果: True, 游戏版本: MentalOmegaClient, 期望的可执行文件: MentalOmegaClient.exe
+14.06. 21:31:25.388    成功更新游戏目录文本框为: D:\Mental Omega
+14.06. 21:31:25.389    配置缓存已清除
+14.06. 21:31:25.389    配置缓存已清除
+14.06. 21:31:25.389    从 MO 加载配置: Constants.ini
+14.06. 21:31:25.390    从 MO 加载配置: UI/UIConstants.ini
+14.06. 21:31:25.390    已为游戏版本 MentalOmegaClient 重新初始化常量，可执行文件名: MentalOmegaClient.exe
+14.06. 21:31:25.405    已更新游戏可执行文件期望值: MentalOmegaClient.exe (游戏版本: MentalOmegaClient)
+14.06. 21:31:25.406    MainMenu收到游戏版本更改事件: MentalOmegaClient
+14.06. 21:31:25.406    已保存MO游戏目录: D:\Mental Omega
+14.06. 21:31:25.407    切换到MO游戏目录: D:\Mental Omega, 可执行文件: MentalOmegaClient.exe
+14.06. 21:31:25.409    游戏目录验证结果: True, 游戏版本: MentalOmegaClient, 期望的可执行文件: MentalOmegaClient.exe
+14.06. 21:31:25.410    已更新游戏目录文本框: D:\Mental Omega
+14.06. 21:31:25.410    已刷新文件列表: D:\Mental Omega
+14.06. 21:31:25.411    游戏目录验证结果: True, 游戏版本: MentalOmegaClient, 期望的可执行文件: MentalOmegaClient.exe
+14.06. 21:31:25.412    游戏配置已重新加载，当前版本: MentalOmegaClient，可执行文件: MentalOmegaClient.exe
+14.06. 21:31:25.412    MainMenu收到游戏版本更改事件: MentalOmegaClient
+14.06. 21:31:25.412    已保存MO游戏目录: D:\Mental Omega
+14.06. 21:31:25.413    切换到MO游戏目录: D:\Mental Omega, 可执行文件: MentalOmegaClient.exe
+14.06. 21:31:25.415    游戏目录验证结果: True, 游戏版本: MentalOmegaClient, 期望的可执行文件: MentalOmegaClient.exe
+14.06. 21:31:25.415    已更新游戏目录文本框: D:\Mental Omega
+14.06. 21:31:25.416    已刷新文件列表: D:\Mental Omega
+14.06. 21:31:25.417    游戏目录验证结果: True, 游戏版本: MentalOmegaClient, 期望的可执行文件: MentalOmegaClient.exe
+14.06. 21:31:25.417    游戏版本已更改: MentalOmegaClient -> MentalOmegaClient, 可执行文件名: MentalOmegaClient.exe -> MentalOmegaClient.exe
+14.06. 21:31:25.423    游戏目录验证结果: True, 游戏版本: MentalOmegaClient, 期望的可执行文件: MentalOmegaClient.exe
+14.06. 21:31:25.425    已更新游戏可执行文件期望值: MentalOmegaClient.exe (游戏版本: MentalOmegaClient)
+14.06. 21:31:25.425    已更新游戏可执行文件期望值: MentalOmegaClient.exe (游戏版本: MentalOmegaClient)
+14.06. 21:32:24.185    已更新游戏可执行文件期望值: MentalOmegaClient.exe (游戏版本: MentalOmegaClient)
+14.06. 21:32:24.189    从 MO 加载配置: UI\Windows\CreateNewMapWindow.ini
+14.06. 21:32:24.850    从 MO 加载配置: FileManagerConfig.ini
+14.06. 21:32:24.858    Loading MIX file langmd.mix from D:\MENTAL OMEGA
+14.06. 21:32:24.864    Loading MIX file language.mix from D:\MENTAL OMEGA
+14.06. 21:32:24.871    Loading MIX file expandmo99.mix from D:\MENTAL OMEGA
+14.06. 21:32:24.872    Loading MIX file expandmo97.mix from D:\MENTAL OMEGA
+14.06. 21:32:24.874    Loading MIX file expandmo96.mix from D:\MENTAL OMEGA
+14.06. 21:32:24.877    Loading MIX file expandmo95.mix from D:\MENTAL OMEGA
+14.06. 21:32:24.879    Loading MIX file ra2md.mix from D:\MENTAL OMEGA
+14.06. 21:32:24.880    Loading MIX file ra2.mix from D:\MENTAL OMEGA
+14.06. 21:32:24.888    Loading MIX file marble.mix from C:\USERS\MR\ONEDRIVE\桌面\WAE-MO\SRC\TSMAPEDITOR\BIN\DEBUG\NET8.0-WINDOWS
+14.06. 21:32:25.240    从 MO 加载配置: ArtOverrides.ini
+14.06. 21:32:25.244    File for tutorial lines does not exist! Tried to read from: D:\Mental Omega/INI/tutorial.ini
+14.06. 21:32:25.286    从 MO 加载配置: BrushSizes.ini
+14.06. 21:32:25.287    从 MO 加载配置: ScriptActions.ini
+14.06. 21:32:25.293    从 MO 加载配置: Events.ini
+14.06. 21:32:25.296    从 MO 加载配置: Actions.ini
+14.06. 21:32:25.299    从 MO 加载配置: Theaters.ini
+14.06. 21:32:25.302    从 MO 加载配置: TeamTypeFlags.ini
+14.06. 21:32:25.303    从 MO 加载配置: ConnectedTileDrawer.ini
+14.06. 21:32:26.074    从 MO 加载配置: EditorRules.ini
+14.06. 21:32:26.106    从 MO 加载配置: TerrainTypeImpassability.ini
+14.06. 21:32:26.636    从 MO 加载配置: OverlayCollections.ini
+14.06. 21:32:26.638    从 MO 加载配置: TerrainObjectCollections.ini
+14.06. 21:32:26.640    从 MO 加载配置: SmudgeCollections.ini
+14.06. 21:32:26.642    从 MO 加载配置: Bridges.ini
+14.06. 21:32:26.644    从 MO 加载配置: ConnectedOverlays.ini
+14.06. 21:32:26.647    从 MO 加载配置: Tiberiums.ini
+14.06. 21:32:26.715    Reading [Basic] section.
+14.06. 21:32:26.717    [Basic] section read successfully.
+14.06. 21:32:26.717    Reading [Map] section.
+14.06. 21:32:26.718    [Map] section read successfully.
+14.06. 21:32:26.718    Reading IsoMapPack5.
+14.06. 21:32:26.726    Reading HouseTypes. Using countries: True
+14.06. 21:32:26.727    Reading Houses.
+14.06. 21:32:26.728    Reading Smudges.
+14.06. 21:32:26.729    Reading Overlays (OverlayPack and OverlayDataPack).
+14.06. 21:32:26.730    Reading TerrainObjects.
+14.06. 21:32:26.730    Reading Tubes.
+14.06. 21:32:26.731    Reading Waypoints.
+14.06. 21:32:26.731    Reading TaskForces.
+14.06. 21:32:26.732    TaskForces read successfully.
+14.06. 21:32:26.732    Reading Triggers (Triggers, Events and Actions).
+14.06. 21:32:26.733    Reading Tags.
+14.06. 21:32:26.733    Reading CellTags.
+14.06. 21:32:26.734    Reading ScriptTypes.
+14.06. 21:32:26.734    ScriptTypes read successfully.
+14.06. 21:32:26.734    Reading TeamTypes.
+14.06. 21:32:26.735    TeamTypes read successfully.
+14.06. 21:32:26.736    Reading AITriggerTypes.
+14.06. 21:32:26.736    Reading local variables (VariableNames).
+14.06. 21:32:26.737    Reading Structures.
+14.06. 21:32:26.738    Reading Aircraft.
+14.06. 21:32:26.739    Reading Units.
+14.06. 21:32:26.739    Reading Infantry.
+14.06. 21:32:26.765    Loading terrain object textures.
+14.06. 21:32:26.766    Loading building textures.
+14.06. 21:32:26.766    Loading unit textures.
+14.06. 21:32:26.766    Loading tile textures.
+14.06. 21:32:26.767    Loading building turrets' voxel models.
+14.06. 21:32:26.767    Loading building barrels' voxel models.
+14.06. 21:32:26.767    Loading unit turrets' voxel models.
+14.06. 21:32:26.768    Loading unit voxel models.
+14.06. 21:32:26.768    Loading unit barrels' voxel models.
+14.06. 21:32:26.768    Loading aircraft voxel models.
+14.06. 21:32:26.768    Loading infantry textures.
+14.06. 21:32:26.769    Loading overlay textures.
+14.06. 21:32:26.769    Finished loading building barrels' voxel models.
+14.06. 21:32:26.770    Loading smudge textures.
+14.06. 21:32:26.800    Finished loading smudge textures.
+14.06. 21:32:26.801    Finished loading unit textures.
+14.06. 21:32:26.802    Loading alpha image textures.
+14.06. 21:32:26.802    Loading animation textures.
+14.06. 21:32:26.843    Finished loading unit barrels' voxel models.
+14.06. 21:32:26.861    Finished loading alpha image textures.
+14.06. 21:32:26.863    Finished loading building turrets' voxel models.
+14.06. 21:32:27.016    Finished loading terrain object textures.
+14.06. 21:32:27.145    Finished loading infantry textures.
+14.06. 21:32:27.163    Finished loading overlay textures.
+14.06. 21:32:28.063    Finished loading aircraft voxel models.
+14.06. 21:32:28.226    Finished loading unit turrets' voxel models.
+14.06. 21:32:28.486    Finished loading building textures.
+14.06. 21:32:28.786    Assigning marble madness mode tile textures.
+14.06. 21:32:28.795    Finished loading tile textures.
+14.06. 21:32:29.360    Finished loading animation textures.
+14.06. 21:32:31.337    Finished loading unit voxel models.
+14.06. 21:32:31.341    Performing post-load map checkup.
+14.06. 21:32:31.348    Post-load map checkup complete.
+14.06. 21:32:31.390    InitGraphicsMode: 2260x1240
+14.06. 21:33:03.005    从 MO 加载配置: UI\Windows\BasicSectionConfigWindow.ini
+14.06. 21:33:03.009    从 MO 加载配置: UI\Windows\SelectThemeWindow.ini
+14.06. 21:33:03.018    从 MO 加载配置: UI\Windows\TaskforcesWindow.ini
+14.06. 21:33:03.025    从 MO 加载配置: UI\Windows\ScriptsWindow.ini
+14.06. 21:33:03.030    从 MO 加载配置: UI\Windows\SelectScriptActionWindow.ini
+14.06. 21:33:03.031    从 MO 加载配置: UI\Windows\SelectBuildingTargetWindow.ini
+14.06. 21:33:03.036    从 MO 加载配置: UI\Windows\TeamTypesWindow.ini
+14.06. 21:33:03.040    从 MO 加载配置: UI\Windows\SelectTaskForceWindow.ini
+14.06. 21:33:03.041    从 MO 加载配置: UI\Windows\SelectScriptWindow.ini
+14.06. 21:33:03.043    从 MO 加载配置: UI\Windows\SelectTagWindow.ini
+14.06. 21:33:03.046    从 MO 加载配置: UI\Windows\TriggersWindow.ini
+14.06. 21:33:03.051    从 MO 加载配置: UI\Windows\SelectEventWindow.ini
+14.06. 21:33:03.052    从 MO 加载配置: UI\Windows\SelectActionWindow.ini
+14.06. 21:33:03.053    从 MO 加载配置: UI\Windows\SelectAnimationWindow.ini
+14.06. 21:33:03.055    从 MO 加载配置: UI\Windows\SelectBuildingTypeWindow.ini
+14.06. 21:33:03.056    从 MO 加载配置: UI\Windows\SelectTeamTypeWindow.ini
+14.06. 21:33:03.057    从 MO 加载配置: UI\Windows\SelectTriggerWindow.ini
+14.06. 21:33:03.058    从 MO 加载配置: UI\Windows\SelectGlobalVariableWindow.ini
+14.06. 21:33:03.059    从 MO 加载配置: UI\Windows\SelectLocalVariableWindow.ini
+14.06. 21:33:03.061    从 MO 加载配置: UI\Windows\SelectHouseWindow.ini
+14.06. 21:33:03.062    从 MO 加载配置: UI\Windows\SelectHouseTypeWindow.ini
+14.06. 21:33:03.063    从 MO 加载配置: UI\Windows\SelectTutorialLineWindow.ini
+14.06. 21:33:03.066    从 MO 加载配置: UI\Windows\SelectTechnoTypeWindow.ini
+14.06. 21:33:03.071    从 MO 加载配置: UI\Windows\SelectStringWindow.ini
+14.06. 21:33:03.072    从 MO 加载配置: UI\Windows\SelectSpeechWindow.ini
+14.06. 21:33:03.073    从 MO 加载配置: UI\Windows\SelectSoundWindow.ini
+14.06. 21:33:03.075    从 MO 加载配置: UI\Windows\SelectParticleSystemTypeWindow.ini
+14.06. 21:33:03.084    从 MO 加载配置: UI\Windows\AITriggersWindow.ini
+14.06. 21:33:03.092    从 MO 加载配置: UI\Windows\PlaceWaypointWindow.ini
+14.06. 21:33:03.095    从 MO 加载配置: UI\Windows\LocalVariablesWindow.ini
+14.06. 21:33:03.097    从 MO 加载配置: UI\Windows\StructureOptionsWindow.ini
+14.06. 21:33:03.107    从 MO 加载配置: UI\Windows\VehicleOptionsWindow.ini
+14.06. 21:33:03.109    从 MO 加载配置: UI\Windows\InfantryOptionsWindow.ini
+14.06. 21:33:03.111    从 MO 加载配置: UI\Windows\AircraftOptionsWindow.ini
+14.06. 21:33:03.113    从 MO 加载配置: UI\Windows\HousesWindow.ini
+14.06. 21:33:03.116    从 MO 加载配置: UI\Windows\GenerateStandardHousesWindow.ini
+14.06. 21:33:03.118    从 MO 加载配置: UI\Windows\EditHouseTypeWindow.ini
+14.06. 21:33:03.119    从 MO 加载配置: UI\Windows\ConfigureAlliesWindow.ini
+14.06. 21:33:03.124    从 MO 加载配置: UI\Windows\NewHouseWindow.ini
+14.06. 21:33:03.128    从 MO 加载配置: UI\Windows\AutoApplyImpassableOverlayWindow.ini
+14.06. 21:33:03.129    AutoApplyImpassableOverlayWindow: Invalid impassable overlay type IMOV
+14.06. 21:33:03.130    从 MO 加载配置: TerrainGeneratorPresets.ini
+14.06. 21:33:03.135    从 MO 加载配置: UI\Windows\SelectTileSetWindow.ini
+14.06. 21:33:03.139    从 MO 加载配置: UI\Windows\InputTerrainGeneratorPresetNameWindow.ini
+14.06. 21:33:03.141    从 MO 加载配置: UI\Windows\DeleteTerrainGeneratorPresetWindow.ini
+14.06. 21:33:03.144    从 MO 加载配置: UI\Windows\CopiedEntryTypesWindow.ini
+14.06. 21:33:03.146    从 MO 加载配置: UI\Windows\LightingSettingsWindow.ini
+14.06. 21:33:03.148    从 MO 加载配置: UI\Windows\ApplyINICodeWindow.ini
+14.06. 21:33:03.149    从 MO 加载配置: UI\Windows\RunScriptWindow.ini
+14.06. 21:33:03.152    从 MO 加载配置: UI\Windows\HotkeyConfigurationWindow.ini
+14.06. 21:33:03.165    从 MO 加载配置: UI\Windows\MapSizeWindow.ini
+14.06. 21:33:03.167    从 MO 加载配置: UI\Windows\ExpandMapWindow.ini
+14.06. 21:33:03.169    从 MO 加载配置: UI\Windows\ChangeHeightWindow.ini
+14.06. 21:33:03.170    从 MO 加载配置: UI\Windows\FindWaypointWindow.ini
+14.06. 21:33:03.171    从 MO 加载配置: UI\Windows\DeletionModeConfigurationWindow.ini
+14.06. 21:33:03.173    从 MO 加载配置: UI\Windows\RenderedObjectsConfigurationWindow.ini
+14.06. 21:33:03.175    从 MO 加载配置: UI\Windows\SelectConnectedTileWindow.ini
+14.06. 21:33:03.177    从 MO 加载配置: UI\Windows\MegamapGenerationOptionsWindow.ini
+14.06. 21:33:03.179    从 MO 加载配置: UI\Windows\HistoryWindow.ini
+14.06. 21:33:03.182    从 MO 加载配置: UI\Windows\AboutWindow.ini
+14.06. 21:33:03.189    从 MO 加载配置: UI\Windows\SelectBridgeWindow.ini
+14.06. 21:33:03.193    从 MO 加载配置: UI\EditorControlsPanel.ini

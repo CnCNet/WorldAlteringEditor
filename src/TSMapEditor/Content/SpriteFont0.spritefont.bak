@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<XnaContent xmlns:Graphics="Microsoft.Xna.Framework.Content.Pipeline.Graphics">
+  <Asset Type="Graphics:FontDescription">
+    <FontName>Microsoft YaHei</FontName>
+    <Size>10</Size>
+    <Spacing>2</Spacing>
+    <UseKerning>true</UseKerning>
+    <Style>Regular</Style>
+    <CharacterRegions>
+      <CharacterRegion>
+        <Start> </Start>
+        <End>~</End>
+      </CharacterRegion>
+      <!-- 这里保留原有所有汉字和符号区间 -->
+      <CharacterRegion><Start>要</Start><End>要</End></CharacterRegion>
+      <CharacterRegion><Start>加</Start><End>加</End></CharacterRegion>
+      <CharacterRegion><Start>载</Start><End>载</End></CharacterRegion>
+      <CharacterRegion><Start>的</Start><End>的</End></CharacterRegion>
+      <CharacterRegion><Start>地</Start><End>地</End></CharacterRegion>
+      <CharacterRegion><Start>图</Start><End>图</End></CharacterRegion>
+      <CharacterRegion><Start>文</Start><End>文</End></CharacterRegion>
+      <CharacterRegion><Start>件</Start><End>件</End></CharacterRegion>
+      <CharacterRegion><Start>路</Start><End>路</End></CharacterRegion>
+      <CharacterRegion><Start>径</Start><End>径</End></CharacterRegion>
+      <CharacterRegion><Start>（</Start><End>（</End></CharacterRegion>
+      <CharacterRegion><Start>可</Start><End>可</End></CharacterRegion>
+      <CharacterRegion><Start>相</Start><End>相</End></CharacterRegion>
+      <CharacterRegion><Start>对</Start><End>对</End></CharacterRegion>
+      <CharacterRegion><Start>于</Start><End>于</End></CharacterRegion>
+      <CharacterRegion><Start>游</Start><End>游</End></CharacterRegion>
+      <CharacterRegion><Start>戏</Start><End>戏</End></CharacterRegion>
+      <CharacterRegion><Start>目</Start><End>目</End></CharacterRegion>
+      <CharacterRegion><Start>录</Start><End>录</End></CharacterRegion>
+      <CharacterRegion><Start>）</Start><End>）</End></CharacterRegion>
+      <CharacterRegion><Start>设</Start><End>设</End></CharacterRegion>
+      <CharacterRegion><Start>置</Start><End>置</End></CharacterRegion>
+      <CharacterRegion><Start>渲</Start><End>渲</End></CharacterRegion>
+      <CharacterRegion><Start>染</Start><End>染</End></CharacterRegion>
+      <CharacterRegion><Start>缩</Start><End>缩</End></CharacterRegion>
+      <CharacterRegion><Start>放</Start><End>放</End></CharacterRegion>
+      <CharacterRegion><Start>标</Start><End>标</End></CharacterRegion>
+      <CharacterRegion><Start>帧</Start><End>帧</End></CharacterRegion>
+      <CharacterRegion><Start>率</Start><End>率</End></CharacterRegion>
+      <CharacterRegion><Start>主</Start><End>主</End></CharacterRegion>
+      <CharacterRegion><Start>题</Start><End>题</End></CharacterRegion>
+      <CharacterRegion><Start>滚</Start><End>滚</End></CharacterRegion>
+      <CharacterRegion><Start>动</Start><End>动</End></CharacterRegion>
+      <CharacterRegion><Start>速</Start><End>速</End></CharacterRegion>
+      <CharacterRegion><Start>无</Start><End>无</End></CharacterRegion>
+      <CharacterRegion><Start>边</Start><End>边</End></CharacterRegion>
+      <CharacterRegion><Start>框</Start><End>框</End></CharacterRegion>
+      <CharacterRegion><Start>模</Start><End>模</End></CharacterRegion>
+      <CharacterRegion><Start>式</Start><End>式</End></CharacterRegion>
+      <CharacterRegion><Start>启</Start><End>启</End></CharacterRegion>
+      <CharacterRegion><Start>用</Start><End>用</End></CharacterRegion>
+      <CharacterRegion><Start>使</Start><End>使</End></CharacterRegion>
+      <CharacterRegion><Start>粗</Start><End>粗</End></CharacterRegion>
+      <CharacterRegion><Start>体</Start><End>体</End></CharacterRegion>
+      <CharacterRegion><Start>字</Start><End>字</End></CharacterRegion>
+      <CharacterRegion><Start>增</Start><End>增</End></CharacterRegion>
+      <CharacterRegion><Start>强</Start><End>强</End></CharacterRegion>
+      <CharacterRegion><Start>画</Start><End>画</End></CharacterRegion>
+      <CharacterRegion><Start>质</Start><End>质</End></CharacterRegion>
+      <CharacterRegion><Start>智</Start><End>智</End></CharacterRegion>
+      <CharacterRegion><Start>能</Start><End>能</End></CharacterRegion>
+      <CharacterRegion><Start>脚</Start><End>脚</End></CharacterRegion>
+      <CharacterRegion><Start>本</Start><End>本</End></CharacterRegion>
+      <CharacterRegion><Start>克</Start><End>克</End></CharacterRegion>
+      <CharacterRegion><Start>隆</Start><End>隆</End></CharacterRegion>
+      <CharacterRegion><Start>编</Start><End>编</End></CharacterRegion>
+      <CharacterRegion><Start>辑</Start><End>辑</End></CharacterRegion>
+      <CharacterRegion><Start>器</Start><End>器</End></CharacterRegion>
+      <CharacterRegion><Start>：</Start><End>：</End></CharacterRegion>
+      <CharacterRegion><Start>度</Start><End>度</End></CharacterRegion>
+    </CharacterRegions>
+  </Asset>
+</XnaContent> 
