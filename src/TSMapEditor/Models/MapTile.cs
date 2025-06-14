@@ -447,6 +447,40 @@ namespace TSMapEditor.Models
             SubTileIndex = newSubTileIndex;
         }
 
+        public BaseNode GetBaseNode(Map map)
+        {
+            foreach (House house in map.Houses)
+            {
+                foreach (BaseNode baseNode in house.BaseNodes)
+                {
+                    var nodeStructureType = map.Rules.BuildingTypes.Find(bt => bt.ININame == baseNode.StructureTypeName);
+
+                    if (nodeStructureType == null)
+                        continue;
+
+                    if (baseNode.Position == CoordsToPoint())
+                    {
+                        return baseNode;
+                    }
+
+                    bool baseNodeExistsOnFoundation = false;
+                    nodeStructureType.ArtConfig.DoForFoundationCoords(foundationOffset =>
+                    {
+                        Point2D foundationCellCoords = baseNode.Position + foundationOffset;
+                        if (foundationCellCoords == CoordsToPoint())
+                            baseNodeExistsOnFoundation = true;
+                    });
+
+                    if (baseNodeExistsOnFoundation)
+                    {
+                        return baseNode;
+                    }
+                }
+            }
+
+            return null;
+        }
+
         public Point2D CoordsToPoint() => new Point2D(X, Y);
 
         public Point2D GetTileCenter() => new Point2D(Constants.CellSizeX / 2, Constants.CellSizeY / 2);

@@ -133,6 +133,8 @@ namespace TSMapEditor.UI
             MapTile.DoForAllBuildings(structure => AddObjectInformation("Structure: ", structure));
             MapTile.DoForAllInfantry(inf => AddObjectInformation("Infantry: ", inf));
             MapTile.DoForAllWaypoints(waypoint => AddWaypointInfo(waypoint));
+            AddBaseNodeInformation(MapTile.GetBaseNode(map));
+            AddTerrainObjectInformation(MapTile.TerrainObject);
 
             textRenderer.PrepareTextParts();
 
@@ -285,6 +287,30 @@ namespace TSMapEditor.UI
                 textRenderer.AddTextPart(new XNATextPart("Tag:", Constants.UIDefaultFont, Color.White));
                 textRenderer.AddTextPart(new XNATextPart(techno.AttachedTag.Name + " (" + techno.AttachedTag.ID + ")", Constants.UIBoldFont, Color.White));
             }
+        }
+
+        private void AddBaseNodeInformation(BaseNode baseNode)
+        {
+            if (baseNode == null)
+                return;            
+
+            var nodeBuildingType = map.Rules.BuildingTypes.Find(bt => bt.ININame == baseNode.StructureTypeName);
+            var house = map.Houses.Find(house => house.BaseNodes.Contains(baseNode));
+
+            if (nodeBuildingType == null || house == null)
+                return;
+
+            textRenderer.AddTextLine(new XNATextPart("Base Node: ", Constants.UIDefaultFont, Color.Gray));
+            textRenderer.AddTextPart(new XNATextPart($"{nodeBuildingType.Name} ({nodeBuildingType.ININame}) ({house.ININame})", Constants.UIDefaultFont, Color.White));
+        }
+
+        private void AddTerrainObjectInformation(TerrainObject terrainObject)
+        {
+            if (terrainObject == null)
+                return;
+
+            textRenderer.AddTextLine(new XNATextPart("Terrain Object: ", Constants.UIDefaultFont, Color.Gray));
+            textRenderer.AddTextPart(new XNATextPart($"{terrainObject.TerrainType.Name} (${terrainObject.TerrainType.ININame})", Constants.UIDefaultFont, Color.White));
         }
     }
 }
