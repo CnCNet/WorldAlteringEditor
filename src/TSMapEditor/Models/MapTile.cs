@@ -445,7 +445,7 @@ namespace TSMapEditor.Models
             TileImage = null;
             TileIndex = newTileIndex;
             SubTileIndex = newSubTileIndex;
-        }
+        }        
 
         public Point2D CoordsToPoint() => new Point2D(X, Y);
 

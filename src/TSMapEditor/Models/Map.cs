@@ -2096,5 +2096,39 @@ namespace TSMapEditor.Models
             Tubes = null;
             GraphicalBaseNodes = null;
         }
+
+        public List<BaseNode> GetBaseNodes(Point2D cellCoords)
+        {
+            List<BaseNode> baseNodes = [];
+
+            foreach (var graphicalBaseNode in GraphicalBaseNodes)
+            {
+                var nodeBuildingType = graphicalBaseNode.BuildingType;
+
+                if (nodeBuildingType == null)
+                    continue;
+
+                if (graphicalBaseNode.BaseNode.Position == cellCoords)
+                {
+                    baseNodes.Add(graphicalBaseNode.BaseNode);
+                    continue;
+                }
+
+                bool baseNodeExistsOnFoundation = false;
+                nodeBuildingType.ArtConfig.DoForFoundationCoords(foundationOffset =>
+                {
+                    Point2D foundationCellCoords = graphicalBaseNode.BaseNode.Position + foundationOffset;
+                    if (foundationCellCoords == cellCoords)
+                        baseNodeExistsOnFoundation = true;
+                });
+
+                if (baseNodeExistsOnFoundation)
+                {
+                    baseNodes.Add(graphicalBaseNode.BaseNode);
+                }
+            }
+
+            return baseNodes;
+        }
     }
 }
