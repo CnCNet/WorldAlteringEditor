@@ -5,7 +5,7 @@ using TSMapEditor.Models.Enums;
 
 namespace TSMapEditor.Models
 {
-    public class TerrainType : GameObjectType
+    public class TerrainType : GameObjectType, IArtConfigContainer
     {
         public TerrainType(string iniName) : base(iniName)
         {
@@ -14,6 +14,7 @@ namespace TSMapEditor.Models
         public override RTTIType WhatAmI() => RTTIType.TerrainType;
 
         public TerrainArtConfig ArtConfig { get; } = new TerrainArtConfig();
+        public IArtConfig GetArtConfig() => ArtConfig;
 
         public TerrainOccupation TemperateOccupationBits { get; set; }
         public TerrainOccupation SnowOccupationBits { get; set; }
