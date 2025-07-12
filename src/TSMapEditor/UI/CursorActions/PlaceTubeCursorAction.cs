@@ -235,20 +235,23 @@ namespace TSMapEditor.UI.CursorActions
                 if (CursorActionTarget.Map.Tubes.Exists(tb => tb.EntryPoint == cellCoords))
                     return;
             }
-
             if (!points.Contains(cellCoords) && !tubeCells.Contains(cellCoords))
             {
                 points.Add(cellCoords);
                 RefreshTube();
-                TubeRefreshHelper.MapViewRefreshTube(tube, CursorActionTarget.MutationTarget);
-                lastClickedCell = cellCoords;
-                lastClickedCellDateTime = DateTime.Now;
+                TubeRefreshHelper.MapViewRefreshTube(tube, CursorActionTarget.MutationTarget);                
             }
             else
             {
                 if (points.Count > 1 && lastClickedCell == cellCoords && DateTime.Now - lastClickedCellDateTime < TimeSpan.FromSeconds(DoubleClickTime))
+                {
                     ConfirmTube();
+                    return;
+                }
             }
+
+            lastClickedCell = cellCoords;
+            lastClickedCellDateTime = DateTime.Now;
         }
     }
 }
