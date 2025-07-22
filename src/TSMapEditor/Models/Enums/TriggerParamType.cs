@@ -25,6 +25,7 @@
         Theme,
         Speech,
         SuperWeapon,
+        SuperWeaponName,
         Animation,
         ParticleSystem,
         Waypoint,
