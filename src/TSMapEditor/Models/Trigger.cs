@@ -113,10 +113,13 @@ namespace TSMapEditor.Models
             {
                 conditionDataString.Append(condition.ConditionIndex);
                 for (int i = 0; i < TriggerCondition.DEF_PARAM_COUNT; i++)
-                    conditionDataString.Append(condition.ParamToString(i));
+                    conditionDataString.Append(condition.ParamToString(i, false));
 
-                if (editorConfig.TriggerEventTypes[condition.ConditionIndex].UsesP3)
-                    conditionDataString.Append(condition.ParamToString(TriggerCondition.MAX_PARAM_COUNT - 1));
+                var triggerEventType = editorConfig.TriggerEventTypes[condition.ConditionIndex];
+                for (int i = 0; i < triggerEventType.AdditionalParams; i++)
+                {
+                    conditionDataString.Append(condition.ParamToString(TriggerCondition.DEF_PARAM_COUNT + i, true));
+                }
             }
 
             iniFile.SetStringValue("Events", ID, conditionDataString.ToString());
@@ -185,14 +188,15 @@ namespace TSMapEditor.Models
                     throw new INIConfigException("The map contains a trigger event that is not defined in the editor's config. To prevent data loss, the map cannot be loaded. Event index: " + conditionIndex);
                 }
 
-                bool usesP3 = triggerEventType.UsesP3;
+                int additionalParams = triggerEventType.AdditionalParams;
 
-                var triggerEvent = TriggerCondition.ParseFromArray(dataArray, startIndex, usesP3);
+                var triggerEvent = TriggerCondition.ParseFromArray(dataArray, startIndex, additionalParams);
+
                 if (triggerEvent == null)
                     return;
 
-                if (usesP3)
-                    startIndex += TriggerCondition.MAX_PARAM_COUNT + 1;
+                if (additionalParams > 0)
+                    startIndex += TriggerCondition.DEF_PARAM_COUNT + additionalParams + 1;
                 else
                     startIndex += TriggerCondition.DEF_PARAM_COUNT + 1;
 

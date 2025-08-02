@@ -312,6 +312,9 @@
     <None Update="Config\Default\UI\Windows\SelectTutorialLineWindow.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+	  <None Update="Config\Default\UI\Windows\SelectColorsWindow.ini">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
     <None Update="Config\Default\UI\Windows\StructureOptionsWindow.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -10,8 +10,9 @@ namespace TSMapEditor.Models
     /// </summary>
     public class RulesColor
     {
-        public RulesColor(string name, string tsHsvColorValue)
+        public RulesColor(int index, string name, string tsHsvColorValue)
         {
+            Index = index;
             Name = name;
 
             string[] hsvParts = tsHsvColorValue.Split(',');
@@ -69,6 +70,7 @@ namespace TSMapEditor.Models
             XNAColor = new Color(r, g, b);
         }
 
+        public int Index { get; }
         public string Name { get; }
         public Color XNAColor { get; }
     }

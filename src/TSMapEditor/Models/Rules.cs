@@ -122,9 +122,11 @@ namespace TSMapEditor.Models
             var colorsSection = iniFile.GetSection("Colors");
             if (colorsSection != null)
             {
+                int index = 0;
                 foreach (var kvp in colorsSection.Keys)
                 {
-                    Colors.Add(new RulesColor(kvp.Key, kvp.Value));
+                    Colors.Add(new RulesColor(index, kvp.Key, kvp.Value));
+                    index++;
                 }
             }
 
