@@ -51,7 +51,7 @@ namespace TSMapEditor.UI.CursorActions
             var mutation = new TerrainGenerationMutation(CursorActionTarget.MutationTarget, cells, TerrainGeneratorConfiguration);
             CursorActionTarget.MutationManager.PerformMutation(mutation);
 
-            ExitAction();
+            ClearCursorActionProperties();
         }
 
         public override void DrawPreview(Point2D cellCoords, Point2D cameraTopLeftPoint)
@@ -85,6 +85,11 @@ namespace TSMapEditor.UI.CursorActions
             Renderer.DrawLine(startPoint.ToXNAVector(), corner2.ToXNAVector(), lineColor, thickness);
             Renderer.DrawLine(corner1.ToXNAVector(), endPoint.ToXNAVector(), lineColor, thickness);
             Renderer.DrawLine(corner2.ToXNAVector(), endPoint.ToXNAVector(), lineColor, thickness);
+        }
+
+        public void ClearCursorActionProperties()
+        { 
+            StartCellCoords = null;
         }
     }
 }
