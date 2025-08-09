@@ -1,4 +1,5 @@
-﻿using Rampastring.XNAUI;
+﻿using Rampastring.Tools;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
@@ -8,9 +9,9 @@ using TSMapEditor.UI.Controls;
 
 namespace TSMapEditor.UI.Windows
 {
-    public class ConfigureAlliesWindow : INItializableWindow
+    public class SetAlliancesWindow : INItializableWindow
     {
-        public ConfigureAlliesWindow(WindowManager windowManager, Map map) : base(windowManager)
+        public SetAlliancesWindow(WindowManager windowManager, Map map) : base(windowManager)
         {
             this.map = map;
         }
@@ -24,11 +25,9 @@ namespace TSMapEditor.UI.Windows
 
         private List<XNACheckBox> checkBoxes = new List<XNACheckBox>();
 
-        private House house;
-
         public override void Initialize()
         {
-            Name = nameof(ConfigureAlliesWindow);
+            Name = nameof(SetAlliancesWindow);
             base.Initialize();
 
             panelCheckBoxes = FindChild<XNAPanel>(nameof(panelCheckBoxes));
@@ -39,29 +38,42 @@ namespace TSMapEditor.UI.Windows
 
         private void BtnApply_LeftClick(object sender, EventArgs e)
         {
-            List<House> alliedHouses = [house];
-            var alliedHouseNames = checkBoxes.FindAll(chk => chk.Checked).Select(chk => chk.Text);
-
+            var alliedHouseNames = checkBoxes.FindAll(chk => chk.Checked).Select(chk => chk.Text).ToList();
             foreach (var alliedHouseName in alliedHouseNames)
             {
-                var alliedHouse = map.Houses.Find(house => house.ININame == alliedHouseName);
-                if (alliedHouse != null)
+                var house = map.Houses.Find(house => house.ININame == alliedHouseName);
+                if (house == null)
                 {
-                    alliedHouses.Add(alliedHouse);
+                    Logger.Log($"Failed to find an appropriate house for the house named {alliedHouseName} when setting up alliances");
+                    continue;
+                }
+
+                foreach (var otherAlliedHouseName in alliedHouseNames)
+                {
+                    if (otherAlliedHouseName == house.ININame)
+                        continue;
+
+                    var otherHouse = map.Houses.Find(house => house.ININame == otherAlliedHouseName);
+                    if (otherHouse == null)
+                    {
+                        Logger.Log($"Failed to find an house instance for allied house named {otherAlliedHouseName} when setting up the alliance for house {house.ININame}.");
+                        continue;
+                    }
+
+                    if (!house.Allies.Contains(otherHouse))
+                    {
+                        house.Allies.Add(otherHouse);
+                    }
                 }
             }
-            
-            house.Allies = alliedHouses;
 
             AlliesUpdated?.Invoke(this, EventArgs.Empty);
 
             Hide();
         }
 
-        public void Open(House house)
+        public void Open()
         {
-            this.house = house;
-
             RefreshCheckBoxes();
 
             Show();
@@ -77,17 +89,13 @@ namespace TSMapEditor.UI.Windows
             bool useTwoColumns = map.Houses.Count > 8;
             bool isSecondColumn = false;
 
-            foreach (var otherHouse in map.Houses)
+            foreach (var house in map.Houses)
             {
-                if (otherHouse == house)
-                    continue;
-
                 var checkBox = new XNACheckBox(WindowManager);
-                checkBox.Name = "chk" + otherHouse.ININame;
+                checkBox.Name = "chk" + house.ININame;
                 checkBox.X = isSecondColumn ? 150 : 0;
                 checkBox.Y = y;
-                checkBox.Text = otherHouse.ININame;
-                checkBox.Checked = house.Allies.Any(alliedHouse => alliedHouse.ININame == otherHouse.ININame);
+                checkBox.Text = house.ININame;
                 panelCheckBoxes.AddChild(checkBox);
                 checkBoxes.Add(checkBox);
 

@@ -181,6 +181,9 @@
     <None Update="Config\Default\UI\Windows\HousesWindow.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Config\Default\UI\Windows\SetAlliancesWindow.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Config\Default\UI\Windows\InfantryOptionsWindow.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
