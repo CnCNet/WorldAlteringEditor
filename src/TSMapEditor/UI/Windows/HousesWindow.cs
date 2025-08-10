@@ -3,6 +3,7 @@ using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using TSMapEditor.Models;
@@ -37,7 +38,20 @@ namespace TSMapEditor.UI.Windows
         private EditorNumberTextBox tbMoney;
         private XNACheckBox chkPlayerControl;
 
-        private XNALabel lblStatsValue;
+        private XNALabel lblStatsPower;
+        private XNALabel lblStatsObjectsCount;
+        private XNALabel lblStatsAllianceMutualAlliance;
+        private XNALabel lblStatsAllianceOneSidedAllies;
+        private XNALabel lblStatsAllianceOneSidedEnemies;
+        private XNALabel lblStatsAllianceEnemies;
+
+        private ToolTip mutualAllianceToolTip;
+        private ToolTip oneSidedAlliesToolTip;
+        private ToolTip oneSidedEnemiesToolTip;
+        private ToolTip enemiesToolTip;
+
+        private List<XNALabel> statLabels = [];
+        private List<ToolTip> tooltips = [];
 
         private House editedHouse;
 
@@ -67,8 +81,32 @@ namespace TSMapEditor.UI.Windows
             tbMoney = FindChild<EditorNumberTextBox>(nameof(tbMoney));
             chkPlayerControl = FindChild<XNACheckBox>(nameof(chkPlayerControl));
 
-            lblStatsValue = FindChild<XNALabel>(nameof(lblStatsValue));
-            lblStatsValue.Text = "";
+            lblStatsPower = FindChild<XNALabel>(nameof(lblStatsPower));
+            lblStatsObjectsCount = FindChild<XNALabel>(nameof(lblStatsObjectsCount));
+            lblStatsAllianceMutualAlliance = FindChild<XNALabel>(nameof(lblStatsAllianceMutualAlliance));
+            mutualAllianceToolTip = new ToolTip(WindowManager, lblStatsAllianceMutualAlliance);
+
+            lblStatsAllianceOneSidedAllies = FindChild<XNALabel>(nameof(lblStatsAllianceOneSidedAllies));
+            oneSidedAlliesToolTip = new ToolTip(WindowManager, lblStatsAllianceOneSidedAllies);
+
+            lblStatsAllianceOneSidedEnemies = FindChild<XNALabel>(nameof(lblStatsAllianceOneSidedEnemies));
+            oneSidedEnemiesToolTip = new ToolTip(WindowManager, lblStatsAllianceOneSidedEnemies);
+
+            lblStatsAllianceEnemies = FindChild<XNALabel>(nameof(lblStatsAllianceEnemies));
+            enemiesToolTip = new ToolTip(WindowManager, lblStatsAllianceEnemies);
+
+            statLabels.AddRange([
+                lblStatsPower, lblStatsObjectsCount,
+                lblStatsAllianceMutualAlliance, lblStatsAllianceOneSidedAllies,
+                lblStatsAllianceOneSidedEnemies, lblStatsAllianceEnemies
+            ]);
+
+            tooltips.AddRange([mutualAllianceToolTip, oneSidedAlliesToolTip, oneSidedEnemiesToolTip, enemiesToolTip]);
+
+            foreach (var statLabel in statLabels)
+            {
+                statLabel.Text = "";
+            }
 
             for (int i = 0; i < map.Rules.Sides.Count; i++)
             {
@@ -308,7 +346,12 @@ namespace TSMapEditor.UI.Windows
                 selAllies.Text = string.Empty;
                 tbMoney.Text = string.Empty;
                 chkPlayerControl.Checked = false;
-                lblStatsValue.Text = string.Empty;
+
+                foreach (var statLabel in statLabels)
+                {
+                    statLabel.Text = string.Empty;
+                }
+                
                 return;
             }
 
@@ -482,26 +525,61 @@ namespace TSMapEditor.UI.Windows
         {
             if (editedHouse == null)
             {
-                lblStatsValue.Text = "";
+                foreach (var statLabel in statLabels)
+                {
+                    statLabel.Text = "";
+                }
+
+                foreach (var tooltip in tooltips)
+                {
+                    tooltip.Enabled = false;
+                }
+
                 return;
             }
 
-            string stats = "Power: " + map.Structures.Aggregate<Structure, int>(0, (value, structure) => 
+            lblStatsPower.Text = "Power: " + map.Structures.Aggregate<Structure, int>(0, (value, structure) =>
             {
                 if (structure.Owner == editedHouse)
                     return value + structure.ObjectType.Power;
 
                 return value;
-            }) + Environment.NewLine;
+            });
 
-            stats += Environment.NewLine + "Aircraft: " + map.Aircraft.Count(s => s.Owner == editedHouse);
-            stats += Environment.NewLine + "Infantry: " + map.Infantry.Count(s => s.Owner == editedHouse);
-            stats += Environment.NewLine + "Vehicles: " + map.Units.Count(s => s.Owner == editedHouse);
-            stats += Environment.NewLine + "Buildings: " + map.Structures.Count(s => s.Owner == editedHouse);
-            stats += Environment.NewLine + "  AI repairable: " + map.Structures.Count(s => s.Owner == editedHouse && s.AIRepairable);
-            stats += Environment.NewLine + "  not AI repairable: " + map.Structures.Count(s => s.Owner == editedHouse && !s.AIRepairable);
+            string objectCountStats = "";
 
-            lblStatsValue.Text = stats;
+            objectCountStats += "Aircraft: " + map.Aircraft.Count(s => s.Owner == editedHouse) + Environment.NewLine;
+            objectCountStats += "Infantry: " + map.Infantry.Count(s => s.Owner == editedHouse) + Environment.NewLine;
+            objectCountStats += "Vehicles: " + map.Units.Count(s => s.Owner == editedHouse) + Environment.NewLine;
+            objectCountStats += "Buildings: " + map.Structures.Count(s => s.Owner == editedHouse) + Environment.NewLine;
+            objectCountStats += "  AI repairable: " + map.Structures.Count(s => s.Owner == editedHouse && s.AIRepairable) + Environment.NewLine;
+            objectCountStats += "  not AI repairable: " + map.Structures.Count(s => s.Owner == editedHouse && !s.AIRepairable);
+
+            lblStatsObjectsCount.Text = objectCountStats;
+
+            List<House> mutualAllianceHouses = map.Houses.FindAll(house => house != editedHouse && editedHouse.Allies.Contains(house) && house.Allies.Contains(editedHouse));
+            List<House> oneSidedAlliesHouses = map.Houses.FindAll(house => editedHouse.Allies.Contains(house) && !house.Allies.Contains(editedHouse));
+            List<House> oneSidedEnemyHouses = map.Houses.FindAll(house => !editedHouse.Allies.Contains(house) && house.Allies.Contains(editedHouse));
+            List<House> enemyHouses = map.Houses.FindAll(house => !editedHouse.Allies.Contains(house) && !house.Allies.Contains(editedHouse));
+
+            lblStatsAllianceMutualAlliance.Text = $"Mutual Alliances: {mutualAllianceHouses.Count}";
+            lblStatsAllianceOneSidedAllies.Text = $"One Sided Allies: {oneSidedAlliesHouses.Count}";
+            lblStatsAllianceOneSidedEnemies.Text = $"One Sided Enemies: {oneSidedEnemyHouses.Count}";
+            lblStatsAllianceEnemies.Text = $"Enemies: {enemyHouses.Count}";
+
+            mutualAllianceToolTip.Text = "Houses that are in a mutual alliance with this house:" + Environment.NewLine +
+                (mutualAllianceHouses.Count == 0 ? "None" : string.Join(", ", mutualAllianceHouses.Select(house => house.ININame)));
+            oneSidedAlliesToolTip.Text = "Houses that this house is allied to, but are hostile in return:" + Environment.NewLine +
+                (oneSidedAlliesHouses.Count == 0 ? "None" : string.Join(", ", oneSidedAlliesHouses.Select(house => house.ININame)));
+            oneSidedEnemiesToolTip.Text = "Houses that this house is hostile towards, but are allied in return:" + Environment.NewLine +
+                (oneSidedEnemyHouses.Count == 0 ? "None" : string.Join(", ", oneSidedEnemyHouses.Select(house => house.ININame)));
+            enemiesToolTip.Text = "Houses that this house is mutually hostile towards:" + Environment.NewLine +
+                (enemyHouses.Count == 0 ? "None" : string.Join(", ", enemyHouses.Select(house => house.ININame)));
+
+            foreach (var tooltip in tooltips)
+            {
+                tooltip.Enabled = true;
+            }
         }
     }
 }
