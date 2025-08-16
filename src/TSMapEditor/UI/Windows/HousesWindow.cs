@@ -103,10 +103,8 @@ namespace TSMapEditor.UI.Windows
 
             tooltips.AddRange([mutualAllianceToolTip, oneSidedAlliesToolTip, oneSidedEnemiesToolTip, enemiesToolTip]);
 
-            foreach (var statLabel in statLabels)
-            {
-                statLabel.Text = "";
-            }
+            foreach (var statLabel in statLabels)            
+                statLabel.Text = "";            
 
             for (int i = 0; i < map.Rules.Sides.Count; i++)
             {
@@ -348,9 +346,7 @@ namespace TSMapEditor.UI.Windows
                 chkPlayerControl.Checked = false;
 
                 foreach (var statLabel in statLabels)
-                {
-                    statLabel.Text = string.Empty;
-                }
+                    statLabel.Text = string.Empty;                
                 
                 return;
             }
@@ -525,15 +521,12 @@ namespace TSMapEditor.UI.Windows
         {
             if (editedHouse == null)
             {
-                foreach (var statLabel in statLabels)
-                {
+                foreach (var statLabel in statLabels)                
                     statLabel.Text = "";
-                }
+                
 
-                foreach (var tooltip in tooltips)
-                {
-                    tooltip.Enabled = false;
-                }
+                foreach (var tooltip in tooltips)                
+                    tooltip.Enabled = false;                
 
                 return;
             }
@@ -577,9 +570,7 @@ namespace TSMapEditor.UI.Windows
                 (enemyHouses.Count == 0 ? "None" : string.Join(", ", enemyHouses.Select(house => house.ININame)));
 
             foreach (var tooltip in tooltips)
-            {
-                tooltip.Enabled = true;
-            }
+                tooltip.Enabled = true;            
         }
     }
 }
