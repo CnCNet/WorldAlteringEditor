@@ -1180,6 +1180,27 @@ namespace TSMapEditor.Initialization
                     houseType.XNAColor = house.XNAColor;
                 }
             }
+            
+            // Once all houses were loaded into WAE, read and set up the alliances of each house as a list of allied houses
+            foreach (var house in map.Houses)
+            {
+                var houseSection = mapIni.GetSection(house.ININame);
+                if (houseSection != null)
+                {
+                    List<string> allyHouseNames = houseSection.GetListValue("Allies", ',', s => s);
+                    foreach (string allyHouseName in allyHouseNames)
+                    {
+                        var alliedHouse = map.Houses.Find(house => house.ININame == allyHouseName);
+                        if (alliedHouse == null)
+                        {
+                            AddMapLoadError($"House with name {allyHouseName} was not found when loading up allies for the house {house.ININame}. Skipping the house from being loaded.");
+                            continue;
+                        }
+
+                        house.Allies.Add(alliedHouse);
+                    }
+                }
+            }
 
             Logger.Log("Houses read successfully.");
         }

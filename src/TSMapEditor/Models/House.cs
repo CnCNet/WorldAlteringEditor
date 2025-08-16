@@ -2,6 +2,7 @@
 using Rampastring.Tools;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using TSMapEditor.GameMath;
 
 namespace TSMapEditor.Models
@@ -73,7 +74,9 @@ namespace TSMapEditor.Models
         public int IQ { get; set; }
         public string Edge { get; set; }
         public string Color { get; set; } = "White";
-        public string Allies { get; set; }
+
+        [INI(false)]
+        public List<House> Allies { get; set; } = [];
         public int Credits { get; set; }
 
         /// <summary>
@@ -120,6 +123,7 @@ namespace TSMapEditor.Models
         public void WriteToIniSection(IniSection iniSection)
         {
             WritePropertiesToIniSection(iniSection);
+            iniSection.SetListValue("Allies", Allies.Select(alliedHouse => alliedHouse.ININame).ToList(), ',');
 
             // Write base nodes
             // Format: Index=BuildingTypeName,X,Y

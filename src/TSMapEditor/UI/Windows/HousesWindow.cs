@@ -45,6 +45,7 @@ namespace TSMapEditor.UI.Windows
         private EditHouseTypeWindow editHouseTypeWindow;
         private NewHouseWindow newHouseWindow;
         private ConfigureAlliesWindow configureAlliesWindow;
+        private SetAlliancesWindow setAlliancesWindow;
 
         public override void Initialize()
         {
@@ -88,6 +89,7 @@ namespace TSMapEditor.UI.Windows
             btnEditHouseType.LeftClick += BtnEditHouseType_LeftClick;
             FindChild<EditorButton>("btnMakeHouseRepairBuildings").LeftClick += BtnMakeHouseRepairBuildings_LeftClick;
             FindChild<EditorButton>("btnMakeHouseNotRepairBuildings").LeftClick += BtnMakeHouseNotRepairBuildings_LeftClick;
+            FindChild<EditorButton>("btnSetAlliances").LeftClick += (s, e) => setAlliancesWindow.Open();
 
             ddHouseOfHumanPlayer.SelectedIndexChanged += DdHouseOfHumanPlayer_SelectedIndexChanged;
             lbHouseList.SelectedIndexChanged += LbHouseList_SelectedIndexChanged;
@@ -103,6 +105,10 @@ namespace TSMapEditor.UI.Windows
             configureAlliesWindow = new ConfigureAlliesWindow(WindowManager, map);
             var configureAlliesWindowDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, configureAlliesWindow);
             configureAlliesWindow.AlliesUpdated += (s, e) => RefreshHouseInfo();
+
+            setAlliancesWindow = new SetAlliancesWindow(WindowManager, map);
+            var setAlliancesWindowDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, setAlliancesWindow);
+            setAlliancesWindow.AlliesUpdated += (s, e) => RefreshHouseInfo();
 
             if (Constants.IsRA2YR)
             {
@@ -143,20 +149,23 @@ namespace TSMapEditor.UI.Windows
             Helpers.FindDefaultSideForNewHouseType(houseType, map.Rules);
             map.HouseTypes.Add(houseType);
 
-            map.AddHouse(new House("NewHouse", houseType) 
+            House newHouse = new House("NewHouse", houseType)
             {
-                ActsLike = 0,
-                Allies = "NewHouse",
+                ActsLike = 0,                
                 Color = map.Rules.Colors[0].Name,
-                Credits = 0, 
+                Credits = 0,
                 Edge = "North",
                 ID = map.Houses.Count,
-                IQ = 0, 
-                PercentBuilt = 100, 
-                PlayerControl = false, 
+                IQ = 0,
+                PercentBuilt = 100,
+                PlayerControl = false,
                 TechLevel = Constants.MaxHouseTechLevel,
                 XNAColor = Color.White
-            });
+            };
+
+            newHouse.Allies.Add(newHouse);
+
+            map.AddHouse(newHouse);
 
             ListHouses();
             lbHouseList.SelectedIndex = lbHouseList.Items.Count - 1;
@@ -182,6 +191,11 @@ namespace TSMapEditor.UI.Windows
                         if (!map.DeleteHouseType(editedHouse.HouseType))
                             throw new InvalidOperationException("Failed to delete HouseType associated with house " + editedHouse.ININame);
                     }
+
+                    // Remove this house from all other houses that were allied to it
+                    foreach (var house in map.Houses)
+                        house.Allies.Remove(editedHouse);
+                    
 
                     editedHouse = null;
                     lbHouseList.SelectedIndex = -1;
@@ -319,7 +333,7 @@ namespace TSMapEditor.UI.Windows
             ddColor.SelectedIndex = ddColor.Items.FindIndex(item => item.Text == editedHouse.Color);
             ddTechnologyLevel.SelectedIndex = ddTechnologyLevel.Items.FindIndex(item => Conversions.IntFromString(item.Text, -1) == editedHouse.TechLevel);
             ddPercentBuilt.SelectedIndex = ddPercentBuilt.Items.FindIndex(item => Conversions.IntFromString(item.Text, -1) == editedHouse.PercentBuilt);
-            selAllies.Text = editedHouse.Allies ?? "";
+            selAllies.Text = string.Join(",", editedHouse.Allies.Select(alliedHouse => alliedHouse.ININame)) ?? "";
             tbMoney.Value = editedHouse.Credits;
             chkPlayerControl.Checked = editedHouse.PlayerControl;
 
@@ -346,11 +360,7 @@ namespace TSMapEditor.UI.Windows
 
             if (!string.IsNullOrWhiteSpace(editedHouse.ININame))
             {
-                editedHouse.Allies = string.Join(',',
-                    new string[] { editedHouse.ININame }
-                    .Concat(editedHouse.Allies.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries)[1..]));
-
-                selAllies.Text = editedHouse.Allies;
+                selAllies.Text = string.Join(",", editedHouse.Allies.Select(alliedHouse => alliedHouse.ININame));
             }
 
             ListHouses();

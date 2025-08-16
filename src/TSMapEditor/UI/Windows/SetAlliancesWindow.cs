@@ -1,4 +1,5 @@
-﻿using Rampastring.XNAUI;
+﻿using Rampastring.Tools;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
@@ -8,9 +9,9 @@ using TSMapEditor.UI.Controls;
 
 namespace TSMapEditor.UI.Windows
 {
-    public class ConfigureAlliesWindow : INItializableWindow
+    public class SetAlliancesWindow : INItializableWindow
     {
-        public ConfigureAlliesWindow(WindowManager windowManager, Map map) : base(windowManager)
+        public SetAlliancesWindow(WindowManager windowManager, Map map) : base(windowManager)
         {
             this.map = map;
         }
@@ -24,11 +25,9 @@ namespace TSMapEditor.UI.Windows
 
         private List<XNACheckBox> checkBoxes = new List<XNACheckBox>();
 
-        private House house;
-
         public override void Initialize()
         {
-            Name = nameof(ConfigureAlliesWindow);
+            Name = nameof(SetAlliancesWindow);
             base.Initialize();
 
             panelCheckBoxes = FindChild<XNAPanel>(nameof(panelCheckBoxes));
@@ -39,23 +38,26 @@ namespace TSMapEditor.UI.Windows
 
         private void BtnApply_LeftClick(object sender, EventArgs e)
         {
-            List<House> alliedHousesList = [house];
-            var alliedHouses = checkBoxes.FindAll(chk => chk.Checked).Select(chk => (House)chk.Tag);
+            var alliedHouses = checkBoxes.FindAll(chk => chk.Checked).Select(chk => (House)chk.Tag).ToList();
+            foreach (var house in alliedHouses)
+            {
+                foreach (var otherHouse in alliedHouses)
+                {
+                    if (otherHouse == house)
+                        continue;
 
-            foreach (var alliedHouse in alliedHouses)
-                alliedHousesList.Add(alliedHouse);
-                        
-            house.Allies = alliedHousesList;
+                    if (!house.Allies.Contains(otherHouse))
+                        house.Allies.Add(otherHouse);                    
+                }
+            }
 
             AlliesUpdated?.Invoke(this, EventArgs.Empty);
 
             Hide();
         }
 
-        public void Open(House house)
+        public void Open()
         {
-            this.house = house;
-
             RefreshCheckBoxes();
 
             Show();
@@ -71,18 +73,14 @@ namespace TSMapEditor.UI.Windows
             bool useTwoColumns = map.Houses.Count > 8;
             bool isSecondColumn = false;
 
-            foreach (var otherHouse in map.Houses)
+            foreach (var house in map.Houses)
             {
-                if (otherHouse == house)
-                    continue;
-
                 var checkBox = new XNACheckBox(WindowManager);
-                checkBox.Name = "chk" + otherHouse.ININame;
+                checkBox.Name = "chk" + house.ININame;
                 checkBox.X = isSecondColumn ? 150 : 0;
                 checkBox.Y = y;
-                checkBox.Text = otherHouse.ININame;
-                checkBox.Checked = house.Allies.Contains(otherHouse);
-                checkBox.Tag = otherHouse;
+                checkBox.Text = house.ININame;
+                checkBox.Tag = house;
                 panelCheckBoxes.AddChild(checkBox);
                 checkBoxes.Add(checkBox);
 
