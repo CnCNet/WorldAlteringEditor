@@ -79,8 +79,7 @@ namespace TSMapEditor.UI.Windows
             map.AddHouseType(newHouseType);
 
             var newHouse = new House(houseName)
-            {
-                Allies = houseName,
+            {                
                 Credits = 0,
                 Edge = "West",
                 IQ = 0,
@@ -90,6 +89,7 @@ namespace TSMapEditor.UI.Windows
                 ID = map.Houses.Count
             };
 
+            newHouse.Allies = [newHouse];
             newHouse.Color = newHouseType.Color;
             newHouse.XNAColor = newHouseType.XNAColor;
             newHouse.Country = houseTypeName;
