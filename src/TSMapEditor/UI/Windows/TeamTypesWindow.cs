@@ -46,6 +46,7 @@ namespace TSMapEditor.UI.Windows
         }
 
         private readonly Map map;
+        private readonly int minimumFuzzySearchScore = 50;
 
         public event EventHandler<TaskForceEventArgs> TaskForceOpened;
         public event EventHandler<ScriptEventArgs> ScriptOpened;
@@ -487,27 +488,35 @@ namespace TSMapEditor.UI.Windows
             IEnumerable<TeamType> sortedTeamTypes = map.TeamTypes;
 
             var shouldViewTop = false; // when filtering the scroll bar should update so we use a flag here
+            var filtering = false;
+
             if (tbFilter.Text != string.Empty && tbFilter.Text != tbFilter.Suggestion)
             {
-                sortedTeamTypes = sortedTeamTypes.Where(teamType => teamType.Name.Contains(tbFilter.Text, StringComparison.CurrentCultureIgnoreCase));
+                var fuzzySearchTeamTypes = Helpers.FuzzySearch(tbFilter.Text, sortedTeamTypes.ToList(), teamType => teamType.Name, minimumFuzzySearchScore, false);
+                sortedTeamTypes = fuzzySearchTeamTypes.Select(fuzzySearchTeamType => fuzzySearchTeamType.Item);
+
                 shouldViewTop = true;
+                filtering = true;
             }
 
-            switch (TeamTypeSortMode)
+            if (!filtering)
             {
-                case TeamTypeSortMode.Color:
-                    sortedTeamTypes = sortedTeamTypes.OrderBy(teamType => teamType.GetXNAColor().ToString()).ThenBy(teamType => teamType.ININame);
-                    break;
-                case TeamTypeSortMode.Name:
-                    sortedTeamTypes = sortedTeamTypes.OrderBy(teamType => teamType.Name).ThenBy(teamType => teamType.ININame);
-                    break;
-                case TeamTypeSortMode.ColorThenName:
-                    sortedTeamTypes = sortedTeamTypes.OrderBy(teamType => teamType.GetXNAColor().ToString()).ThenBy(teamType => teamType.Name);
-                    break;
-                case TeamTypeSortMode.ID:
-                default:
-                    sortedTeamTypes = sortedTeamTypes.OrderBy(teamType => teamType.ININame);
-                    break;
+                switch (TeamTypeSortMode)
+                {
+                    case TeamTypeSortMode.Color:
+                        sortedTeamTypes = sortedTeamTypes.OrderBy(teamType => teamType.GetXNAColor().ToString()).ThenBy(teamType => teamType.ININame);
+                        break;
+                    case TeamTypeSortMode.Name:
+                        sortedTeamTypes = sortedTeamTypes.OrderBy(teamType => teamType.Name).ThenBy(teamType => teamType.ININame);
+                        break;
+                    case TeamTypeSortMode.ColorThenName:
+                        sortedTeamTypes = sortedTeamTypes.OrderBy(teamType => teamType.GetXNAColor().ToString()).ThenBy(teamType => teamType.Name);
+                        break;
+                    case TeamTypeSortMode.ID:
+                    default:
+                        sortedTeamTypes = sortedTeamTypes.OrderBy(teamType => teamType.ININame);
+                        break;
+                }
             }
 
             foreach (var teamType in sortedTeamTypes)
