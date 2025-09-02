@@ -10,6 +10,7 @@ namespace TSMapEditor.UI.Windows
     {
         public SelectTagWindow(WindowManager windowManager, Map map) : base(windowManager)
         {
+            MinimumFuzzySearchScore = 25;
             this.map = map;
         }
 

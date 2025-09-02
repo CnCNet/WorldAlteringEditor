@@ -12,6 +12,7 @@ namespace TSMapEditor.UI.Windows
     {
         public SelectTaskForceWindow(WindowManager windowManager, Map map) : base(windowManager)
         {
+            MinimumFuzzySearchScore = 25;
             this.map = map;
         }
 
