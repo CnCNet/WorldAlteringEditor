@@ -255,7 +255,7 @@ namespace TSMapEditor.UI
         {
             textRenderer.AddTextLine(new XNATextPart(objectTypeLabel,
                 Constants.UIDefaultFont, Color.Gray));
-            textRenderer.AddTextPart(new XNATextPart(techno.ObjectType.Name + " (" + techno.ObjectType.ININame + "), Owner:",
+            textRenderer.AddTextPart(new XNATextPart(techno.ObjectType.GetEditorDisplayName() + " (" + techno.ObjectType.ININame + "), Owner:",
                     Constants.UIDefaultFont, Color.White));
             textRenderer.AddTextPart(new XNATextPart(techno.Owner.ININame, Constants.UIBoldFont, techno.Owner.XNAColor));
 

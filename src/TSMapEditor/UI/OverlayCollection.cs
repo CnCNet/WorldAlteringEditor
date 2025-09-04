@@ -28,6 +28,7 @@ namespace TSMapEditor.UI
         {
             var overlayCollection = new OverlayCollection();
             overlayCollection.Name = iniSection.GetStringValue("Name", "Unnamed Collection");
+            overlayCollection.UIName = Translate(overlayCollection, overlayCollection.Name, overlayCollection.Name);
             overlayCollection.AllowedTheaters = iniSection.GetListValue("AllowedTheaters", ',', s => s);
 
             var entryList = new List<OverlayCollectionEntry>();

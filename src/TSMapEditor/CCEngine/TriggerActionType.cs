@@ -1,6 +1,7 @@
 ﻿using Rampastring.Tools;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using TSMapEditor.Models.Enums;
 
 namespace TSMapEditor.CCEngine
@@ -40,8 +41,9 @@ namespace TSMapEditor.CCEngine
         public void ReadPropertiesFromIniSection(IniSection iniSection)
         {
             ID = iniSection.GetIntValue("IDOverride", ID);
-            Name = iniSection.GetStringValue(nameof(Name), string.Empty);
-            Description = iniSection.GetStringValue(nameof(Description), string.Empty);
+            string untranslatedName = iniSection.GetStringValue(nameof(Name), string.Empty);
+            Name = Translate(this, untranslatedName + ".Name", untranslatedName);
+            Description = Translate(this, untranslatedName + ".Description", iniSection.GetStringValue(nameof(Description), string.Empty));
 
             for (int i = 0; i < Parameters.Length; i++)
             {
@@ -56,15 +58,20 @@ namespace TSMapEditor.CCEngine
                 }
 
                 var triggerParamType = (TriggerParamType)Enum.Parse(typeof(TriggerParamType), iniSection.GetStringValue(key, string.Empty));
-                string nameOverride = iniSection.GetStringValue(nameOverrideKey, null);
+                string nameOverride = Translate(this, untranslatedName + ".Parameter" + i.ToString(CultureInfo.InvariantCulture) + ".NameOverride", iniSection.GetStringValue(nameOverrideKey, null));
                 if (triggerParamType == TriggerParamType.WaypointZZ && string.IsNullOrWhiteSpace(nameOverride))
-                    nameOverride = "Waypoint";
+                    nameOverride = Translate(nameof(TriggerParamType) + "." + nameof(TriggerParamType.Waypoint), "Waypoint");
 
                 List<string> presetOptions = null;
                 string presetOptionsString = iniSection.GetStringValue(presetOptionsKey, null);
                 if (!string.IsNullOrWhiteSpace(presetOptionsString))
                 {
                     presetOptions = new List<string>(presetOptionsString.Split(new char[] {','}, StringSplitOptions.RemoveEmptyEntries));
+
+                    for (int j = 0; j < presetOptions.Count; j++)
+                    {
+                        presetOptions[j] = Translate(this, untranslatedName + ".Parameter" + i.ToString(CultureInfo.InvariantCulture) + ".PresentOption" + j.ToString(CultureInfo.InvariantCulture), presetOptions[j]);
+                    }
                 }
 
                 Parameters[i] = new TriggerActionParam(triggerParamType, nameOverride, presetOptions);

@@ -25,6 +25,7 @@ namespace TSMapEditor.UI
         {
             var terrainObjectCollection = new TerrainObjectCollection();
             terrainObjectCollection.Name = iniSection.GetStringValue("Name", "Unnamed Collection");
+            terrainObjectCollection.UIName = Translate(terrainObjectCollection, terrainObjectCollection.Name, terrainObjectCollection.Name);
             terrainObjectCollection.AllowedTheaters = iniSection.GetListValue("AllowedTheaters", ',', s => s);
 
             var entryList = new List<TerrainObjectCollectionEntry>();

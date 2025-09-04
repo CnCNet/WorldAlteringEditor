@@ -17,7 +17,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Check Distance";
+        public override string GetName() => Translate("Name", "Check Distance");
 
         private Point2D? source;
         private List<Point2D> pathCellCoords = new List<Point2D>();
@@ -50,9 +50,10 @@ namespace TSMapEditor.UI.CursorActions
             Color destinationColor = Color.Red;
             Color pathColor = Color.Yellow;
 
+            string instruction = Translate("Instruction", "Click to select source coordinate, or right-click to exit");
             if (source == null)
             {
-                DrawText(cellCoords, cameraTopLeftPoint, "Click to select source coordinate, or right-click to exit", sourceColor);
+                DrawText(cellCoords, cameraTopLeftPoint, instruction, sourceColor);
                 return;
             }
 
@@ -83,8 +84,8 @@ namespace TSMapEditor.UI.CursorActions
             int xDiff = cellCoords.X - source.Value.X;
             int yDiff = cellCoords.Y - source.Value.Y;
 
-            string text = "Path Length In Cells: " + pathLength + Environment.NewLine + 
-                "(X Diff:" + xDiff + ", Y Diff: " + yDiff + ")" + Environment.NewLine + Environment.NewLine + "Click to select new source coordinate, or right-click to exit";
+            string text = string.Format(Translate("PathLength", "Path Length In Cells: {0}" + Environment.NewLine + 
+                "(X Diff: {1}, Y Diff: {2})"), pathLength, xDiff, yDiff) + Environment.NewLine + Environment.NewLine + instruction;
             DrawText(cellCoords, cameraTopLeftPoint, text, pathColor);
         }
 

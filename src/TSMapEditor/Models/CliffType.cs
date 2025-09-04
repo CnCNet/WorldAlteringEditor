@@ -433,7 +433,7 @@ namespace TSMapEditor.Models
         private CliffType(IniFile iniFile, string iniName, string name, bool frontOnly, List<string> allowedTheaters, Color? color)
         {
             IniName = iniName;
-            Name = name;
+            Name = Translate(this, iniName, name);
             AllowedTheaters = allowedTheaters;
             FrontOnly = frontOnly;
             Color = color;

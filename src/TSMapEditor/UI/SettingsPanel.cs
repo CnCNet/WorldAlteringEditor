@@ -4,6 +4,7 @@ using System;
 using System.Globalization;
 using System.Windows.Forms;
 using TSMapEditor.GameMath;
+using TSMapEditor.Misc;
 using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
 
@@ -67,13 +68,15 @@ namespace TSMapEditor.UI
         }
     }
 
-    public class SettingsPanel : EditorPanel
+    public class SettingsPanel : INItializableWindow
     {
         public SettingsPanel(WindowManager windowManager) : base(windowManager)
         {
+            CenterByDefault = false;
             BackgroundTexture = AssetLoader.CreateTexture(UISettings.ActiveSettings.BackgroundColor, 2, 2);
         }
 
+        private XNADropDown ddLanguage;
         private XNADropDown ddRenderScale;
         private XNADropDown ddTargetFPS;
         private XNACheckBox chkBorderless;
@@ -92,34 +95,19 @@ namespace TSMapEditor.UI
 
         public override void Initialize()
         {
-            Width = 230;
+            Name = nameof(SettingsPanel);
+            base.Initialize();
 
-            var lblHeader = new XNALabel(WindowManager);
-            lblHeader.Name = nameof(lblHeader);
-            lblHeader.FontIndex = Constants.UIBoldFont;
-            lblHeader.Text = "Settings";
-            lblHeader.Y = Constants.UIEmptyTopSpace;
-            AddChild(lblHeader);
-            lblHeader.CenterOnParentHorizontally();
-
-            var lblRenderScale = new XNALabel(WindowManager);
-            lblRenderScale.Name = nameof(lblRenderScale);
-            lblRenderScale.Text = "Render Scale:";
-            lblRenderScale.X = Constants.UIEmptySideSpace;
-            lblRenderScale.Y = lblHeader.Bottom + Constants.UIEmptyTopSpace + 1;
-            AddChild(lblRenderScale);
+            ddLanguage = FindChild<XNADropDown>(nameof(ddLanguage));
+            TranslatorSetup.Translations.ForEach(tr => ddLanguage.AddItem(new XNADropDownItem() { Text = tr.UIName, Tag = tr }));
+            ddLanguage.SelectedIndexChanged += DdLanguage_SelectedIndexChanged;
 
             const int MinWidth = 1024;
             const int MinHeight = 600;
             int MaxWidth = Screen.PrimaryScreen.Bounds.Width;
             int MaxHeight = Screen.PrimaryScreen.Bounds.Height;
 
-            ddRenderScale = new XNADropDown(WindowManager);
-            ddRenderScale.Name = nameof(ddRenderScale);
-            ddRenderScale.X = 120;
-            ddRenderScale.Y = lblRenderScale.Y - 1;
-            ddRenderScale.Width = Width - ddRenderScale.X - Constants.UIEmptySideSpace;
-            AddChild(ddRenderScale);
+            ddRenderScale = FindChild<XNADropDown>(nameof(ddRenderScale));
             var renderScales = new double[] { 4.0, 2.5, 3.0, 2.5, 2.0, 1.75, 1.5, 1.25, 1.0, 0.75, 0.5 };
             for (int i = 0; i < renderScales.Length; i++)
             {
@@ -130,111 +118,62 @@ namespace TSMapEditor.UI
                 }
             }
 
-            var lblTargetFPS = new XNALabel(WindowManager);
-            lblTargetFPS.Name = nameof(lblTargetFPS);
-            lblTargetFPS.Text = "Target FPS:";
-            lblTargetFPS.X = Constants.UIEmptySideSpace;
-            lblTargetFPS.Y = ddRenderScale.Bottom + Constants.UIEmptyTopSpace + 1;
-            AddChild(lblTargetFPS);
-
-            ddTargetFPS = new XNADropDown(WindowManager);
-            ddTargetFPS.Name = nameof(ddTargetFPS);
-            ddTargetFPS.X = ddRenderScale.X;
-            ddTargetFPS.Y = lblTargetFPS.Y - 1;
-            ddTargetFPS.Width = ddRenderScale.Width;
-            AddChild(ddTargetFPS);
+            ddTargetFPS = FindChild<XNADropDown>(nameof(ddTargetFPS));
             var targetFramerates = new int[] { 1000, 480, 240, 144, 120, 90, 75, 60, 30, 20 };
             foreach (int frameRate in targetFramerates)
                 ddTargetFPS.AddItem(new XNADropDownItem() { Text = frameRate.ToString(CultureInfo.InvariantCulture), Tag = frameRate });
 
-            var lblTheme = new XNALabel(WindowManager);
-            lblTheme.Name = nameof(lblTheme);
-            lblTheme.Text = "Theme:";
-            lblTheme.X = lblRenderScale.X;
-            lblTheme.Y = ddTargetFPS.Bottom + Constants.UIEmptyTopSpace;
-            AddChild(lblTheme);
-
-            ddTheme = new XNADropDown(WindowManager);
-            ddTheme.Name = nameof(ddTheme);
-            ddTheme.X = ddRenderScale.X;
-            ddTheme.Y = lblTheme.Y - 1;
-            ddTheme.Width = ddRenderScale.Width;
-            AddChild(ddTheme);
+            ddTheme = FindChild<XNADropDown>(nameof(ddTheme));
             foreach (var theme in EditorThemes.Themes)
                 ddTheme.AddItem(theme.Key);
 
-            var lblScrollRate = new XNALabel(WindowManager);
-            lblScrollRate.Name = nameof(lblScrollRate);
-            lblScrollRate.Text = "Scroll Rate:";
-            lblScrollRate.X = lblRenderScale.X;
-            lblScrollRate.Y = ddTheme.Bottom + Constants.UIEmptyTopSpace;
-            AddChild(lblScrollRate);
-
-            ddScrollRate = new XNADropDown(WindowManager);
-            ddScrollRate.Name = nameof(ddScrollRate);
-            ddScrollRate.X = ddRenderScale.X;
-            ddScrollRate.Y = lblScrollRate.Y - 1;
-            ddScrollRate.Width = ddRenderScale.Width;
-            AddChild(ddScrollRate);
-            var scrollRateNames = new string[] { "Fastest", "Faster", "Fast", "Normal", "Slow", "Slower", "Slowest" };
+            ddScrollRate = FindChild<XNADropDown>(nameof(ddScrollRate));
+            var scrollRateNames = new string[] 
+            { 
+                Translate(this, "ScrollRateFastest", "Fastest"),
+                Translate(this, "ScrollRateFaster", "Faster"),
+                Translate(this, "ScrollRateFast", "Fast"),
+                Translate(this, "ScrollRateNormal", "Normal"),
+                Translate(this, "ScrollRateSlow", "Slow"),
+                Translate(this, "ScrollRateSlower", "Slower"),
+                Translate(this, "ScrollRateSlowest", "Slowest"),
+            };
             var scrollRateValues = new int[] { 21, 18, 15, 12, 9, 6, 3 };
             for (int i = 0; i < scrollRateNames.Length; i++)
             {
                 ddScrollRate.AddItem(new XNADropDownItem() { Text = scrollRateNames[i], Tag = scrollRateValues[i] });
             }
 
-            chkBorderless = new XNACheckBox(WindowManager);
-            chkBorderless.Name = nameof(chkBorderless);
-            chkBorderless.X = Constants.UIEmptySideSpace;
-            chkBorderless.Y = ddScrollRate.Bottom + Constants.UIVerticalSpacing;
-            chkBorderless.Text = "Start In Borderless Mode";
-            AddChild(chkBorderless);
+            chkBorderless = FindChild<XNACheckBox>(nameof(chkBorderless));
 
-            chkUseBoldFont = new XNACheckBox(WindowManager);
-            chkUseBoldFont.Name = nameof(chkUseBoldFont);
-            chkUseBoldFont.X = Constants.UIEmptySideSpace;
-            chkUseBoldFont.Y = chkBorderless.Bottom + Constants.UIVerticalSpacing;
-            chkUseBoldFont.Text = "Use Bold Font";
-            AddChild(chkUseBoldFont);
+            chkUseBoldFont = FindChild<XNACheckBox>(nameof(chkUseBoldFont));
 
-            chkGraphicsLevel = new XNACheckBox(WindowManager);
-            chkGraphicsLevel.Name = nameof(chkGraphicsLevel);
-            chkGraphicsLevel.X = Constants.UIEmptySideSpace;
-            chkGraphicsLevel.Y = chkUseBoldFont.Bottom + Constants.UIVerticalSpacing;
-            chkGraphicsLevel.Text = "Enhanced Graphical Quality";
-            AddChild(chkGraphicsLevel);
+            chkGraphicsLevel = FindChild<XNACheckBox>(nameof(chkGraphicsLevel));
 
-            chkSmartScriptActionCloning = new XNACheckBox(WindowManager);
-            chkSmartScriptActionCloning.Name = nameof(chkSmartScriptActionCloning);
-            chkSmartScriptActionCloning.X = Constants.UIEmptySideSpace;
-            chkSmartScriptActionCloning.Y = chkGraphicsLevel.Bottom + Constants.UIVerticalSpacing;
-            chkSmartScriptActionCloning.Text = "Smart Script Action Cloning";
-            AddChild(chkSmartScriptActionCloning);
+            chkSmartScriptActionCloning = FindChild<XNACheckBox>(nameof(chkSmartScriptActionCloning));
 
-            var lblTextEditorPath = new XNALabel(WindowManager);
-            lblTextEditorPath.Name = nameof(lblTextEditorPath);
-            lblTextEditorPath.Text = "Text Editor Path:";
-            lblTextEditorPath.X = Constants.UIEmptySideSpace;
-            lblTextEditorPath.Y = chkSmartScriptActionCloning.Bottom + Constants.UIVerticalSpacing * 2;
-            AddChild(lblTextEditorPath);
-
-            tbTextEditorPath = new EditorTextBox(WindowManager);
-            tbTextEditorPath.Name = nameof(tbTextEditorPath);
-            tbTextEditorPath.AllowSemicolon = true;
-            tbTextEditorPath.X = Constants.UIEmptySideSpace;
-            tbTextEditorPath.Y = lblTextEditorPath.Bottom + Constants.UIVerticalSpacing;
-            tbTextEditorPath.Width = Width - tbTextEditorPath.X - Constants.UIEmptySideSpace;
-            AddChild(tbTextEditorPath);
+            tbTextEditorPath = FindChild<EditorTextBox>(nameof(tbTextEditorPath));
 
             LoadSettings();
+        }
 
-            base.Initialize();
+        private void DdLanguage_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (ddLanguage.SelectedItem == null)
+                return;
+
+            WindowManager.AddCallback(() =>
+            {
+                TranslatorSetup.SetActiveTranslation(((Translation)ddLanguage.SelectedItem.Tag).InternalName);
+                RefreshLayout();
+            });
         }
 
         private void LoadSettings()
         {
             var userSettings = UserSettings.Instance;
 
+            ddLanguage.SelectedIndex = TranslatorSetup.ActiveTranslation.Index;
             ddRenderScale.SelectedIndex = ddRenderScale.Items.FindIndex(i => (double)i.Tag == userSettings.RenderScale.GetValue());
             ddTargetFPS.SelectedIndex = ddTargetFPS.Items.FindIndex(item => (int)item.Tag == userSettings.TargetFPS.GetValue());
 
@@ -256,6 +195,7 @@ namespace TSMapEditor.UI
         {
             var userSettings = UserSettings.Instance;
 
+            userSettings.Language.UserDefinedValue = ((Translation)ddLanguage.SelectedItem.Tag).InternalName;
             userSettings.UseBoldFont.UserDefinedValue = chkUseBoldFont.Checked;
             userSettings.GraphicsLevel.UserDefinedValue = chkGraphicsLevel.Checked ? 1 : 0;
             userSettings.SmartScriptActionCloning.UserDefinedValue = chkSmartScriptActionCloning.Checked;

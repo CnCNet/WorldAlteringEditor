@@ -180,11 +180,10 @@ namespace TSMapEditor.UI
             AddChild(lbFileList);
 
             settingsPanel = new SettingsPanel(WindowManager);
-            settingsPanel.Name = nameof(settingsPanel);
             settingsPanel.X = Width;
             settingsPanel.Y = Constants.UIEmptyTopSpace;
-            settingsPanel.Height = lbFileList.Bottom - settingsPanel.Y;
             AddChild(settingsPanel);
+            settingsPanel.Height = lbFileList.Bottom - settingsPanel.Y;
             Width += settingsPanel.Width + Constants.UIEmptySideSpace;
 
             var lblVersion = new XNALabel(WindowManager);

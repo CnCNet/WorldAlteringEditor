@@ -3,6 +3,7 @@ using Rampastring.XNAUI;
 using Rampastring.XNAUI.Input;
 using System;
 using TSMapEditor.GameMath;
+using TSMapEditor.Misc;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations;
 
@@ -155,5 +156,10 @@ namespace TSMapEditor.UI
 
             Renderer.DrawStringWithShadow(text, Constants.UIBoldFont, textPosition, textColor);
         }
+
+        /// <summary>
+        /// Cursor action override of the translation function that automatically adds context to the translation call.
+        /// </summary>
+        protected string Translate(string identifier, string defaultString) => Translator.Translate(this, identifier, defaultString);
     }
 }

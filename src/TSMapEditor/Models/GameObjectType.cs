@@ -42,25 +42,7 @@ namespace TSMapEditor.Models
 
         public string GetEditorDisplayName()
         {
-            string name;
-
-            if (!string.IsNullOrWhiteSpace(FSName))
-            {
-                name = FSName;
-            }
-            else if (!string.IsNullOrWhiteSpace(Name))
-            {
-                name = Name;
-            }
-            else
-            {
-                return ININame;
-            }
-
-            if (IsTechnoType() && ININame.StartsWith("AI") && !name.StartsWith("AI "))
-                return "AI " + name;
-
-            return name;
+            return TranslateObject(ININame, string.IsNullOrWhiteSpace(Name) ? ININame : Name);
         }
     }
 }

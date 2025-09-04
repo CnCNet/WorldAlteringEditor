@@ -44,7 +44,9 @@ namespace TSMapEditor.Settings
                 GameDirectory,
                 LastScenarioPath,
 
-                TextEditorPath
+                TextEditorPath,
+
+                Language
             };
 
             foreach (var setting in settings)
@@ -100,6 +102,8 @@ namespace TSMapEditor.Settings
         public StringSetting LastScenarioPath = new StringSetting(General, nameof(LastScenarioPath), "Maps/Custom/");
 
         public StringSetting TextEditorPath = new StringSetting(General, "TextEditorPath", string.Empty);
+
+        public StringSetting Language = new StringSetting(General, nameof(Language), string.Empty);
 
         public RecentFiles RecentFiles = new RecentFiles();
     }

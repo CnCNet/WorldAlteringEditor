@@ -1,4 +1,6 @@
-﻿using Microsoft.Xna.Framework;
+﻿global using static TSMapEditor.Misc.Translator;
+
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
@@ -54,8 +56,12 @@ namespace TSMapEditor.Rendering
 
             AutoLATType.InitArray();
 
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            TranslatorSetup.LoadTranslations();
             Constants.Init();
             new UserSettings();
+            TranslatorSetup.SetActiveTranslation(UserSettings.Instance.Language);
+
             AutosaveTimer.Purge();
 
             graphics = new GraphicsDeviceManager(this);
@@ -123,7 +129,24 @@ namespace TSMapEditor.Rendering
             Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
             AssetLoader.Initialize(GraphicsDevice, Content);
+            AssetLoader.AssetSearchPaths.Add(Path.Combine(Environment.CurrentDirectory, "Content", "Translations", TranslatorSetup.ActiveTranslationDirectory()));
             AssetLoader.AssetSearchPaths.Add(Environment.CurrentDirectory + DSC + "Content" + DSC);
+
+            // Hack: allow translations to override fonts
+            int i = 0;
+            while (true)
+            {
+                string spriteFontPath = Path.Combine("Translations", TranslatorSetup.ActiveTranslationDirectory(), "SpriteFont" + i + ".xnb");
+                if (AssetLoader.AssetExists(Path.Combine(Environment.CurrentDirectory, "Content", spriteFontPath)))
+                {
+                    var spriteFont = Content.Load<SpriteFont>(spriteFontPath);
+                    Renderer.GetFontList()[i] = spriteFont;
+                }
+                else
+                {
+                    break;
+                }
+            }
 
             windowManager = new WindowManager(this, graphics);
             windowManager.Initialize(Content, Environment.CurrentDirectory + DSC + "Content" + DSC);
@@ -143,21 +166,15 @@ namespace TSMapEditor.Rendering
             menuHeight = (int)(menuHeight * dpi_ratio);
 
 #if WINDOWS
-            // If the user has a very large display, it's better to integer-upscale the main menu instead of DPI-scaling it.
-            const int margin = 100;
-            int scaleFactor = (int)dpi_ratio + 1;
-            while (true)
+            // If the user has a very large display at 100% DPI, it's probably best to integer-upscale the main menu.
+            if (dpi_ratio <= 1.0)
             {
-                if (Screen.PrimaryScreen.Bounds.Width > (menuRenderWidth + margin) * scaleFactor &&
-                    Screen.PrimaryScreen.Bounds.Height > (menuRenderHeight + margin) * scaleFactor)
+                const int minScaleRatio = 3;
+                if (Screen.PrimaryScreen.Bounds.Width >= menuRenderWidth * minScaleRatio &&
+                    Screen.PrimaryScreen.Bounds.Height >= menuRenderHeight * minScaleRatio)
                 {
-                    menuWidth = menuRenderWidth * scaleFactor;
-                    menuHeight = menuRenderHeight * scaleFactor;
-                    scaleFactor++;
-                }
-                else
-                {
-                    break;
+                    menuWidth = menuRenderWidth * 2;
+                    menuHeight = menuRenderHeight * 2;
                 }
             }
 #endif

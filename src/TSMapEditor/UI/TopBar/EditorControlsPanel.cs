@@ -187,7 +187,7 @@ namespace TSMapEditor.UI.TopBar
             btnClearTerrain.LeftClick += (s, e) => EnterLATPlacementMode(0);
             latPanel.AddChild(btnClearTerrain);
             var clearToolTip = new ToolTip(WindowManager, btnClearTerrain);
-            clearToolTip.Text = "Clear";
+            clearToolTip.Text = Translate(this, "Clear", "Clear");
             clearToolTip.ToolTipDelay = 0;
 
             int prevRight = btnClearTerrain.Right;
@@ -247,12 +247,12 @@ namespace TSMapEditor.UI.TopBar
                 string[] allBases = map.TheaterInstance.Theater.LATGrounds.FindAll(lg => lg.GroundTileSet == autoLATGround.GroundTileSet).Select(lg =>
                 {
                     if (lg.BaseTileSet == null)
-                        return "Clear";
+                        return Translate(this, "Clear", "Clear");
 
                     return lg.BaseTileSet.SetName;
                 }).ToArray();
 
-                toolTip.Text = $"{autoLATGround.GroundTileSet.SetName} (placed on top of {string.Join(" or ", allBases)})";
+                toolTip.Text = string.Format(Translate(this, $"PlacedOnTopOf", "{0} (placed on top of {1})"), autoLATGround.GroundTileSet.SetName, string.Join(Translate(this, "Or", " or "), allBases));
 
                 toolTip.ToolTipDelay = 0;
 
