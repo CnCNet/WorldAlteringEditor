@@ -1,9 +1,10 @@
-﻿using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Input;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Rendering;
 using TSMapEditor.UI.CursorActions;
@@ -37,14 +38,14 @@ namespace TSMapEditor.UI.Sidebar
 
         static List<string> sidebarModeNames = new List<string>
         {
-            "Buildings",
-            "Infantry",
-            "Vehicles",
-            "Aircraft",
-            "Naval",
-            "Terrain Objects",
-            "Overlays",
-            "Smudges"
+            "Buildings".L10N(),
+            "Infantry".L10N(),
+            "Vehicles".L10N(),
+            "Aircraft".L10N(),
+            "Naval".L10N(),
+            "Terrain Objects".L10N(),
+            "Overlays".L10N(),
+            "Smudges".L10N()
         };
 
         public override void Initialize()

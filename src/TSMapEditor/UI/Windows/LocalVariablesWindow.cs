@@ -1,9 +1,10 @@
-﻿using Rampastring.Tools;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
 using TSMapEditor.UI.Controls;
@@ -83,7 +84,7 @@ namespace TSMapEditor.UI.Windows
         {
             if (editedLocalVariable == null)
             {
-                EditorMessageBox.Show(WindowManager, "Select a variable", "Please select a variable first.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Select a variable".L10N(), "Please select a variable first.".L10N(), MessageBoxButtons.OK);
                 return;
             }
 
@@ -152,14 +153,14 @@ namespace TSMapEditor.UI.Windows
 
             if (list.Count == 0)
             {
-                EditorMessageBox.Show(WindowManager, "No usages found",
-                    $"No triggers or scripts make use of the selected local variable '{editedLocalVariable.Name}'", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "No usages found".L10N(),
+                    $"No triggers or scripts make use of the selected local variable '{editedLocalVariable.Name}'".L10N(), MessageBoxButtons.OK);
             }
             else
             {
                 EditorMessageBox.Show(WindowManager,
-                    "Local Variable Usages",
-                    $"The following usages were found for the selected local variable '{editedLocalVariable.Name}':" + Environment.NewLine + Environment.NewLine +
+                    "Local Variable Usages".L10N(),
+                    $"The following usages were found for the selected local variable '{editedLocalVariable.Name}':".L10N() + Environment.NewLine + Environment.NewLine +
                     string.Join(Environment.NewLine, list.Select(e => "- " + e)),
                     MessageBoxButtons.OK);
             }

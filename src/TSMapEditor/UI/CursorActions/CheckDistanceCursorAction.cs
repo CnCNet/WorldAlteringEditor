@@ -1,8 +1,9 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.Input;
 using System;
 using System.Collections.Generic;
+using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 
@@ -17,7 +18,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Check Distance";
+        public override string GetName() => "Check Distance".L10N();
 
         private Point2D? source;
         private List<Point2D> pathCellCoords = new List<Point2D>();
@@ -52,7 +53,7 @@ namespace TSMapEditor.UI.CursorActions
 
             if (source == null)
             {
-                DrawText(cellCoords, cameraTopLeftPoint, "Click to select source coordinate, or right-click to exit", sourceColor);
+                DrawText(cellCoords, cameraTopLeftPoint, "Click to select source coordinate, or right-click to exit".L10N(), sourceColor);
                 return;
             }
 
@@ -83,8 +84,8 @@ namespace TSMapEditor.UI.CursorActions
             int xDiff = cellCoords.X - source.Value.X;
             int yDiff = cellCoords.Y - source.Value.Y;
 
-            string text = "Path Length In Cells: " + pathLength + Environment.NewLine + 
-                "(X Diff:" + xDiff + ", Y Diff: " + yDiff + ")" + Environment.NewLine + Environment.NewLine + "Click to select new source coordinate, or right-click to exit";
+            string text = "Path Length In Cells: ".L10N() + pathLength + Environment.NewLine + 
+                "(X Diff:".L10N() + xDiff + ", Y Diff: ".L10N() + yDiff + ")" + Environment.NewLine + Environment.NewLine + "Click to select new source coordinate, or right-click to exit".L10N();
             DrawText(cellCoords, cameraTopLeftPoint, text, pathColor);
         }
 

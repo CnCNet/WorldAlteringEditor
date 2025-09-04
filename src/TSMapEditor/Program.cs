@@ -1,6 +1,8 @@
-﻿using System;
+using System;
+using System.Globalization;
 using System.Windows.Forms;
 using TSMapEditor.Rendering;
+using TSMapEditor.I18N;
 
 namespace TSMapEditor
 {
@@ -23,6 +25,10 @@ namespace TSMapEditor
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
             Environment.CurrentDirectory = Application.StartupPath.Replace('\\', '/');
+            
+            TranslationManager.InitialUICulture = CultureInfo.CurrentUICulture;
+            TranslationManager.Initialize();
+            
             new GameClass().Run();
         }
 

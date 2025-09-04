@@ -1,5 +1,6 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using System;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Rendering;
 using TSMapEditor.UI.Controls;
@@ -41,8 +42,8 @@ namespace TSMapEditor.UI.Windows
             Waypoint waypoint = map.Waypoints.Find(wp => wp.Identifier == waypointNumber);
             if (waypoint == null)
             {
-                EditorMessageBox.Show(WindowManager, "Waypoint not found",
-                    "Waypoint #" + waypointNumber + " does not exist on the map!", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Waypoint not found".L10N(),
+                    "Waypoint #".L10N() + waypointNumber + " does not exist on the map!".L10N(), MessageBoxButtons.OK);
 
                 return;
             }

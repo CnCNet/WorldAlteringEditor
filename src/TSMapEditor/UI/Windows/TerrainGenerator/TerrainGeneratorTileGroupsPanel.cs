@@ -1,4 +1,4 @@
-﻿using Rampastring.Tools;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using TSMapEditor.CCEngine;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations.Classes;
 using TSMapEditor.UI.Controls;
@@ -56,7 +57,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblTileSet.X = Constants.UIEmptySideSpace;
                 lblTileSet.Y = y;
                 lblTileSet.FontIndex = Constants.UIBoldFont;
-                lblTileSet.Text = $"Tile Set (Group #{i + 1})";
+                lblTileSet.Text = $"Tile Set (Group #{i + 1})".L10N();
                 AddChild(lblTileSet);
 
                 var selTileSet = new EditorPopUpSelector(WindowManager);
@@ -72,7 +73,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblTileIndices.Name = nameof(lblTileIndices) + i;
                 lblTileIndices.X = selTileSet.Right + Constants.UIHorizontalSpacing;
                 lblTileIndices.Y = lblTileSet.Y;
-                lblTileIndices.Text = $"Indexes of tiles to place (leave blank for all)";
+                lblTileIndices.Text = $"Indexes of tiles to place (leave blank for all)".L10N();
                 AddChild(lblTileIndices);
 
                 var tbTileIndices = new EditorTextBox(WindowManager);
@@ -87,7 +88,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblOpenChance.Name = nameof(lblOpenChance) + i;
                 lblOpenChance.X = tbTileIndices.Right + Constants.UIHorizontalSpacing;
                 lblOpenChance.Y = lblTileSet.Y;
-                lblOpenChance.Text = "Open cell chance:";
+                lblOpenChance.Text = "Open cell chance:".L10N();
                 AddChild(lblOpenChance);
 
                 var tbOpenChance = new EditorNumberTextBox(WindowManager);
@@ -103,7 +104,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblOccupiedChance.Name = nameof(lblOccupiedChance) + i;
                 lblOccupiedChance.X = tbOpenChance.Right + Constants.UIHorizontalSpacing;
                 lblOccupiedChance.Y = lblOpenChance.Y;
-                lblOccupiedChance.Text = "Occupied cell chance:";
+                lblOccupiedChance.Text = "Occupied cell chance:".L10N();
                 AddChild(lblOccupiedChance);
 
                 var tbOccupiedChance = new EditorNumberTextBox(WindowManager);
@@ -157,8 +158,8 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
 
                     if (invalidElement != 0) // this can never be 0 if an invalid element exists, because each valid tileset has at least 1 tile
                     {
-                        EditorMessageBox.Show(WindowManager, "Generator Config Error",
-                            $"Tile with index '{ invalidElement }' does not exist in tile set '{ tileSet.SetName }'!", MessageBoxButtons.OK);
+                        EditorMessageBox.Show(WindowManager, "Generator Config Error".L10N(),
+                                $"Tile with index '{ invalidElement }' does not exist in tile set '{ tileSet.SetName }'!".L10N(), MessageBoxButtons.OK);
                         return null;
                     }
                 }

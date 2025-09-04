@@ -1,8 +1,9 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations.Classes;
 using TSMapEditor.UI.Controls;
@@ -43,7 +44,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblTerrainTypes.X = Constants.UIEmptySideSpace;
                 lblTerrainTypes.Y = y;
                 lblTerrainTypes.FontIndex = Constants.UIBoldFont;
-                lblTerrainTypes.Text = $"Terrain Types (Group #{i + 1})";
+                lblTerrainTypes.Text = $"Terrain Types (Group #{i + 1})".L10N();
                 AddChild(lblTerrainTypes);
 
                 var tbTerrainTypes = new EditorTextBox(WindowManager);
@@ -58,7 +59,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblOpenChance.Name = nameof(lblOpenChance) + i;
                 lblOpenChance.X = tbTerrainTypes.Right + Constants.UIHorizontalSpacing;
                 lblOpenChance.Y = lblTerrainTypes.Y;
-                lblOpenChance.Text = "Open cell chance:";
+                lblOpenChance.Text = "Open cell chance:".L10N();
                 AddChild(lblOpenChance);
 
                 var tbOpenChance = new EditorNumberTextBox(WindowManager);
@@ -74,7 +75,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblOccupiedChance.Name = nameof(lblOccupiedChance) + i;
                 lblOccupiedChance.X = tbOpenChance.Right + Constants.UIHorizontalSpacing;
                 lblOccupiedChance.Y = lblOpenChance.Y;
-                lblOccupiedChance.Text = "Occupied cell chance:";
+                lblOccupiedChance.Text = "Occupied cell chance:".L10N();
                 AddChild(lblOccupiedChance);
 
                 var tbOccupiedChance = new EditorNumberTextBox(WindowManager);
@@ -111,8 +112,8 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                     var terrainType = map.Rules.TerrainTypes.Find(tt => tt.ININame == parts[a]);
                     if (terrainType == null)
                     {
-                        EditorMessageBox.Show(WindowManager, "Generator Config Error",
-                            $"Specified terrain type '{ parts[a] }' does not exist!", MessageBoxButtons.OK);
+                        EditorMessageBox.Show(WindowManager, "Generator Config Error".L10N(),
+                            $"Specified terrain type '{ parts[a] }' does not exist!".L10N(), MessageBoxButtons.OK);
                         return null;
                     }
                     terrainTypes.Add(terrainType);

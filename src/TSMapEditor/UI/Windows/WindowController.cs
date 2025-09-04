@@ -1,8 +1,9 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Rendering;
 using TSMapEditor.UI.Controls;
@@ -250,8 +251,8 @@ namespace TSMapEditor.UI.Windows
         {
             if (e.Tag.Trigger == null)
             {
-                EditorMessageBox.Show(windowParentControl.WindowManager, "No trigger attached",
-                    "The specified Tag has no attached Trigger!", MessageBoxButtons.OK);
+                EditorMessageBox.Show(windowParentControl.WindowManager, "No trigger attached".L10N(),
+                    "The specified Tag has no attached Trigger!".L10N(), MessageBoxButtons.OK);
 
                 return;
             }

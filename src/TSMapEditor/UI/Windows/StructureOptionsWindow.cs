@@ -1,8 +1,9 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
 using TSMapEditor.Rendering;
@@ -108,7 +109,7 @@ namespace TSMapEditor.UI.Windows
         private void FillUpgradesForDropDown(XNADropDown dropDown, int index, List<BuildingType> upgrades)
         {
             dropDown.Items.Clear();
-            dropDown.AddItem("None");
+            dropDown.AddItem("None".L10N());
             dropDown.AllowDropDown = false;
 
             if (structure.ObjectType.Upgrades > index)

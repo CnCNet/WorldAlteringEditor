@@ -1,8 +1,9 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations.Classes;
 using TSMapEditor.UI.Controls;
@@ -43,7 +44,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblSmudgeTypes.X = Constants.UIEmptySideSpace;
                 lblSmudgeTypes.Y = y;
                 lblSmudgeTypes.FontIndex = Constants.UIBoldFont;
-                lblSmudgeTypes.Text = $"Smudge Types (Group #{i + 1})";
+                lblSmudgeTypes.Text = $"Smudge Types (Group #{i + 1})".L10N();
                 AddChild(lblSmudgeTypes);
 
                 var tbSmudgeTypes = new EditorTextBox(WindowManager);
@@ -58,7 +59,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblOpenChance.Name = nameof(lblOpenChance) + i;
                 lblOpenChance.X = tbSmudgeTypes.Right + Constants.UIHorizontalSpacing;
                 lblOpenChance.Y = lblSmudgeTypes.Y;
-                lblOpenChance.Text = "Open cell chance:";
+                lblOpenChance.Text = "Open cell chance:".L10N();
                 AddChild(lblOpenChance);
 
                 var tbOpenChance = new EditorNumberTextBox(WindowManager);
@@ -74,7 +75,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblOccupiedChance.Name = nameof(lblOccupiedChance) + i;
                 lblOccupiedChance.X = tbOpenChance.Right + Constants.UIHorizontalSpacing;
                 lblOccupiedChance.Y = lblOpenChance.Y;
-                lblOccupiedChance.Text = "Occupied cell chance:";
+                lblOccupiedChance.Text = "Occupied cell chance:".L10N();
                 AddChild(lblOccupiedChance);
 
                 var tbOccupiedChance = new EditorNumberTextBox(WindowManager);
@@ -109,8 +110,8 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                     var smudgeType = map.Rules.SmudgeTypes.Find(tt => tt.ININame == parts[a]);
                     if (smudgeType == null)
                     {
-                        EditorMessageBox.Show(WindowManager, "Generator Config Error",
-                            $"Specified smudge type '{ parts[a] }' does not exist!", MessageBoxButtons.OK);
+                        EditorMessageBox.Show(WindowManager, "Generator Config Error".L10N(),
+                            $"Specified smudge type '{ parts[a] }' does not exist!".L10N(), MessageBoxButtons.OK);
                         return null;
                     }
                     smudgeTypes.Add(smudgeType);

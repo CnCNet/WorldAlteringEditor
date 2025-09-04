@@ -15,6 +15,8 @@ using TSMapEditor.UI.Sidebar;
 using TSMapEditor.UI.TopBar;
 using TSMapEditor.UI.Windows;
 using TSMapEditor.UI.Windows.MainMenuWindows;
+using TSMapEditor.Extensions;
+using TSMapEditor.I18N;
 
 namespace TSMapEditor.UI
 {
@@ -98,6 +100,9 @@ namespace TSMapEditor.UI
 
             // We should be the first control to subscribe to this event
             WindowManager.WindowSizeChangedByUser += WindowManager_WindowSizeChangedByUser;
+
+            // Set up INI localization parser
+            WindowManager.SetINIParser(TranslationINIParser.Instance);
 
             InitTheme();
 

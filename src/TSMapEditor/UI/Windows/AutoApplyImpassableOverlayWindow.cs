@@ -1,7 +1,8 @@
-﻿using Rampastring.Tools;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
+using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.UI.Controls;
@@ -64,9 +65,9 @@ namespace TSMapEditor.UI.Windows
         {
             if (impassableOverlayType == null)
             {
-                EditorMessageBox.Show(WindowManager, "Cannot apply impassable overlay",
-                    "The editor has not been configured properly for applying impassable overlay.\r\n\r\n" +
-                    "Expected overlay type not found, name: " + overlayTypeName, MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Cannot apply impassable overlay".L10N(),
+                    "The editor has not been configured properly for applying impassable overlay.\r\n\r\n".L10N() +
+                    "Expected overlay type not found, name: ".L10N() + overlayTypeName, MessageBoxButtons.OK);
 
                 return;
             }

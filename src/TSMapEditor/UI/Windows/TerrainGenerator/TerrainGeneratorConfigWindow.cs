@@ -1,9 +1,10 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations.Classes;
 using TSMapEditor.Settings;
@@ -48,7 +49,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             var lblHeader = new XNALabel(WindowManager);
             lblHeader.Name = nameof(lblHeader);
             lblHeader.FontIndex = Constants.UIBoldFont;
-            lblHeader.Text = "TERRAIN GENERATOR CONFIGURATION";
+            lblHeader.Text = "TERRAIN GENERATOR CONFIGURATION".L10N();
             lblHeader.Y = Constants.UIEmptyTopSpace;
             AddChild(lblHeader);
             lblHeader.CenterOnParentHorizontally();
@@ -57,7 +58,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             lblPresets.Name = nameof(lblPresets);
             lblPresets.Y = lblHeader.Bottom + Constants.UIEmptyTopSpace;
             lblPresets.X = Constants.UIEmptySideSpace;
-            lblPresets.Text = "Load Preset Config:";
+            lblPresets.Text = "Load Preset Config:".L10N();
             AddChild(lblPresets);
 
             ddPresets = new XNADropDown(WindowManager);
@@ -74,7 +75,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             btnSaveConfig.Width = 160;
             btnSaveConfig.X = ddPresets.Right + Constants.UIHorizontalSpacing * 2;
             btnSaveConfig.Y = ddPresets.Y;
-            btnSaveConfig.Text = "Save Custom Preset...";
+            btnSaveConfig.Text = "Save Custom Preset...".L10N();
             AddChild(btnSaveConfig);
             btnSaveConfig.LeftClick += BtnSaveConfig_LeftClick;
 
@@ -83,7 +84,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             btnDeleteConfig.Width = 160;
             btnDeleteConfig.X = btnSaveConfig.Right + Constants.UIHorizontalSpacing;
             btnDeleteConfig.Y = btnSaveConfig.Y;
-            btnDeleteConfig.Text = "Delete Custom Preset...";
+            btnDeleteConfig.Text = "Delete Custom Preset...".L10N();
             AddChild(btnDeleteConfig);
             btnDeleteConfig.LeftClick += BtnDeleteConfig_LeftClick;
 
@@ -108,10 +109,10 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             tabControl.Width = Width;
             tabControl.Height = idleTexture.Height;
             tabControl.FontIndex = Constants.UIBoldFont;
-            tabControl.AddTab("Terrain Types", idleTexture, selectedTexture);
-            tabControl.AddTab("Terrain Tiles", idleTexture, selectedTexture);
-            tabControl.AddTab("Overlays", idleTexture, selectedTexture);
-            tabControl.AddTab("Smudges", idleTexture, selectedTexture);
+            tabControl.AddTab("Terrain Types".L10N(), idleTexture, selectedTexture);
+            tabControl.AddTab("Terrain Tiles".L10N(), idleTexture, selectedTexture);
+            tabControl.AddTab("Overlays".L10N(), idleTexture, selectedTexture);
+            tabControl.AddTab("Smudges".L10N(), idleTexture, selectedTexture);
             AddChild(tabControl);
             tabControl.SelectedIndexChanged += (s, e) => { HideAllPanels(); panels[tabControl.SelectedTab].Enable(); };
 
@@ -161,7 +162,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             btnApply.Name = nameof(btnApply);
             btnApply.Y = terrainTypeGroupsPanel.Bottom + Constants.UIEmptyTopSpace;
             btnApply.Width = 100;
-            btnApply.Text = "Apply";
+            btnApply.Text = "Apply".L10N();
             AddChild(btnApply);
             btnApply.CenterOnParentHorizontally();
             btnApply.LeftClick += BtnApply_LeftClick;
@@ -172,7 +173,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             closeButton.Name = "btnCloseX";
             closeButton.Width = Constants.UIButtonHeight;
             closeButton.Height = Constants.UIButtonHeight;
-            closeButton.Text = "X";
+            closeButton.Text = "X".L10N();
             closeButton.X = Width - closeButton.Width;
             closeButton.Y = 0;
             AddChild(closeButton);
@@ -211,8 +212,8 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
 
             if (!success)
             {
-                EditorMessageBox.Show(WindowManager, "Failed to save presets", 
-                    "Failed to save terrain generator presets. Please see the map editor logfile for details.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Failed to save presets".L10N(), 
+                    "Failed to save terrain generator presets. Please see the map editor logfile for details.".L10N(), MessageBoxButtons.OK);
             }
         }
 
@@ -230,8 +231,8 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
 
             if (!success)
             {
-                EditorMessageBox.Show(WindowManager, "Failed to save presets",
-                    "Failed to save terrain generator presets. Please see the map editor logfile for details.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Failed to save presets".L10N(),
+                    "Failed to save terrain generator presets. Please see the map editor logfile for details.".L10N(), MessageBoxButtons.OK);
             }
         }
 
@@ -296,7 +297,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
 
         private void BtnApply_LeftClick(object sender, EventArgs e)
         {
-            TerrainGeneratorConfig = GatherConfiguration("Customized Configuration");
+            TerrainGeneratorConfig = GatherConfiguration("Customized Configuration".L10N());
 
             if (TerrainGeneratorConfig != null)
             {
@@ -322,7 +323,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 }
                 else
                 {
-                    LoadConfig(new TerrainGeneratorConfiguration("Blank Config",
+                    LoadConfig(new TerrainGeneratorConfiguration("Blank Config".L10N(),
                         map.LoadedTheaterName,
                         true,
                         new List<TerrainGeneratorTerrainTypeGroup>(),

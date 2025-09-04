@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Misc;
 using TSMapEditor.Models;
@@ -681,7 +682,7 @@ namespace TSMapEditor.UI
 
                 foreach (KeyboardCommand command in KeyboardCommands.Instance.Commands)
                 {
-                    text.Append(command.UIName + ": " + command.GetKeyDisplayString());
+                    text.Append(command.UIName.L10N() + ": " + command.GetKeyDisplayString());
                     text.Append(Environment.NewLine);
                 }
 

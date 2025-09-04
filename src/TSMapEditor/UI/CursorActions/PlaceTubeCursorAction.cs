@@ -1,8 +1,9 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.Input;
 using System;
 using System.Collections.Generic;
+using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations.Classes;
@@ -73,12 +74,13 @@ namespace TSMapEditor.UI.CursorActions
 
             cellTopLeftPoint = cellTopLeftPoint.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
 
-            const string text = "Click on cells to draw a tunnel. Once ready, use one of the options below:\r\n\r\n" +
+            string text = "Click on cells to draw a tunnel. Once ready, use one of the options below:\r\n\r\n" +
                 "Double-click to confirm\r\n" +
                 "Double-click while holding Shift to create bidirectional tunnel\r\n" +
                 "Press ESC to clear\r\n" +
                 "Press B to step back\r\n" +
                 "Right-click to exit";
+            text = text.L10N();
             var textDimensions = Renderer.GetTextDimensions(text, Constants.UIBoldFont);
             int x = cellTopLeftPoint.X - (int)(textDimensions.X - Constants.CellSizeX) / 2;
 

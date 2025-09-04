@@ -1,10 +1,11 @@
-﻿using Rampastring.Tools;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations.Classes;
 using TSMapEditor.UI.Controls;
@@ -47,7 +48,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblTileSet.X = Constants.UIEmptySideSpace;
                 lblTileSet.Y = y;
                 lblTileSet.FontIndex = Constants.UIBoldFont;
-                lblTileSet.Text = $"Overlay Type Name (Group #{i + 1})";
+                lblTileSet.Text = $"Overlay Type Name (Group #{i + 1})".L10N();
                 AddChild(lblTileSet);
 
                 var selTileSet = new EditorTextBox(WindowManager);
@@ -62,7 +63,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblTileIndices.Name = nameof(lblTileIndices) + i;
                 lblTileIndices.X = selTileSet.Right + Constants.UIHorizontalSpacing;
                 lblTileIndices.Y = lblTileSet.Y;
-                lblTileIndices.Text = $"Indexes of frames to place (leave blank for all)";
+                lblTileIndices.Text = $"Indexes of frames to place (leave blank for all)".L10N();
                 AddChild(lblTileIndices);
 
                 var tbTileIndices = new EditorTextBox(WindowManager);
@@ -77,7 +78,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblOpenChance.Name = nameof(lblOpenChance) + i;
                 lblOpenChance.X = tbTileIndices.Right + Constants.UIHorizontalSpacing;
                 lblOpenChance.Y = lblTileSet.Y;
-                lblOpenChance.Text = "Open cell chance:";
+                lblOpenChance.Text = "Open cell chance:".L10N();
                 AddChild(lblOpenChance);
 
                 var tbOpenChance = new EditorNumberTextBox(WindowManager);
@@ -93,7 +94,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblOccupiedChance.Name = nameof(lblOccupiedChance) + i;
                 lblOccupiedChance.X = tbOpenChance.Right + Constants.UIHorizontalSpacing;
                 lblOccupiedChance.Y = lblOpenChance.Y;
-                lblOccupiedChance.Text = "Occupied cell chance:";
+                lblOccupiedChance.Text = "Occupied cell chance:".L10N();
                 AddChild(lblOccupiedChance);
 
                 var tbOccupiedChance = new EditorNumberTextBox(WindowManager);
@@ -124,8 +125,8 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 var overlayType = map.Rules.OverlayTypes.Find(ot => ot.ININame == overlayTypeName);
                 if (overlayType == null)
                 {
-                    EditorMessageBox.Show(WindowManager, "Generator Config Error",
-                        $"An overlay type named '{ overlayTypeName }' does not exist! Make sure you typed the overlay type's INI name and spelled it correctly.", MessageBoxButtons.OK);
+                    EditorMessageBox.Show(WindowManager, "Generator Config Error".L10N(),
+                            $"An overlay type named '{ overlayTypeName }' does not exist! Make sure you typed the overlay type's INI name and spelled it correctly.".L10N(), MessageBoxButtons.OK);
                     return null;
                 }
 
@@ -139,8 +140,8 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
 
                     if (invalidElement != 0) // this can never be 0 if an invalid element exists, because each valid overlay has at least 1 frame
                     {
-                        EditorMessageBox.Show(WindowManager, "Generator Config Error",
-                            $"Frame '{ invalidElement }' does not exist in overlay type '{ overlayType.ININame }'!", MessageBoxButtons.OK);
+                        EditorMessageBox.Show(WindowManager, "Generator Config Error".L10N(),
+                                $"Frame '{ invalidElement }' does not exist in overlay type '{ overlayType.ININame }'!".L10N(), MessageBoxButtons.OK);
                         return null;
                     }
                 }

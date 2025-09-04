@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TSMapEditor.CCEngine;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Models.ArtConfig;
 using TSMapEditor.Rendering;
@@ -55,7 +56,7 @@ namespace TSMapEditor.UI.Sidebar
             lblOwner.Name = nameof(lblOwner);
             lblOwner.X = Constants.UIEmptySideSpace;
             lblOwner.Y = Constants.UIEmptyTopSpace;
-            lblOwner.Text = "Owner:";
+            lblOwner.Text = "Owner:".L10N();
             AddChild(lblOwner);
 
             ddOwner = new XNADropDown(WindowManager);
@@ -72,7 +73,7 @@ namespace TSMapEditor.UI.Sidebar
             SearchBox.Y = ddOwner.Bottom + Constants.UIEmptyTopSpace;
             SearchBox.Width = Width - Constants.UIEmptySideSpace * 2;
             SearchBox.Height = Constants.UITextBoxHeight;
-            SearchBox.Suggestion = "Search object... (CTRL + F)";
+            SearchBox.Suggestion = "Search object... (CTRL + F)".L10N();
             AddChild(SearchBox);
             SearchBox.TextChanged += SearchBox_TextChanged;
             SearchBox.EnterPressed += SearchBox_EnterPressed;

@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Globalization;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
+using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations;
@@ -63,8 +64,8 @@ namespace TSMapEditor.UI.Windows
             if (map.Waypoints.Exists(w => w.Identifier == tbWaypointNumber.Value))
             {
                 EditorMessageBox.Show(WindowManager,
-                    "Waypoint already exists",
-                    $"A waypoint with the given number {tbWaypointNumber.Value} already exists on the map!",
+                    "Waypoint already exists".L10N(),
+                    $"A waypoint with the given number {tbWaypointNumber.Value} already exists on the map!".L10N(),
                     MessageBoxButtons.OK);
 
                 return;
@@ -84,8 +85,8 @@ namespace TSMapEditor.UI.Windows
             if (map.Waypoints.Count == Constants.MaxWaypoint)
             {
                 EditorMessageBox.Show(WindowManager,
-                    "Maximum waypoints reached",
-                    "All valid waypoints on the map are already in use!",
+                    "Maximum waypoints reached".L10N(),
+                    "All valid waypoints on the map are already in use!".L10N(),
                     MessageBoxButtons.OK);
 
                 return;

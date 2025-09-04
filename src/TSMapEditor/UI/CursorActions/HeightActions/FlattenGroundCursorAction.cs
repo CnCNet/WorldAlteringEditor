@@ -1,4 +1,5 @@
-﻿using TSMapEditor.GameMath;
+using TSMapEditor.Extensions;
+using TSMapEditor.GameMath;
 using TSMapEditor.Mutations.Classes.HeightMutations;
 
 namespace TSMapEditor.UI.CursorActions.HeightActions
@@ -19,7 +20,7 @@ namespace TSMapEditor.UI.CursorActions.HeightActions
 
         private int desiredHeightLevel = -1;
 
-        public override string GetName() => "Flatten Ground";
+        public override string GetName() => "Flatten Ground".L10N();
 
         public override void OnActionEnter()
         {

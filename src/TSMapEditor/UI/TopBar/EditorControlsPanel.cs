@@ -1,8 +1,9 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Linq;
 using TSMapEditor.CCEngine;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Rendering;
 using TSMapEditor.UI.Controls;
@@ -187,7 +188,7 @@ namespace TSMapEditor.UI.TopBar
             btnClearTerrain.LeftClick += (s, e) => EnterLATPlacementMode(0);
             latPanel.AddChild(btnClearTerrain);
             var clearToolTip = new ToolTip(WindowManager, btnClearTerrain);
-            clearToolTip.Text = "Clear";
+            clearToolTip.Text = "Clear".L10N();
             clearToolTip.ToolTipDelay = 0;
 
             int prevRight = btnClearTerrain.Right;
@@ -247,7 +248,7 @@ namespace TSMapEditor.UI.TopBar
                 string[] allBases = map.TheaterInstance.Theater.LATGrounds.FindAll(lg => lg.GroundTileSet == autoLATGround.GroundTileSet).Select(lg =>
                 {
                     if (lg.BaseTileSet == null)
-                        return "Clear";
+                        return "Clear".L10N();
 
                     return lg.BaseTileSet.SetName;
                 }).ToArray();

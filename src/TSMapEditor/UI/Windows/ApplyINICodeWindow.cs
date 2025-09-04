@@ -1,8 +1,9 @@
-﻿using Rampastring.Tools;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.IO;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.UI.Controls;
 
@@ -40,8 +41,8 @@ namespace TSMapEditor.UI.Windows
             string filePath = (string)lbINIFiles.SelectedItem.Tag;
             if (!File.Exists(filePath))
             {
-                EditorMessageBox.Show(WindowManager, "Can't find file",
-                    "The selected INI file doesn't exist! Maybe it was deleted?", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Can't find file".L10N(),
+                    "The selected INI file doesn't exist! Maybe it was deleted?".L10N(), MessageBoxButtons.OK);
 
                 return;
             }
@@ -53,7 +54,7 @@ namespace TSMapEditor.UI.Windows
             {
                 confirmation = Renderer.FixText(confirmation, Constants.UIDefaultFont, Width).Text;
 
-                var messageBox = EditorMessageBox.Show(WindowManager, "Are you sure?",
+                var messageBox = EditorMessageBox.Show(WindowManager, "Are you sure?".L10N(),
                     confirmation, MessageBoxButtons.YesNo);
                 messageBox.YesClickedAction = (_) => ApplyCode();
             }
@@ -68,7 +69,7 @@ namespace TSMapEditor.UI.Windows
             if (stagingINI == null)
                 throw new InvalidOperationException("Staging INI is null!");
 
-            string successMessage = "INI code successfully added to map.";
+            string successMessage = "INI code successfully added to map.".L10N();
             successMessage = stagingINI.GetStringValue(EditorSection, "Success", successMessage);
             successMessage = Renderer.FixText(successMessage, Constants.UIDefaultFont, Width).Text;
 
@@ -76,7 +77,7 @@ namespace TSMapEditor.UI.Windows
 
             IniFile.ConsolidateIniFiles(map.LoadedINI, stagingINI);
 
-            EditorMessageBox.Show(WindowManager, "Code Applied", successMessage, MessageBoxButtons.OK);
+            EditorMessageBox.Show(WindowManager, "Code Applied".L10N(), successMessage, MessageBoxButtons.OK);
         }
 
         public void Open()
@@ -88,7 +89,7 @@ namespace TSMapEditor.UI.Windows
             if (!Directory.Exists(directoryPath))
             {
                 Logger.Log("Map INI code directory not found!");
-                EditorMessageBox.Show(WindowManager, "Error", "Map INI code directory not found!\r\n\r\nExpected path: " + directoryPath, MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Error".L10N(), "Map INI code directory not found!\r\n\r\nExpected path: ".L10N() + directoryPath, MessageBoxButtons.OK);
                 return;
             }
 

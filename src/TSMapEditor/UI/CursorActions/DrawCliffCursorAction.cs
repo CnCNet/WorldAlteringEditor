@@ -1,8 +1,9 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.Input;
 using System;
 using System.Collections.Generic;
+using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations.Classes;
@@ -20,7 +21,7 @@ namespace TSMapEditor.UI.CursorActions
             ActionExited += UndoOnExit;
         }
 
-        public override string GetName() => "Draw Connected Tiles";
+        public override string GetName() => "Draw Connected Tiles".L10N();
 
         public override bool HandlesKeyboardInput => true;
 

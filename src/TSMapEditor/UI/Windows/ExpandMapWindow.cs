@@ -1,6 +1,7 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
+using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.UI.Controls;
@@ -43,8 +44,8 @@ namespace TSMapEditor.UI.Windows
             int newWidth = map.Size.X + tbExpandEast.Value + tbExpandWest.Value;
             if (newWidth <= 0 || newWidth > Constants.MaxMapWidth)
             {
-                EditorMessageBox.Show(WindowManager, "Invalid width",
-                    $"The given values would make the map's width {newWidth}.\r\nIt should be between 1 and {Constants.MaxMapWidth}.",
+                EditorMessageBox.Show(WindowManager, "Invalid width".L10N(),
+                    $"The given values would make the map's width {newWidth}.\r\nIt should be between 1 and {Constants.MaxMapWidth}.".L10N(),
                     MessageBoxButtons.OK);
 
                 return;
@@ -53,8 +54,8 @@ namespace TSMapEditor.UI.Windows
             int newHeight = map.Size.Y + tbExpandNorth.Value + tbExpandSouth.Value;
             if (newHeight <= 0 || newHeight > Constants.MaxMapHeight)
             {
-                EditorMessageBox.Show(WindowManager, "Invalid height",
-                    $"The given values would make the map's height {newHeight}.\r\nIt should be between 0 and {Constants.MaxMapHeight}.",
+                EditorMessageBox.Show(WindowManager, "Invalid height".L10N(),
+                    $"The given values would make the map's height {newHeight}.\r\nIt should be between 0 and {Constants.MaxMapHeight}.".L10N(),
                     MessageBoxButtons.OK);
 
                 return;
