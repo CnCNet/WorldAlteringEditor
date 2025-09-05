@@ -25,7 +25,7 @@ namespace TSMapEditor.UI.CursorActions
             cellPixelCoords = new Point2D(cellPixelCoords.X + Constants.CellSizeX / 2, cellPixelCoords.Y);
             cellPixelCoords = cellPixelCoords.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
 
-            string text = Translate("Text", "Delete Tunnel");
+            string text = Translate("Text", "Delete Tube");
             var textDimensions = Renderer.GetTextDimensions(text, Constants.UIBoldFont);
             int x = cellPixelCoords.X - (int)(textDimensions.X / 2);
 
