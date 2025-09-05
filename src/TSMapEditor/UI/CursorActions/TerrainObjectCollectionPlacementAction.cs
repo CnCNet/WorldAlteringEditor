@@ -11,7 +11,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Place TerrainObject Collection";
+        public override string GetName() => Translate("Name", "Place TerrainObject Collection");
 
         private TerrainObject terrainObject;
         private TerrainObjectCollection _terrainObjectCollection;

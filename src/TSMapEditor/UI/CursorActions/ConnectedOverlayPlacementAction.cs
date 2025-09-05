@@ -12,7 +12,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Place Connected Overlay";
+        public override string GetName() => Translate("Name", "Place Connected Overlay");
         public ConnectedOverlayType ConnectedOverlayType { get; set; }
         struct OriginalOverlayInfo
         {

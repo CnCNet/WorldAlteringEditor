@@ -15,7 +15,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Place Overlay";
+        public override string GetName() => Translate("Name", "Place Overlay");
 
         public event EventHandler OverlayTypeChanged;
 

@@ -20,7 +20,7 @@ namespace TSMapEditor.UI.CursorActions
             ActionExited += UndoOnExit;
         }
 
-        public override string GetName() => "Draw Connected Tiles";
+        public override string GetName() => Translate("Name", "Draw Connected Tiles");
 
         public override bool HandlesKeyboardInput => true;
 
@@ -44,13 +44,13 @@ namespace TSMapEditor.UI.CursorActions
 
         public override void DrawPreview(Point2D cellCoords, Point2D cameraTopLeftPoint)
         {
-            const string mainText = "Click on a cell to place a new vertex.\r\n\r\n" +
+            string mainText = Translate("MainText", "Click on a cell to place a new vertex.\r\n\r\n" +
                 "ENTER to confirm\r\n" +
-                "Backspace to go back one step\r\n";
+                "Backspace to go back one step\r\n");
 
-            const string tabText = "TAB to toggle between front and back sides\r\n";
-            const string pageUpDownText = "PageUp to raise the tiles, PageDown to lower them\r\n";
-            const string exitText = "Right-click or ESC to exit";
+            string tabText = Translate("TabText", "TAB to toggle between front and back sides\r\n");
+            string pageUpDownText = Translate("PageUpDownText", "PageUp to raise the tiles, PageDown to lower them\r\n");
+            string exitText = Translate("ExitText", "Right-click or ESC to exit");
 
             string text = (Constants.IsFlatWorld, cliffType.FrontOnly) switch
             {

@@ -13,7 +13,7 @@ namespace TSMapEditor.UI.CursorActions
             this.keyboard = keyboard;
         }
 
-        public override string GetName() => "Place Aircraft";
+        public override string GetName() => Translate("Name", "Place Aircraft");
 
         private Aircraft aircraft;
 

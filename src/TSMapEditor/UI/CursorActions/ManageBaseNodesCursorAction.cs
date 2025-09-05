@@ -25,7 +25,7 @@ namespace TSMapEditor.UI.CursorActions
         private BaseNode draggedBaseNode = null;
         private bool isDragging = false;
 
-        public override string GetName() => "Manage Base Nodes";
+        public override string GetName() => Translate("Name", "Manage Base Nodes");
 
         public override bool DrawCellCursor => true;
 
@@ -35,14 +35,14 @@ namespace TSMapEditor.UI.CursorActions
 
         public override void DrawPreview(Point2D cellCoords, Point2D cameraTopLeftPoint)
         {
-            string text = "Placement actions:" + Environment.NewLine +
-                "Click on building to place a base node." + Environment.NewLine +
-                "Hold SHIFT while clicking to also delete the source building." + Environment.NewLine +
-                "Hold CTRL while clicking to erase a base node." + Environment.NewLine + Environment.NewLine +
-                "Hold M while dragging a base node to move it." + Environment.NewLine + Environment.NewLine +
-                "Ordering actions:" + Environment.NewLine +
-                "Press E while hovering over a base node to shift it to be built earlier." + Environment.NewLine +
-                "Press D while hovering over a base node to shift it to be built later.";
+            string text = Translate("Text","Placement actions:") + Environment.NewLine +
+                Translate("PlaceText","Click on building to place a base node.") + Environment.NewLine +
+                Translate("DeleteSourceText", "Hold SHIFT while clicking to also delete the source building.") + Environment.NewLine +
+                Translate("EraseText", "Hold CTRL while clicking to erase a base node.") + Environment.NewLine + Environment.NewLine +
+                Translate("MoveText", "Hold M while dragging a base node to move it.") + Environment.NewLine + Environment.NewLine +
+                Translate("OrderText", "Ordering actions:") + Environment.NewLine +
+                Translate("EarlierText", "Press E while hovering over a base node to shift it to be built earlier.") + Environment.NewLine +
+                Translate("LaterText", "Press D while hovering over a base node to shift it to be built later.");
 
             DrawText(cellCoords, cameraTopLeftPoint, 60, -240, text, UISettings.ActiveSettings.AltColor);
 

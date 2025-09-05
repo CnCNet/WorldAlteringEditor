@@ -12,7 +12,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Change Attached Tag";
+        public override string GetName() => Translate("Name", "Change Attached Tag");
 
         public Tag TagToAttach { get; set; }
 
@@ -28,7 +28,7 @@ namespace TSMapEditor.UI.CursorActions
             TechnoBase cellTechno = mapCell.GetTechno();
             Color textColor = cellTechno == null || cellTechno.AttachedTag == TagToAttach ? Color.Gray : Color.HotPink;
 
-            const string text = "Attach Tag";
+            string text = Translate("Text", "Attach Tag");
             var textDimensions = Renderer.GetTextDimensions(text, Constants.UIBoldFont);
             int x = cellTopLeftPoint.X - (int)(textDimensions.X - Constants.CellSizeX) / 2;
 

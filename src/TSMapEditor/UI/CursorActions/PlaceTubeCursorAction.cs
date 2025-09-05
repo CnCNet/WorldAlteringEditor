@@ -18,7 +18,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Place Tube";
+        public override string GetName() => Translate("Name", "Place Tube");
 
         public override bool HandlesKeyboardInput => true;
 
@@ -73,12 +73,12 @@ namespace TSMapEditor.UI.CursorActions
 
             cellTopLeftPoint = cellTopLeftPoint.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
 
-            const string text = "Click on cells to draw a tunnel. Once ready, use one of the options below:\r\n\r\n" +
-                "Double-click to confirm\r\n" +
-                "Double-click while holding Shift to create bidirectional tunnel\r\n" +
-                "Press ESC to clear\r\n" +
-                "Press B to step back\r\n" +
-                "Right-click to exit";
+            string text = Translate("DrawText", "Click on cells to draw a tunnel. Once ready, use one of the options below:\r\n\r\n") +
+                Translate("ConfirmText", "Double-click to confirm\r\n") +
+                Translate("BidirectionalText", "Double-click while holding Shift to create bidirectional tunnel\r\n") +
+                Translate("ClearText", "Press ESC to clear\r\n") +
+                Translate("BackText", "Press B to step back\r\n") +
+                Translate("ExitText", "Right-click to exit");
             var textDimensions = Renderer.GetTextDimensions(text, Constants.UIBoldFont);
             int x = cellTopLeftPoint.X - (int)(textDimensions.X - Constants.CellSizeX) / 2;
 

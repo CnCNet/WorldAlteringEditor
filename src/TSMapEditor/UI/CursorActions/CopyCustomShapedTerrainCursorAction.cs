@@ -18,7 +18,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Copy Terrain (Custom Shape)";
+        public override string GetName() => Translate("Name", "Copy Terrain (Custom Shape)");
 
 
         public override bool HandlesKeyboardInput => true;
@@ -146,9 +146,9 @@ namespace TSMapEditor.UI.CursorActions
                 }
             }
 
-            string text = "Press left click on cells to mark them to be copied." + Environment.NewLine + Environment.NewLine +
-                    "Hold SHIFT while pressing to remove cells." + Environment.NewLine + Environment.NewLine +
-                    "Press ENTER when ready to copy the cells to the clipboard.";
+            string text = Translate("LeftClickText", "Press left click on cells to mark them to be copied.") + Environment.NewLine + Environment.NewLine +
+                    Translate("ShiftText", "Hold SHIFT while pressing to remove cells.") + Environment.NewLine + Environment.NewLine +
+                    Translate("EnterText", "Press ENTER when ready to copy the cells to the clipboard.");
 
             DrawText(cellCoords, cameraTopLeftPoint, 90, -200, text, Color.Yellow);
         }

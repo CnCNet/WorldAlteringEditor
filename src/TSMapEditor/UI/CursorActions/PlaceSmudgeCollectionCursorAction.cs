@@ -11,7 +11,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Place Smudge Collection";
+        public override string GetName() => Translate("Name", "Place Smudge Collection");
 
         private Smudge oldSmudge;
         private Smudge smudge;

@@ -16,7 +16,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Copy Terrain (Rectangular)";
+        public override string GetName() => Translate("Name", "Copy Terrain (Rectangular)");
 
         public Point2D? StartCellCoords { get; set; } = null;
 

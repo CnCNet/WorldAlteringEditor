@@ -14,7 +14,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Place Infantry";
+        public override string GetName() => Translate("Name", "Place Infantry");
 
         private Infantry infantry;
 

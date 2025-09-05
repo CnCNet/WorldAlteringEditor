@@ -22,7 +22,7 @@ namespace TSMapEditor.UI.CursorActions
             this.keyboard = keyboard;
         }
 
-        public override string GetName() => "Paste Copied Terrain";
+        public override string GetName() => Translate("Name", "Paste Copied Terrain");
 
         public override bool HandlesKeyboardInput => true;
 

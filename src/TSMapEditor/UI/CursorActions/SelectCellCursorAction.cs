@@ -12,7 +12,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Select Cell";
+        public override string GetName() => Translate("Name", "Select Cell");
 
         public override bool DrawCellCursor => true;
 
