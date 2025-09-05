@@ -166,6 +166,10 @@ namespace TSMapEditor.UI.Controls
                 {
                     control.Height = Parser.Instance.GetExprValue(kvp.Value, control);
                 }
+                else if (kvp.Key == "$Text")
+                {
+                    control.Text = Parser.Instance.GetExprValueString(kvp.Value, "Text", control);
+                }
                 else if (kvp.Key == "$TextAnchor" && control is XNALabel)
                 {
                     // TODO refactor these to be more object-oriented
@@ -258,6 +262,15 @@ namespace TSMapEditor.UI.Controls
                     {
                         var toolTipControl = new ToolTip(WindowManager, child);
                         toolTipControl.Text = toolTipText;
+                        toolTipControl.ToolTipDelay = 0;
+                    }
+
+                    string parsedToolTipText = childSection.GetStringValue("$ToolTip", null);
+                    if (parsedToolTipText != null)
+                    {
+                        parsedToolTipText = Parser.Instance.GetExprValueString(parsedToolTipText, "ToolTip", child);
+                        var toolTipControl = new ToolTip(WindowManager, child);
+                        toolTipControl.Text = parsedToolTipText;
                         toolTipControl.ToolTipDelay = 0;
                     }
                 }

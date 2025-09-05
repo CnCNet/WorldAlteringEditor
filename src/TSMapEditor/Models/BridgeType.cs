@@ -76,6 +76,7 @@ namespace TSMapEditor.Models
         public BridgeType(IniSection iniSection, Rules rules)
         {
             Name = iniSection.SectionName;
+            UIName = Translate(this, Name, Name);
 
             string bridgeType = iniSection.GetStringValue("Kind", null);
             if (bridgeType == "Low")
@@ -88,10 +89,11 @@ namespace TSMapEditor.Models
             EastWest = new BridgeConfig(iniSection, BridgeDirection.EastWest, this, rules);
         }
 
-        public string Name;
-        public BridgeKind Kind;
+        public string Name { get; set; }
+        public string UIName { get; set; }
+        public BridgeKind Kind { get; set; }
 
-        public BridgeConfig NorthSouth;
-        public BridgeConfig EastWest;
+        public BridgeConfig NorthSouth { get; set; }
+        public BridgeConfig EastWest { get; set; }
     }
 }

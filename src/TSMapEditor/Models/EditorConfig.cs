@@ -370,7 +370,7 @@ namespace TSMapEditor.Models
             foreach (var key in keys)
             {
                 string value = iniFile.GetStringValue(sectionName, key, string.Empty);
-                var teamTypeFlag = new TeamTypeFlag(key, Conversions.BooleanFromString(value, false));
+                var teamTypeFlag = new TeamTypeFlag(key, Translate("TeamTypeFlag." + key, key), Conversions.BooleanFromString(value, false));
                 TeamTypeFlags.Add(teamTypeFlag);
             }
         }

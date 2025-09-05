@@ -436,7 +436,7 @@ namespace TSMapEditor.UI.Windows
             {
                 var checkBox = new XNACheckBox(WindowManager);
                 checkBox.Tag = teamTypeFlag.Name;
-                checkBox.Text = teamTypeFlag.Name;
+                checkBox.Text = teamTypeFlag.UIName;
                 panelBooleans.AddChild(checkBox);
                 checkBoxes.Add(checkBox);
 

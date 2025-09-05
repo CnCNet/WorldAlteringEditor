@@ -25,6 +25,7 @@ namespace TSMapEditor.UI
         {
             var smudgeCollection = new SmudgeCollection();
             smudgeCollection.Name = iniSection.GetStringValue("Name", "Unnamed Collection");
+            smudgeCollection.UIName = Translate(smudgeCollection, smudgeCollection.Name, smudgeCollection.Name);
             smudgeCollection.AllowedTheaters = iniSection.GetListValue("AllowedTheaters", ',', s => s);
 
             var entryList = new List<SmudgeCollectionEntry>();

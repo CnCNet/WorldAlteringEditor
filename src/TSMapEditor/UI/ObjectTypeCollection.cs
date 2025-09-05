@@ -6,6 +6,7 @@ namespace TSMapEditor.UI
     public abstract class ObjectTypeCollection
     {
         public string Name { get; set; }
+        public string UIName { get; set; }
 
         public List<string> AllowedTheaters { get; set; }
 

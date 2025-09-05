@@ -212,7 +212,6 @@ namespace TSMapEditor.UI
 
             Game.Window.AllowUserResizing = true;
             var form = (System.Windows.Forms.Form)System.Windows.Forms.Form.FromHandle(Game.Window.Handle);
-            form.MaximizeBox = false;
 
             var screen = System.Windows.Forms.Screen.FromHandle(Game.Window.Handle);
             int width = screen.Bounds.Width - 300;
@@ -309,7 +308,11 @@ namespace TSMapEditor.UI
             RefreshRenderResolution();
         }
 
-        private void WindowManager_GameClosing(object sender, EventArgs e) => mapFileWatcher.StopWatching();
+        private void WindowManager_GameClosing(object sender, EventArgs e)
+        {
+            mapFileWatcher.StopWatching();
+            TranslatorSetup.DumpMissingValues();
+        }
 
         private void InitTheme()
         {

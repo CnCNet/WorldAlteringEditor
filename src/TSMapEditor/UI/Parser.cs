@@ -48,6 +48,8 @@ namespace TSMapEditor.UI
 
         public string Input { get; private set; }
 
+        private string translationKeyName;
+
         private int tokenPlace;
         private XNAControl primaryControl;
         private XNAControl parsingControl;
@@ -87,6 +89,34 @@ namespace TSMapEditor.UI
         public void SetPrimaryControl(XNAControl primaryControl)
         {
             this.primaryControl = primaryControl;
+        }
+
+        public string GetExprValueString(string input, string translationKeyName, XNAControl parsingControl)
+        {
+            this.parsingControl = parsingControl;
+            this.translationKeyName = translationKeyName;
+            Input = input;
+            tokenPlace = 0;
+
+            string value = null;
+
+            while (true)
+            {
+                SkipWhitespace();
+
+                if (IsEndOfInput())
+                    return value;
+
+                char c = PeekChar();
+
+                switch (c)
+                {
+                    case '"':
+                        return GetLiteralString();
+                }
+
+                return GetFunctionStringValue();
+            }
         }
 
         public int GetExprValue(string input, XNAControl parsingControl)
@@ -167,7 +197,7 @@ namespace TSMapEditor.UI
                 }
                 else if (char.IsLower(c))
                 {
-                    value = GetFunctionValue();
+                    value = GetFunctionIntegerValue();
                 }
             }
         }
@@ -191,7 +221,7 @@ namespace TSMapEditor.UI
             }
             else if (char.IsLower(c))
             {
-                return GetFunctionValue();
+                return GetFunctionIntegerValue();
             }
             else if (c == '(')
             {
@@ -246,7 +276,7 @@ namespace TSMapEditor.UI
             return GetConstant(constantName);
         }
 
-        private int GetFunctionValue()
+        private (string, List<string>) GetFunctionNameAndParameters()
         {
             string functionName = GetIdentifier();
             SkipWhitespace();
@@ -263,29 +293,42 @@ namespace TSMapEditor.UI
 
                 sb.Clear();
                 int openParenCount = 0;
+                bool openQuote = false;
 
                 // Fetch single parameter, read until ',' or ')'
+                // Ignore these if there's a literal string marked with ""
                 while (true)
                 {
                     char c = PeekChar();
 
-                    if (c == ',')
+                    if (c == ',' && !openQuote)
                     {
                         break;
                     }
 
-                    if (c == '(')
+                    if (!openQuote)
                     {
-                        openParenCount++;
-                    }
-                    else if (c == ')')
-                    {
-                        openParenCount--;
-                        if (openParenCount < 0)
-                            break;
+                        if (c == '(')
+                        {
+                            openParenCount++;
+                        }
+                        else if (c == ')')
+                        {
+                            openParenCount--;
+                            if (openParenCount < 0)
+                                break;
+                        }
                     }
 
-                    sb.Append(c);
+                    if (c == '"')
+                    {
+                        openQuote = !openQuote;
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+
                     ConsumeChar(c);
                 }
 
@@ -300,6 +343,13 @@ namespace TSMapEditor.UI
 
             SkipWhitespace();
             ConsumeChar(')');
+
+            return (functionName, parameters);
+        }
+
+        private int GetFunctionIntegerValue()
+        {
+            (string functionName, List<string> parameters) = GetFunctionNameAndParameters();
 
             // Evaluate function
             switch (functionName)
@@ -335,6 +385,54 @@ namespace TSMapEditor.UI
                 case "horizontalCenterOnParent":
                     parsingControl.CenterOnParentHorizontally();
                     return parsingControl.X;
+
+                default:
+                    throw new INIConfigException("Unknown function " + functionName + " in expression " + Input);
+            }
+        }
+
+        private string GetLiteralString()
+        {
+            ConsumeChar('"');
+
+            var sb = new StringBuilder();
+
+            while (true)
+            {
+                char c = PeekChar();
+
+                if (c == '"')
+                    break;
+
+                sb.Append(c);
+            }
+
+            return sb.ToString();
+        }
+
+        private string GetFunctionStringValue()
+        {
+            (string functionName, List<string> parameters) = GetFunctionNameAndParameters();
+
+            switch (functionName)
+            {
+                case "translate":
+                    if (parameters.Count != 1)
+                        throw new InvalidOperationException($"Incorrect number of parameters for function {functionName} in expression {Input}");
+
+                    string identifier = primaryControl.Name + ".";
+                    if (primaryControl != parsingControl)
+                        identifier = identifier + parsingControl.Name + ".";
+
+                    if (!string.IsNullOrWhiteSpace(translationKeyName))
+                        identifier += translationKeyName;
+
+                    return Translate(identifier, parameters[0]);
+                case "translateWithoutContext":
+                    if (parameters.Count != 2)
+                        throw new InvalidOperationException($"Incorrect number of parameters for function {functionName} in expression {Input}");
+
+                    return Translate(parameters[0], parameters[1]);
                 default:
                     throw new INIConfigException("Unknown function " + functionName + " in expression " + Input);
             }

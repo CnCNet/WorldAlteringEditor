@@ -2,6 +2,7 @@
 using Rampastring.Tools;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using TSMapEditor.Models.Enums;
 
 namespace TSMapEditor.CCEngine
@@ -46,8 +47,9 @@ namespace TSMapEditor.CCEngine
         {
             var iniSection = iniFile.GetSection(sectionName);
             ID = iniSection.GetIntValue("IDOverride", ID);
-            Name = iniSection.GetStringValue(nameof(Name), Name);
-            Description = iniSection.GetStringValue(nameof(Description), Description);
+            string untranslatedName = iniSection.GetStringValue(nameof(Name), Name);
+            Name = Translate(this, untranslatedName + ".Name", untranslatedName);
+            Description = Translate(this, untranslatedName + ".Description", iniSection.GetStringValue(nameof(Description), Description));
             OptionsSectionName = iniSection.GetStringValue(nameof(OptionsSectionName), OptionsSectionName);
             ParamDescription = iniSection.GetStringValue(nameof(ParamDescription), ParamDescription);
             UseWindowSelection = iniSection.GetBooleanValue(nameof(UseWindowSelection), UseWindowSelection);
@@ -88,6 +90,7 @@ namespace TSMapEditor.CCEngine
 
                 int presetValue = Conversions.IntFromString(value.Substring(0, commaIndex), 0);
                 string presetText = value.Substring(commaIndex + 1);
+                presetText = Translate(this, untranslatedName + ".Option" + i.ToString(CultureInfo.InvariantCulture) + ".PresetText", presetText);
 
                 PresetOptions.Add(new ScriptActionPresetOption(presetValue, presetText));
 

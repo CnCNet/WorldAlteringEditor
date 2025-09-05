@@ -10,6 +10,7 @@ using System.Linq;
 using TSMapEditor.CCEngine;
 using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
+using TSMapEditor.Misc;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
 using TSMapEditor.Rendering;
@@ -739,15 +740,36 @@ namespace TSMapEditor
             return false;
         }
 
-        public static IniFile ReadConfigINI(string path)
+        public static IniFile ReadConfigINI(string path, bool applyTranslation = true)
         {
             string customPath = Path.Combine(Environment.CurrentDirectory, "Config", path);
             string defaultPath = Path.Combine(Environment.CurrentDirectory, "Config", "Default", path);
 
-            if (File.Exists(customPath))
-                return new IniFile(customPath);
+            IniFile iniFile;
 
-            return new IniFile(defaultPath);
+            if (File.Exists(customPath))
+            {
+                iniFile = new IniFile(customPath);
+            }
+            else
+            {
+                iniFile = new IniFile(defaultPath);
+            }
+
+            if (!applyTranslation)
+                return iniFile;
+
+            if (TranslatorSetup.ActiveTranslationDirectory() == null)
+                return iniFile;
+
+            string translationPath = Path.Combine(Environment.CurrentDirectory, "Config", "Translations", TranslatorSetup.ActiveTranslationDirectory(), path);
+            if (File.Exists(translationPath))
+            {
+                var translationIni = new IniFile(translationPath);
+                IniFile.ConsolidateIniFiles(iniFile, translationIni);
+            }
+
+            return iniFile;
         }
 
         public static IniFileEx ReadConfigINIEx(string path, CCFileManager fileManager)

@@ -42,7 +42,7 @@ namespace TSMapEditor.UI.Windows
 
             foreach (BridgeType bridge in map.EditorConfig.Bridges)
             {
-                lbObjectList.AddItem(new XNAListBoxItem() { Text = bridge.Name, Tag = bridge });
+                lbObjectList.AddItem(new XNAListBoxItem() { Text = bridge.UIName, Tag = bridge });
             }
         }
     }

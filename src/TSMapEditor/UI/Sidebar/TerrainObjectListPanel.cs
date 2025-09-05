@@ -177,7 +177,7 @@ namespace TSMapEditor.UI.Sidebar
 
                     collectionsCategory.Nodes.Add(new TreeViewNode()
                     {
-                        Text = collection.Name,
+                        Text = collection.UIName,
                         Tag = collection,
                         Texture = GetSidebarTextureForTerrainType(firstEntry.TerrainType, renderTarget)
                     });
