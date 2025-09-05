@@ -112,7 +112,7 @@ namespace TSMapEditor.UI.CursorActions
             }
 
             string instruction = Environment.NewLine + Environment.NewLine +
-                Translate("Mode", "Current mode: ") + (isInfantry ? Translate("Yes", "Infantry") : Translate("No", "Vehicle")) + Translate("SwitchText", " (switch by pressing I)") + Environment.NewLine + Environment.NewLine +
+                Translate("Mode", "Current mode: ") + (isInfantry ? Translate("Infantry", "Infantry") : Translate("Vehicle", "Vehicle")) + Translate("SwitchText", " (switch by pressing I)") + Environment.NewLine + Environment.NewLine +
                 Translate("MovementZone", "Current movement zone: ") + movementZone + Translate("CycleText", " (cycle between Land, Water and both by pressing C)");
 
             Func<Point2D, Map, Point2D> getCellCenterPoint = Is2DMode ? CellMath.CellCenterPointFromCellCoords : CellMath.CellCenterPointFromCellCoords_3D;
