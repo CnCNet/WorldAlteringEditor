@@ -170,6 +170,10 @@ namespace TSMapEditor.UI.Controls
                 {
                     control.Text = Parser.Instance.GetExprValueString(kvp.Value, "Text", control);
                 }
+                else if (kvp.Key == "$Suggestion" && control is XNASuggestionTextBox)
+                {
+                    ((XNASuggestionTextBox)control).Suggestion = Parser.Instance.GetExprValueString(kvp.Value, "Suggestion", control);
+                }
                 else if (kvp.Key == "$TextAnchor" && control is XNALabel)
                 {
                     // TODO refactor these to be more object-oriented

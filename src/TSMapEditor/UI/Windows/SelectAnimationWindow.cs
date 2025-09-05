@@ -38,7 +38,7 @@ namespace TSMapEditor.UI.Windows
             lbObjectList.Clear();
 
             if (IncludeNone)
-                lbObjectList.AddItem(new XNAListBoxItem() { Text = "None" });
+                lbObjectList.AddItem(new XNAListBoxItem() { Text = Translate(this, "None", "None") });
 
             foreach (AnimType animType in map.Rules.AnimTypes)
             {

@@ -427,7 +427,7 @@ namespace TSMapEditor.UI
                     if (!string.IsNullOrWhiteSpace(translationKeyName))
                         identifier += translationKeyName;
 
-                    return Translate(identifier, parameters[0]);
+                    return Translate(identifier, parameters[0].Replace("@", Environment.NewLine));
                 case "translateWithoutContext":
                     if (parameters.Count != 2)
                         throw new InvalidOperationException($"Incorrect number of parameters for function {functionName} in expression {Input}");

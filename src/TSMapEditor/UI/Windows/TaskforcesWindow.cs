@@ -112,10 +112,10 @@ namespace TSMapEditor.UI.Windows
             var sortContextMenu = new EditorContextMenu(WindowManager);
             sortContextMenu.Name = nameof(sortContextMenu);
             sortContextMenu.Width = lbTaskForces.Width;
-            sortContextMenu.AddItem("Sort by ID", () => TaskForceSortMode = TaskForceSortMode.ID);
-            sortContextMenu.AddItem("Sort by Name", () => TaskForceSortMode = TaskForceSortMode.Name);
-            sortContextMenu.AddItem("Sort by Color", () => TaskForceSortMode = TaskForceSortMode.Color);
-            sortContextMenu.AddItem("Sort by Color, then by Name", () => TaskForceSortMode = TaskForceSortMode.ColorThenName);
+            sortContextMenu.AddItem(Translate(this, "SortByID", "Sort by ID"), () => TaskForceSortMode = TaskForceSortMode.ID);
+            sortContextMenu.AddItem(Translate(this, "SortByName", "Sort by Name"), () => TaskForceSortMode = TaskForceSortMode.Name);
+            sortContextMenu.AddItem(Translate(this, "SortByColor", "Sort by Color"), () => TaskForceSortMode = TaskForceSortMode.Color);
+            sortContextMenu.AddItem(Translate(this, "SortByColorName", "Sort by Color, then by Name"), () => TaskForceSortMode = TaskForceSortMode.ColorThenName);
             AddChild(sortContextMenu);
 
             FindChild<EditorButton>("btnSortOptions").LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
@@ -123,7 +123,7 @@ namespace TSMapEditor.UI.Windows
             var taskForceContextMenu = new EditorContextMenu(WindowManager);
             taskForceContextMenu.Name = nameof(taskForceContextMenu);
             taskForceContextMenu.Width = lbTaskForces.Width;
-            taskForceContextMenu.AddItem("View References", ShowTaskForceReferences);
+            taskForceContextMenu.AddItem(Translate(this, "ViewReferences", "View References"), ShowTaskForceReferences);
             AddChild(taskForceContextMenu);
 
             lbTaskForces.AllowRightClickUnselect = false;
@@ -137,11 +137,11 @@ namespace TSMapEditor.UI.Windows
             unitListContextMenu = new XNAContextMenu(WindowManager);
             unitListContextMenu.Name = nameof(unitListContextMenu);
             unitListContextMenu.Width = 150;
-            unitListContextMenu.AddItem("Move Up", UnitListContextMenu_MoveUp, () => editedTaskForce != null && lbUnitEntries.SelectedItem != null && lbUnitEntries.SelectedIndex > 0);
-            unitListContextMenu.AddItem("Move Down", UnitListContextMenu_MoveDown, () => editedTaskForce != null && lbUnitEntries.SelectedItem != null && lbUnitEntries.SelectedIndex < lbUnitEntries.Items.Count - 1);
-            unitListContextMenu.AddItem("Clone Unit Entry", UnitListContextMenu_CloneEntry, () => editedTaskForce != null && lbUnitEntries.SelectedItem != null && editedTaskForce.HasFreeTechnoSlot());
-            unitListContextMenu.AddItem("Insert New Unit Here", UnitListContextMenu_Insert, () => editedTaskForce != null && lbUnitEntries.SelectedItem != null && editedTaskForce.HasFreeTechnoSlot());
-            unitListContextMenu.AddItem("Delete Unit Entry", UnitListContextMenu_Delete, () => editedTaskForce != null && lbUnitEntries.SelectedItem != null);
+            unitListContextMenu.AddItem(Translate(this, "MoveUp", "Move Up"), UnitListContextMenu_MoveUp, () => editedTaskForce != null && lbUnitEntries.SelectedItem != null && lbUnitEntries.SelectedIndex > 0);
+            unitListContextMenu.AddItem(Translate(this, "MoveDown", "Move Down"), UnitListContextMenu_MoveDown, () => editedTaskForce != null && lbUnitEntries.SelectedItem != null && lbUnitEntries.SelectedIndex < lbUnitEntries.Items.Count - 1);
+            unitListContextMenu.AddItem(Translate(this, "CloneUnit", "Clone Unit Entry"), UnitListContextMenu_CloneEntry, () => editedTaskForce != null && lbUnitEntries.SelectedItem != null && editedTaskForce.HasFreeTechnoSlot());
+            unitListContextMenu.AddItem(Translate(this, "InsertNewUnit", "Insert New Unit Here"), UnitListContextMenu_Insert, () => editedTaskForce != null && lbUnitEntries.SelectedItem != null && editedTaskForce.HasFreeTechnoSlot());
+            unitListContextMenu.AddItem(Translate(this, "DeleteUnit", "Delete Unit Entry"), UnitListContextMenu_Delete, () => editedTaskForce != null && lbUnitEntries.SelectedItem != null);
             AddChild(unitListContextMenu);
             lbUnitEntries.AllowRightClickUnselect = false;
             lbUnitEntries.RightClick += (s, e) => { if (editedTaskForce != null) { lbUnitEntries.SelectedIndex = lbUnitEntries.HoveredIndex; unitListContextMenu.Open(GetCursorPoint()); } };
@@ -284,10 +284,11 @@ namespace TSMapEditor.UI.Windows
             else
             {
                 var messageBox = EditorMessageBox.Show(WindowManager,
-                    "Confirm",
-                    $"Are you sure you wish to delete '{editedTaskForce.Name}'?" + Environment.NewLine + Environment.NewLine +
-                    $"You'll need to manually fix any TeamTypes using the TaskForce." + Environment.NewLine + Environment.NewLine +
-                    "(You can hold Shift to skip this confirmation dialog.)",
+                    Translate(this, "DeleteConfirmTitle", "Confirm"),
+                    string.Format(Translate(this, "DeleteConfirmText", "Are you sure you wish to delete '{0}'?"+ Environment.NewLine + Environment.NewLine +
+                        "You'll need to manually fix any TeamTypes using the TaskForce."+ Environment.NewLine + Environment.NewLine +
+                        "(You can hold Shift to skip this confirmation dialog.)"),
+                        editedTaskForce.Name),
                     MessageBoxButtons.YesNo);
                 messageBox.YesClickedAction = _ => DeleteTaskForce();
             }
@@ -331,18 +332,26 @@ namespace TSMapEditor.UI.Windows
 
             if (referringLocalTeamTypes.Count == 0 && referringGlobalTeamTypes.Count == 0)
             {
-                EditorMessageBox.Show(WindowManager, "No references found",
-                    $"The selected TaskForce \"{editedTaskForce.Name}\" ({editedTaskForce.ININame}) is not used by any TeamTypes, either local (map) or global (AI.ini).", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "NoReferencesFound.Title", "No references found"),
+                    string.Format(Translate(this, "NoReferencesFound.Description", "The selected TaskForce \"{0}\" ({1}) is not used by any TeamTypes, either local (map) or global (AI.ini)."), 
+                        editedTaskForce.Name, editedTaskForce.ININame), 
+                    MessageBoxButtons.OK);
             }
             else
             {
                 var stringBuilder = new StringBuilder();
-                referringLocalTeamTypes.ForEach(tt => stringBuilder.AppendLine($"- Local TeamType \"{tt.Name}\" ({tt.ININame})"));
-                referringGlobalTeamTypes.ForEach(tt => stringBuilder.AppendLine($"- Global TeamType \"{tt.Name}\" ({tt.ININame})"));
+                referringLocalTeamTypes.ForEach(tt => stringBuilder.AppendLine(
+                    string.Format(Translate(this, "LocalTeamType", "- Local TeamType \"{0}\" ({1})"), tt.Name, tt.ININame)));
+                referringGlobalTeamTypes.ForEach(tt => stringBuilder.AppendLine(
+                    string.Format(Translate(this, "GlobalTeamType", "- Global TeamType \"{0}\" ({1})"), tt.Name, tt.ININame)));
 
-                EditorMessageBox.Show(WindowManager, "TaskForce References",
-                    $"The selected TaskForce \"{editedTaskForce.Name}\" ({editedTaskForce.ININame}) is used by the following TeamTypes:" + Environment.NewLine + Environment.NewLine +
-                    stringBuilder.ToString(), MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "ReferencesFound.Title", "TaskForce References"),
+                    string.Format(Translate(this, "ReferencesFound.Description", "The selected TaskForce \"{0}\" ({1}) is used by the following TeamTypes:" + Environment.NewLine + Environment.NewLine +
+                        "{2}"),
+                        editedTaskForce.Name, editedTaskForce.ININame, stringBuilder.ToString()), 
+                    MessageBoxButtons.OK);
             }
         }
 

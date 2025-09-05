@@ -38,7 +38,7 @@ namespace TSMapEditor.UI.Windows
             lbObjectList.Clear();
 
             if (IncludeNone)
-                lbObjectList.AddItem("None");
+                lbObjectList.AddItem(Translate(this, "None", "None"));
 
             var technoTypes = map.GetAllTechnoTypes();
 

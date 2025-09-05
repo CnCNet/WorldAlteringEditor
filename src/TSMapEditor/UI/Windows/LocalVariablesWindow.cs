@@ -64,7 +64,7 @@ namespace TSMapEditor.UI.Windows
                 newIndex++;
             }
 
-            map.LocalVariables.Insert(newIndex, new LocalVariable(newIndex) { Name = "New Local Variable" });
+            map.LocalVariables.Insert(newIndex, new LocalVariable(newIndex) { Name = Translate(this, "NewLocalVariable", "New Local Variable") });
             ListLocalVariables();
             lbLocalVariables.SelectedIndex = newIndex;
         }
@@ -83,7 +83,10 @@ namespace TSMapEditor.UI.Windows
         {
             if (editedLocalVariable == null)
             {
-                EditorMessageBox.Show(WindowManager, "Select a variable", "Please select a variable first.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "SelectVariableError.Title", "Select a variable"),
+                    Translate(this, "SelectVariableError.Description", "Please select a variable first."),
+                    MessageBoxButtons.OK);
                 return;
             }
 
@@ -104,7 +107,7 @@ namespace TSMapEditor.UI.Windows
                         {
                             if (Conversions.IntFromString(action.Parameters[i], -1) == editedLocalVariable.Index)
                             {
-                                list.Add($"Trigger action of '{trigger.Name}' ({trigger.ID})");
+                                list.Add(string.Format(Translate(this, "TriggerActionOf", "Trigger action of '{0}' ({1})"), trigger.Name, trigger.ID));
                                 break;
                             }
                         }
@@ -124,7 +127,7 @@ namespace TSMapEditor.UI.Windows
                         {
                             if (Conversions.IntFromString(triggerEvent.Parameters[i], -1) == editedLocalVariable.Index)
                             {
-                                list.Add($"Trigger event of '{trigger.Name}' ({trigger.ID})");
+                                list.Add(string.Format(Translate(this, "TriggerEventOf", "Trigger event of '{0}' ({1})"), trigger.Name, trigger.ID));
                                 break;
                             }
                         }
@@ -144,7 +147,7 @@ namespace TSMapEditor.UI.Windows
                     if (scriptActionType.ParamType == TriggerParamType.LocalVariable &&
                         scriptAction.Argument == editedLocalVariable.Index)
                     {
-                        list.Add($"Script action of '{script.Name}' ({script.ININame})");
+                        list.Add(string.Format(Translate(this, "ScriptActionOf", "Script action of '{0}' ({1})"), script.Name, script.ININame));
                     }
                 }
             });
@@ -152,14 +155,16 @@ namespace TSMapEditor.UI.Windows
 
             if (list.Count == 0)
             {
-                EditorMessageBox.Show(WindowManager, "No usages found",
-                    $"No triggers or scripts make use of the selected local variable '{editedLocalVariable.Name}'", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager,
+                    Translate(this, "NoUsagesFound.Title", "No usages found"),
+                    string.Format(Translate(this, "NoUsagesMessage.Description", "No triggers or scripts make use of the selected local variable '{0}'"), editedLocalVariable.Name),
+                    MessageBoxButtons.OK);
             }
             else
             {
                 EditorMessageBox.Show(WindowManager,
-                    "Local Variable Usages",
-                    $"The following usages were found for the selected local variable '{editedLocalVariable.Name}':" + Environment.NewLine + Environment.NewLine +
+                    Translate(this, "LocalVariableUsages.Title", "Local Variable Usages"),
+                    string.Format(Translate(this, "LocalVariablesUsages.Description", "The following usages were found for the selected local variable '{0}':"), editedLocalVariable.Name) + Environment.NewLine + Environment.NewLine +
                     string.Join(Environment.NewLine, list.Select(e => "- " + e)),
                     MessageBoxButtons.OK);
             }
