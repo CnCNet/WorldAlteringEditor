@@ -142,7 +142,7 @@ namespace TSMapEditor.UI.CursorActions
             string text;
 
             if (pathCellCoords.Count == 0)
-                text = Translate("NoPathFind", "No path found!\r\n\r\nClick to select new source coordinate, or right-click to exit") + instruction;
+                text = Translate("NoPathFound", "No path found!\r\n\r\nClick to select new source coordinate, or right-click to exit") + instruction;
             else
                 text = Translate("PathLength", "Path Length In Cells: ") + pathCellCoords.Count + Translate("ClickText", "\r\n\r\nClick to select new source coordinate, or right-click to exit") + instruction;
 
