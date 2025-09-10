@@ -12,7 +12,7 @@ namespace TSMapEditor.UI.CursorActions.HeightActions
         {
         }
 
-        public override string GetName() => "Lower Ground (Non-Steep Ramps)";
+        public override string GetName() => Translate("Name", "Lower Ground (Non-Steep Ramps)");
 
         public override void OnActionEnter()
         {
