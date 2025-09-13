@@ -105,7 +105,7 @@ namespace TSMapEditor.UI.Windows
             var btnOK = new EditorButton(WindowManager);
             btnOK.Width = 75;
             btnOK.Name = "btnOK";
-            btnOK.Text = "OK";
+            btnOK.Text = Translate(this, "OK", "OK");
             btnOK.HotKey = Microsoft.Xna.Framework.Input.Keys.Enter;
             btnOK.LeftClick += BtnOK_LeftClick;
             buttons.Add(btnOK);
@@ -121,7 +121,7 @@ namespace TSMapEditor.UI.Windows
             var btnYes = new EditorButton(WindowManager);
             btnYes.Name = nameof(btnYes);
             btnYes.Width = 75;
-            btnYes.Text = "Yes";
+            btnYes.Text = Translate(this, "Yes", "Yes");
             btnYes.LeftClick += BtnYes_LeftClick;
             buttons.Add(btnYes);
             AddChild(btnYes);
@@ -132,7 +132,7 @@ namespace TSMapEditor.UI.Windows
             var btnNo = new EditorButton(WindowManager);
             btnNo.Name = nameof(btnNo);
             btnNo.Width = btnYes.Width;
-            btnNo.Text = "No";
+            btnNo.Text = Translate(this, "No", "No");
             btnNo.LeftClick += BtnNo_LeftClick;
             buttons.Add(btnNo);
             AddChild(btnNo);

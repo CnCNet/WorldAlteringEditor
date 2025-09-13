@@ -41,8 +41,11 @@ namespace TSMapEditor.UI.Windows
             Waypoint waypoint = map.Waypoints.Find(wp => wp.Identifier == waypointNumber);
             if (waypoint == null)
             {
-                EditorMessageBox.Show(WindowManager, "Waypoint not found",
-                    "Waypoint #" + waypointNumber + " does not exist on the map!", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "WaypointNotFound.Title", "Waypoint not found"),
+                    string.Format(Translate(this, "WaypointNotFound.Description", 
+                        "Waypoint #{0} does not exist on the map!"), waypointNumber),
+                    MessageBoxButtons.OK);
 
                 return;
             }

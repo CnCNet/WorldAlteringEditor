@@ -378,7 +378,7 @@ namespace TSMapEditor.Models
 
             Basic.NewINIFormat = needsExtendedOverlayPack ? 5 : 4;
 
-            LoadedINI.Comment = "Written by the World-Altering Editor (WAE)\r\n; all comments have been truncated\r\n; github.com/Rampastring/WorldAlteringEditor\r\n; if you wish to support the editor, you can subscribe at patreon.com/rampastring\r\n; or buy me a coffee at ko-fi.com/rampastring";
+            LoadedINI.Comment = "Written by the World-Altering Editor (WAE)\r\n; all comments have been truncated\r\n; github.com/CnCNet/WorldAlteringEditor\r\n; if you wish to support the editor, you can subscribe at patreon.com/rampastring\r\n; or buy me a coffee at ko-fi.com/rampastring";
 
             MapWriter.WriteMapSection(this, LoadedINI);
             MapWriter.WriteBasicSection(this, LoadedINI);
@@ -1708,13 +1708,17 @@ namespace TSMapEditor.Models
                     // Check whether the cell has tiberium on an impassable terrain type
                     if (Helpers.IsLandTypeImpassable(subTile.TmpImage.TerrainType, true))
                     {
-                        issueList.Add($"Cell at {cell.CoordsToPoint()} has Tiberium on an otherwise impassable cell. This can cause harvesters to get stuck.");
+                        issueList.Add(string.Format(Translate(this, "CheckForIssues.ImpassableTile", 
+                            "Cell at {0} has Tiberium on an otherwise impassable cell. This can cause harvesters to get stuck."),
+                                cell.CoordsToPoint()));
                     }
 
                     // Check for tiberium on ramps that don't support tiberium on them
                     if (subTile.TmpImage.RampType > RampType.South)
                     {
-                        issueList.Add($"Cell at {cell.CoordsToPoint()} has Tiberium on a ramp that does not allow Tiberium on it. This can crash the game!");
+                        issueList.Add(string.Format(Translate(this, "CheckForIssues.TiberiumUnsupportedRamp", 
+                            "Cell at {0} has Tiberium on a ramp that does not allow Tiberium on it. This can crash the game!"),
+                                cell.CoordsToPoint()));
                     }
                 }
             });
@@ -1725,7 +1729,8 @@ namespace TSMapEditor.Models
                 House duplicate = Houses.Find(h => h != Houses[i] && h.ININame == Houses[i].ININame);
                 if (duplicate != null)
                 {
-                    issueList.Add($"The map has multiple houses named \"{duplicate.ININame}\"! This will result in a corrupted house list in-game!");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.DuplicateHouseININame", 
+                        "The map has multiple houses named \"{0}\"! This will result in a corrupted house list in-game!"), duplicate.ININame));
                     break;
                 }
             }
@@ -1734,10 +1739,12 @@ namespace TSMapEditor.Models
             TeamTypes.ForEach(tt =>
             {
                 if (tt.TaskForce == null)
-                    issueList.Add($"TeamType \"{tt.Name}\" has no TaskForce set!");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.TeamTypeWithoutTaskForce", 
+                        "TeamType \"{0}\" has no TaskForce set!"), tt.Name));
 
                 if (tt.Script == null)
-                    issueList.Add($"TeamType \"{tt.Name}\" has no Script set!");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.TeamTypeWithoutScript", 
+                        "TeamType \"{0}\" has no Script set!"), tt.Name));
             });
 
             const int EnableTriggerActionIndex = 53;
@@ -1765,8 +1772,10 @@ namespace TSMapEditor.Models
                     return;
 
                 // If it's not enabled by another trigger, add an issue
-                issueList.Add($"Trigger \"{trigger.Name}\" ({trigger.ID}) is disabled and never enabled by another trigger." + Environment.NewLine +
-                    "Did you forget to enable it? If the trigger exists for debugging purposes, add DEBUG or OBSOLETE to its name to skip this warning.");
+                issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerDisabled", 
+                    "Trigger \"{0}\" ({1}) is disabled and never enabled by another trigger." + Environment.NewLine +
+                    "Did you forget to enable it? If the trigger exists for debugging purposes, add DEBUG or OBSOLETE to its name to skip this warning."),
+                        trigger.Name, trigger.ID));
             });
 
             // Check for triggers that are enabled by other triggers, but never disabled - enabling them is
@@ -1785,8 +1794,10 @@ namespace TSMapEditor.Models
                     return;
 
                 // This trigger is never disabled, but it is enabled by at least 1 other trigger - add an issue
-                issueList.Add($"Trigger \"{trigger.Name}\" ({trigger.ID}) is enabled by another trigger, but it is never in a disabled state" + Environment.NewLine +
-                    "(it is neither disabled by default nor disabled by other triggers). Did you forget to disable it?");
+                issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerEnabledByOtherTriggers", 
+                    "Trigger \"{0}\" ({1}) is enabled by another trigger, but it is never in a disabled state" + Environment.NewLine +
+                    "(it is neither disabled by default nor disabled by other triggers). Did you forget to disable it?"),
+                        trigger.Name, trigger.ID));
             });
 
             // Check for triggers that enable themselves, there's no need to ever do this -> either redundant action or a scripting error
@@ -1795,7 +1806,9 @@ namespace TSMapEditor.Models
                 if (!trigger.Actions.Exists(a => a.ActionIndex == EnableTriggerActionIndex && a.Parameters[TriggerParamIndex] == trigger.ID))
                     return;
 
-                issueList.Add($"Trigger \"{trigger.Name}\" ({trigger.ID}) has an action for enabling itself. Is it supposed to enable something else instead?");
+                issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerEnableSelf", 
+                    "Trigger \"{0}\" ({1}) has an action for enabling itself. Is it supposed to enable something else instead?"),
+                        trigger.Name, trigger.ID));
             });
 
             // Check that the primary player house has "Player Control" enabled in case [Basic] Player= is specified
@@ -1804,15 +1817,18 @@ namespace TSMapEditor.Models
             {
                 House matchingHouse = GetHouses().Find(h => h.ININame == Basic.Player);
                 if (matchingHouse == null)
-                    issueList.Add("A nonexistent house has been specified in [Basic] Player= .");
+                    issueList.Add(Translate(this, "CheckForIssues.PlayerHouseNotFound", 
+                        "A nonexistent house has been specified in [Basic] Player= ."));
                 else if (!matchingHouse.PlayerControl)
-                    issueList.Add("The human player's house does not have the \"Player-Controlled\" flag checked.");
+                    issueList.Add(Translate(this, "CheckForIssues.PlayerHouseNotPlayerControlled", 
+                        "The human player's house does not have the \"Player-Controlled\" flag checked."));
             }
 
             // Check for more than 127 tunnel tubes
             if (Tubes.Count > MaxTubes)
             {
-                issueList.Add($"The map has more than {MaxTubes} tunnel tubes. This might cause issues when units cross the tunnels.");
+                issueList.Add(string.Format(Translate(this, "CheckForIssues.MaxTubes", 
+                    "The map has more than {0} tunnel tubes. This might cause issues when units cross the tunnels."), MaxTubes));
             }
 
             // Check for vehicles sharing the same follows index and for vehicles following themselves
@@ -1826,8 +1842,10 @@ namespace TSMapEditor.Models
 
                 if (followedUnits.Contains(unit.FollowerUnit))
                 {
-                    issueList.Add($"Multiple units are configured to make unit {unit.FollowerUnit.UnitType.ININame} at {unit.FollowerUnit.Position} to follow them! " + Environment.NewLine +
-                        $"This can cause strange behaviour in the game. {unit.UnitType.ININame} at {unit.Position} is one of the followed units.");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.MultipleUnitsFollow", 
+                        "Multiple units are configured to make unit {0} at {1} to follow them! " + Environment.NewLine +
+                            "This can cause strange behaviour in the game. {2} at {3} is one of the followed units."),
+                            unit.FollowerUnit.UnitType.ININame, unit.FollowerUnit.Position, unit.UnitType.ININame, unit.Position));
                 }
                 else
                 {
@@ -1835,9 +1853,13 @@ namespace TSMapEditor.Models
                 }
 
                 if (followsId < -1)
-                    issueList.Add($"Unit {unit.UnitType.ININame} at {unit.Position} has a follower ID below -1. It is unknown how the game reacts to this.");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.NegativeFollowID", 
+                        "Unit {0} at {1} has a follower ID below -1. It is unknown how the game reacts to this."),
+                            unit.UnitType.ININame, 1));
                 else if (followsId == i)
-                    issueList.Add($"Unit {unit.UnitType.ININame} at {unit.Position} follows itself! This can cause the game to crash or freeze!");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.UnitFollowSelf", 
+                        "Unit {0} at {1} follows itself! This can cause the game to crash or freeze!"),
+                            unit.UnitType.ININame, unit.Position));
             }
 
             var reportedTeams = new List<TeamType>();
@@ -1854,12 +1876,14 @@ namespace TSMapEditor.Models
             {
                 if (trigger.Conditions.Count == 0)
                 {
-                    issueList.Add($"Trigger '{trigger.Name}' has 0 events specified. It will never be fired. Did you forget to give it events?");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.NoTriggerConditions", 
+                        "Trigger '{0}' has 0 events specified. It will never be fired. Did you forget to give it events?"), trigger.Name));
                 }
 
                 if (trigger.Actions.Count == 0)
                 {
-                    issueList.Add($"Trigger '{trigger.Name}' has 0 actions specified. It will not do anything. Did you forget to give it actions?");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.NoTriggerActions", 
+                        "Trigger '{0}' has 0 actions specified. It will not do anything. Did you forget to give it actions?"), trigger.Name));
                 }
             }
 
@@ -1882,7 +1906,9 @@ namespace TSMapEditor.Models
                     !CellTags.Exists(ct => ct.Tag == tag) &&
                     !Triggers.Exists(otherTrigger => otherTrigger.LinkedTrigger == trigger))
                 {
-                    issueList.Add($"Trigger '{trigger.Name}' is using the \"Entered by...\" event without being attached to any object, cell, or team. Did you forget to attach it?");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerEnteredByNoObjects", 
+                        "Trigger '{0}' is using the \"Entered by...\" event without being attached to any object, cell, or team. Did you forget to attach it?"),
+                            trigger.Name));
                 }
             }
 
@@ -1899,7 +1925,9 @@ namespace TSMapEditor.Models
 
                 if (!CellTags.Exists(ct => ct.Tag == tag))
                 {
-                    issueList.Add($"Trigger '{trigger.Name}' is using the \"Bridge destroyed\" event, but it is not attached to any CellTag. Did you forget to place a celltag for it?");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerBridgeDestroyedCellTags", 
+                        "Trigger '{0}' is using the \"Bridge destroyed\" event, but it is not attached to any CellTag. Did you forget to place a celltag for it?"),
+                            trigger.Name));
                 }
             }
 
@@ -1950,7 +1978,9 @@ namespace TSMapEditor.Models
                 {
                     string eventName = triggerEventType.Name;
 
-                    issueList.Add($"Trigger '{trigger.Name}' is using the {eventName} event without being attached to any object or team. Did you forget to attach it?");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerEventNoObjectAttached", 
+                        "Trigger '{0}' is using the {1} event without being attached to any object or team. Did you forget to attach it?"),
+                            trigger.Name, eventName));
                 }
             }
 
@@ -1965,7 +1995,8 @@ namespace TSMapEditor.Models
                 {
                     if (linkedTrigger == trigger)
                     {
-                        issueList.Add($"Trigger '{trigger.Name}' is attached to itself (potentially through other triggers). This will cause the game to crash!");
+                        issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerAttachedToSelf", 
+                            "Trigger '{0}' is attached to itself (potentially through other triggers). This will cause the game to crash!"), trigger.Name));
                         break;
                     }
 
@@ -1987,7 +2018,8 @@ namespace TSMapEditor.Models
                         {
                             if (!TeamTypes.Exists(tt => tt.ININame == action.Parameters[i]) && !Rules.TeamTypes.Exists(tt => tt.ININame == action.Parameters[i]))
                             {
-                                issueList.Add($"Trigger '{trigger.Name}' has a nonexistent TeamType specified as a parameter for one or more of its actions.");
+                                issueList.Add(string.Format(Translate(this, "CheckForIssues.InvalidTriggerActionTeamType", 
+                                    "Trigger '{0}' has a nonexistent TeamType specified as a parameter for one or more of its actions."), trigger.Name));
                                 break;
                             }
                         }
@@ -2013,7 +2045,8 @@ namespace TSMapEditor.Models
 
                             if (!houseTypes.Exists(ht => ht.Index == paramAsInt))
                             {
-                                issueList.Add($"Trigger '{trigger.Name}' has a nonexistent HouseType specified as a parameter for one or more of its actions.");
+                                issueList.Add(string.Format(Translate(this, "CheckForIssues.InvalidTriggerActionHouse", 
+                                    "Trigger '{0}' has a nonexistent HouseType specified as a parameter for one or more of its actions."), trigger.Name));
                                 break;
                             }
                         }
@@ -2025,7 +2058,9 @@ namespace TSMapEditor.Models
             foreach (var trigger in Triggers)
             {
                 if (!houseTypes.Exists(ht => trigger.HouseType == ht.ININame))
-                    issueList.Add($"Trigger '{trigger.Name}' has a nonexistent HouseType '{trigger.HouseType}' specified as its owner.");
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.InvalidTriggerOwner", 
+                        "Trigger '{0}' has a nonexistent HouseType '{1}' specified as its owner."),
+                            trigger.Name, trigger.HouseType));
             }
 
             // Check for triggers having too many actions. This can cause a crash because the game's buffer for parsing trigger actions
@@ -2037,7 +2072,9 @@ namespace TSMapEditor.Models
                 {
                     if (trigger.Actions.Count > maxActionCount)
                     {
-                        issueList.Add($"Trigger '{trigger.Name}' has more than {maxActionCount} actions! This can cause the game to crash! Consider splitting it up to multiple triggers.");
+                        issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerTooManyActions", 
+                            "Trigger '{0}' has more than {1} actions! This can cause the game to crash! Consider splitting it up to multiple triggers."),
+                                trigger.Name, maxActionCount));
                     }
                 }
             }
@@ -2046,7 +2083,9 @@ namespace TSMapEditor.Models
             // (it is defined as WAYPT_SPECIAL in original game code)
             if (!Constants.IsRA2YR && Waypoints.Exists(wp => wp.Identifier == Constants.TS_WAYPT_SPECIAL))
             {
-                issueList.Add($"The map makes use of waypoint #{Constants.TS_WAYPT_SPECIAL}. In Tiberian Sun, this waypoint is reserved for special use cases (WAYPT_SPECIAL). Using it as a normal waypoint may cause issues as it may be dynamically moved by game events.");
+                issueList.Add(string.Format(Translate(this, "CheckForIssues.SpecialWaypointUsed", 
+                    "The map makes use of waypoint #{0}. In Tiberian Sun, this waypoint is reserved for special use cases (WAYPT_SPECIAL). Using it as a normal waypoint may cause issues as it may be dynamically moved by game events."),
+                        Constants.TS_WAYPT_SPECIAL));
             }
 
             return issueList;
@@ -2062,7 +2101,9 @@ namespace TSMapEditor.Models
 
             if (TeamTypes.Contains(team) && team.Max == 0)
             {
-                issueList.Add($"Team '{team.Name}', linked to AITrigger '{aiTrigger.Name}', has Max=0. This prevents the AI from building the team.");
+                issueList.Add(string.Format(Translate(this, "CheckForAITriggerTeamWithMaxZeroIssue.TeamTypeMax", 
+                    "Team '{0}', linked to AITrigger '{1}', has Max=0. This prevents the AI from building the team."),
+                        team.Name, aiTrigger.Name));
                 reportedTeams.Add(team);
             }
         }

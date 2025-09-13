@@ -22,7 +22,9 @@ namespace TSMapEditor.Mutations.Classes
 
         public override string GetDisplayString()
         {
-            return $"Change attached tag of '{techno.GetObjectType().GetEditorDisplayName()}' at {techno.Position} to '{tag.Name}'";
+            return string.Format(Translate(this, "DisplayString", 
+                "Change attached tag of '{0}' at {1} to '{2}'"),
+                    techno.GetObjectType().GetEditorDisplayName(), techno.Position, tag.Name);
         }
 
         public override void Perform()

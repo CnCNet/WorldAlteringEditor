@@ -300,10 +300,12 @@ namespace TSMapEditor.UI.TopBar
                     Logger.Log("Failed to save the map file. Returned error message: " + ex.Message);
 
                     EditorMessageBox.Show(WindowManager, Translate(this, "MapSaveFailedTitle", "Failed to save map"),
-                        string.Format(Translate(this, "MapSaveFailedDescription", "Failed to write the map file. Please make sure that WAE has write access to the path." + Environment.NewLine + Environment.NewLine +
-                        "A common source of this error is trying to save the map to Program Files or another" + Environment.NewLine +
-                        "write-protected directory without running WAE with administrative rights." + Environment.NewLine + Environment.NewLine +
-                        "Returned error was: {0}"), ex.Message), Windows.MessageBoxButtons.OK);
+                        string.Format(Translate(this, "MapSaveFailedDescription",
+                            "Failed to write the map file. Please make sure that WAE has write access to the path." + Environment.NewLine + Environment.NewLine +
+                            "A common source of this error is trying to save the map to Program Files or another" + Environment.NewLine +
+                            "write-protected directory without running WAE with administrative rights." + Environment.NewLine + Environment.NewLine +
+                            "Returned error was: {0}"), ex.Message), 
+                        Windows.MessageBoxButtons.OK);
                 }
                 else
                 {
@@ -346,8 +348,8 @@ namespace TSMapEditor.UI.TopBar
                 if (textEditorPath == null)
                 {
                     EditorMessageBox.Show(WindowManager, 
-                        Translate(this, "NoTextEditorFoundTitle", "No text editor found!"), 
-                        Translate(this, "NoTextEditorFoundDescription", "No valid text editor has been configured and no default choice was found."), Windows.MessageBoxButtons.OK);
+                        Translate(this, "NoTextEditorFound.Title", "No text editor found!"), 
+                        Translate(this, "NoTextEditorFound.Description", "No valid text editor has been configured and no default choice was found."), Windows.MessageBoxButtons.OK);
                     return;
                 }
             }
@@ -361,9 +363,11 @@ namespace TSMapEditor.UI.TopBar
                 Logger.Log("Failed to launch text editor! Message: " + ex.Message);
 
                 EditorMessageBox.Show(WindowManager,
-                    Translate(this, "FailedToLaunchTextEditorTitle", "Failed to launch text editor"),
-                    string.Format(Translate(this, "FailedToLaunchTextEditorDescription", "An error occurred when trying to open the map file with the text editor." + Environment.NewLine + Environment.NewLine +
-                    "Received error was: {0}"), ex.Message), Windows.MessageBoxButtons.OK);
+                    Translate(this, "FailedToLaunchTextEditor.Title", "Failed to launch text editor"),
+                    string.Format(Translate(this, "FailedToLaunchTextEditor.Description",
+                        "An error occurred when trying to open the map file with the text editor." + Environment.NewLine + Environment.NewLine +
+                            "Received error was: {0}"), ex.Message),
+                    Windows.MessageBoxButtons.OK);
             }
         }
 

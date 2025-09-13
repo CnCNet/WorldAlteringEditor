@@ -25,7 +25,9 @@ namespace TSMapEditor.Mutations.Classes
 
         public override string GetDisplayString()
         {
-            return $"Clone {objectToClone.WhatAmI()} to {clonePosition}";
+            return string.Format(Translate(this, "DisplayString",
+                    "Clone {0} to {1}"),
+                        objectToClone.WhatAmI(), clonePosition);
         }
 
         private void CloneObject()

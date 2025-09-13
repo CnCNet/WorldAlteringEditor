@@ -27,7 +27,9 @@ namespace TSMapEditor.Mutations.Classes
 
         public override string GetDisplayString()
         {
-            return $"Place overlay collection {overlayCollection.Name} at {cellCoords} with a brush size of {brush}";
+            return string.Format(Translate(this, "DisplayString", 
+                "Place overlay collection {0} at {1} with a brush size of {2}"),
+                    overlayCollection.Name, cellCoords, brush);
         }
 
         public override void Perform()

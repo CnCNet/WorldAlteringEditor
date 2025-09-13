@@ -41,7 +41,7 @@ namespace TSMapEditor.Models
 
         public bool IsFlagEnabled(string flagName) => EnabledTeamTypeFlags.Contains(flagName);
 
-        public string GetDisplayName() => IsGlobalTeamType ? "(global) " + Name : Name;
+        public string GetDisplayName() => IsGlobalTeamType ? Translate("TeamTypes.Global", "(global) ") + Name : Name;
 
         public void EnableFlag(string flagName)
         {
@@ -61,36 +61,38 @@ namespace TSMapEditor.Models
         public string GetHintText()
         {
             var stringBuilder = new StringBuilder();
-            stringBuilder.Append("Owner: " + (HouseType == null ? Constants.NoneValue2 : HouseType.ININame));
+            stringBuilder.Append(string.Format(Translate(this, "GetHintText.Owner", "Owner: {0}"), HouseType == null ? Constants.NoneValue2 : HouseType.ININame));
             stringBuilder.Append(Environment.NewLine + Environment.NewLine);
-            stringBuilder.Append("Script: " + (Script == null ? Constants.NoneValue2 : Script.Name));
+            stringBuilder.Append(string.Format(Translate(this, "GetHintText.Script", "Script: {0}"), Script == null ? Constants.NoneValue2 : Script.Name));
             stringBuilder.Append(Environment.NewLine + Environment.NewLine);
 
             if (Tag != null)
             {
-                stringBuilder.Append("Tag: " + Tag.Name);
+                stringBuilder.Append(string.Format(Translate(this, "GetHintText.Tag", "Tag: {0}"), Tag.Name));
                 stringBuilder.Append(Environment.NewLine + Environment.NewLine);
             }
 
-            stringBuilder.Append("Waypoint: " + (string.IsNullOrWhiteSpace(Waypoint) ? Constants.NoneValue2 : Helpers.GetWaypointNumberFromAlphabeticalString(Waypoint)));
+            stringBuilder.Append(string.Format(Translate(this, "GetHintText.Waypoint", "Waypoint: {0}"), string.IsNullOrWhiteSpace(Waypoint) ? Constants.NoneValue2 : Helpers.GetWaypointNumberFromAlphabeticalString(Waypoint)));
 
             if (Constants.IsRA2YR)
             {
                 stringBuilder.Append(Environment.NewLine + Environment.NewLine);
-                stringBuilder.Append("TransportWaypoint: " + (string.IsNullOrWhiteSpace(TransportWaypoint) ? Constants.NoneValue2 : Helpers.GetWaypointNumberFromAlphabeticalString(TransportWaypoint)));
+                stringBuilder.Append(string.Format(Translate(this, "GetHintText.TransportWaypoint", "TransportWaypoint: {0}"), string.IsNullOrWhiteSpace(TransportWaypoint) ? Constants.NoneValue2 : Helpers.GetWaypointNumberFromAlphabeticalString(TransportWaypoint)));
             }
 
             stringBuilder.Append(Environment.NewLine + Environment.NewLine);
 
             if (VeteranLevel > 1)
             {
-                stringBuilder.Append("Veteran Level: " + (VeteranLevel > 2 ? "Elite" : "Veteran"));
+                stringBuilder.Append(string.Format(Translate(this, "GetHintText.VeteranLevel", "Veteran Level: {0}"), VeteranLevel > 2 ?
+                    Translate(this, "GetHintText.Elite", "Elite") :
+                    Translate(this, "GetHintText.Veteran", "Veteran")));
                 stringBuilder.Append(Environment.NewLine + Environment.NewLine);
             }
 
             if (TaskForce == null)
             {
-                stringBuilder.Append("No TaskForce set");
+                stringBuilder.Append(Translate(this, "GetHintText.NoTaskForce", "No TaskForce set"));
             }
             else
             {
@@ -130,7 +132,7 @@ namespace TSMapEditor.Models
         {
             var clone = MemberwiseClone() as TeamType;
             clone.ININame = iniName;
-            clone.Name = Name + " (Clone)";
+            clone.Name = Name + Translate(this, "CloneName", " (Clone)");
 
             clone.EnabledTeamTypeFlags = new List<string>(EnabledTeamTypeFlags);
 

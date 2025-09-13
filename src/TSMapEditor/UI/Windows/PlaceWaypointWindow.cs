@@ -38,13 +38,13 @@ namespace TSMapEditor.UI.Windows
             tbWaypointNumber.MaximumTextLength = (Constants.MaxWaypoint - 1).ToString(CultureInfo.InvariantCulture).Length;
 
             lblDescription = FindChild<XNALabel>(nameof(lblDescription));
-            lblDescription.Text = $"Input waypoint number (0-{Constants.MaxWaypoint - 1}):";            
+            lblDescription.Text = string.Format(Translate(this, "DescriptionText", "Input waypoint number (0-{0}):"), Constants.MaxWaypoint - 1);
 
             FindChild<EditorButton>("btnPlace").LeftClick += BtnPlace_LeftClick;
 
             // Init color dropdown options
             ddWaypointColor = FindChild<XNADropDown>(nameof(ddWaypointColor));
-            ddWaypointColor.AddItem("None");
+            ddWaypointColor.AddItem(Translate(this, "None", "None"));
             Array.ForEach(Waypoint.SupportedColors, sc => ddWaypointColor.AddItem(sc.Name, sc.Value));
         }
 
@@ -63,8 +63,9 @@ namespace TSMapEditor.UI.Windows
             if (map.Waypoints.Exists(w => w.Identifier == tbWaypointNumber.Value))
             {
                 EditorMessageBox.Show(WindowManager,
-                    "Waypoint already exists",
-                    $"A waypoint with the given number {tbWaypointNumber.Value} already exists on the map!",
+                    Translate(this, "WaypointExists.Title", "Waypoint already exists"),
+                    string.Format(Translate(this, "WaypointExists.Description", 
+                        "A waypoint with the given number {0} already exists on the map!"), tbWaypointNumber.Value),
                     MessageBoxButtons.OK);
 
                 return;
@@ -84,8 +85,8 @@ namespace TSMapEditor.UI.Windows
             if (map.Waypoints.Count == Constants.MaxWaypoint)
             {
                 EditorMessageBox.Show(WindowManager,
-                    "Maximum waypoints reached",
-                    "All valid waypoints on the map are already in use!",
+                    Translate(this, "MaxWaypoints.Title", "Maximum waypoints reached"),
+                    Translate(this, "MaxWaypoints.Description", "All valid waypoints on the map are already in use!"),
                     MessageBoxButtons.OK);
 
                 return;

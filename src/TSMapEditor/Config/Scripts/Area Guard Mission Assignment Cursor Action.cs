@@ -37,7 +37,7 @@ namespace WAEScript
             /// </summary>
             private string missionName = "Area Guard";
 
-            public override string GetName() => $"Apply '{missionName}' Mission To Units";
+            public override string GetName() => Translate("MapScripts.AreaGuardMissionCursorAction.Name", "Apply Area Guard Mission To Units");
 
             public override void LeftClick(Point2D cellCoords)
             {
@@ -89,7 +89,7 @@ namespace WAEScript
 
                 cellCenterPoint = cellCenterPoint.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
 
-                const string text = "Assign Mission";
+                const string text = Translate("MapScripts.AreaGuardMissionCursorAction.CursorActionText", "Assign Mission");
                 var textDimensions = Renderer.GetTextDimensions(text, Constants.UIBoldFont);
                 int x = cellCenterPoint.X - (int)(textDimensions.X / 2);
                 int y = cellCenterPoint.Y - (int)(textDimensions.Y / 2);

@@ -107,7 +107,7 @@ namespace TSMapEditor.UI.CursorActions
 
             if (source == null)
             {
-                DrawText(cellCoords, cameraTopLeftPoint, "Click to select source coordinate, or right-click to exit", sourceColor);
+                DrawText(cellCoords, cameraTopLeftPoint, Translate("NoSource", "Click to select source coordinate, or right-click to exit"), sourceColor);
                 return;
             }
 

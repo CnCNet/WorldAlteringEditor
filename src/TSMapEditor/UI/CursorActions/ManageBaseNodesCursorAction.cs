@@ -202,7 +202,10 @@ namespace TSMapEditor.UI.CursorActions
 
             if (overlappingNodes)
             {
-                EditorMessageBox.Show(windowManager, "Error", "The house already has one or more base nodes on the cell!", MessageBoxButtons.OK);
+                EditorMessageBox.Show(windowManager, 
+                    Translate("OverlappingNodesError.Title", "Error"),
+                    Translate("OverlappingNodesError.Description", "The house already has one or more base nodes on the cell!"),
+                    MessageBoxButtons.OK);
                 return;
             }
 
@@ -212,7 +215,11 @@ namespace TSMapEditor.UI.CursorActions
 
             if (mapCell.Structures[0].UpgradeCount > 0)
             {
-                var messageBox = EditorMessageBox.Show(windowManager, "Create node for upgrades?", "The building has one or more upgrades. Do you also want to create a base node for them?", MessageBoxButtons.YesNo);
+                var messageBox = EditorMessageBox.Show(windowManager, 
+                    Translate("BaseNodeUpgrade.Title", "Create node for upgrades?"),
+                    Translate("BaseNodeUpgrade.Description", "The building has one or more upgrades. Do you also want to create a base node for them?"),
+                    MessageBoxButtons.YesNo);
+
                 messageBox.YesClickedAction = _ => CreateNode(mapCell.Structures[0], true, removeBuilding);
                 messageBox.NoClickedAction = _ => CreateNode(mapCell.Structures[0], false, removeBuilding);
                 return;

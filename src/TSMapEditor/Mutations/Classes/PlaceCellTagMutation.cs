@@ -20,7 +20,9 @@ namespace TSMapEditor.Mutations.Classes
 
         public override string GetDisplayString()
         {
-            return $"Place CellTag for '{tag.Name}' at {cellCoords}";
+            return string.Format(Translate(this, "DisplayString", 
+                "Place CellTag for '{0}' at {1}"),
+                    tag.Name, cellCoords);
         }
 
         public override void Perform()

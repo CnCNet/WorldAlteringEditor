@@ -53,7 +53,8 @@ namespace TSMapEditor.Mutations.Classes
 
         public override string GetDisplayString()
         {
-            return $"Move {movable.WhatAmI()} from {oldPosition} to {newPosition}";
+            return string.Format(Translate(this, "DisplayString", "Move {0} from {1} to {2}"),
+                movable.WhatAmI(), oldPosition, newPosition);
         }
 
         public override void Perform()

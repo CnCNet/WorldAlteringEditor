@@ -129,7 +129,7 @@ namespace TSMapEditor.Models
         public string GetHintText()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("Contains:");
+            sb.Append(Translate(this, "GetHintText.Contains", "Contains:"));
 
             int totalCost = 0;
             foreach (var entry in TechnoTypes)
@@ -148,7 +148,7 @@ namespace TSMapEditor.Models
 
             sb.Append(Environment.NewLine);
             sb.Append(Environment.NewLine);
-            sb.Append("Total Cost: $" + totalCost);
+            sb.Append(string.Format(Translate(this, "GetHintText.TotalCost", "Total Cost: ${0}"), totalCost));
 
             return sb.ToString();
         }
@@ -160,7 +160,7 @@ namespace TSMapEditor.Models
         public TaskForce Clone(string iniName)
         {
             var newTaskForce = new TaskForce(iniName);
-            newTaskForce.Name = Name + " (Clone)";
+            newTaskForce.Name = Name + Translate(this, "CloneName", " (Clone)");
             newTaskForce.Group = Group;
 
             for (int i = 0; i < TechnoTypes.Length; i++)

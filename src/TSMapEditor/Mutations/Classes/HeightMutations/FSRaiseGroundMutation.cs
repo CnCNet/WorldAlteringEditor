@@ -90,7 +90,8 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
 
         public override string GetDisplayString()
         {
-            return $"Raise ground at {OriginCell} with a brush size of {BrushSize} using non-steep ramps";
+            return string.Format(Translate(this, "DisplayString", "Raise ground at {0} with a brush size of {1} using non-steep ramps"),
+                OriginCell, BrushSize);
         }
 
 

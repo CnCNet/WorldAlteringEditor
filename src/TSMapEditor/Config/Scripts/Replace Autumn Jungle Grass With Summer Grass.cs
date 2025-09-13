@@ -16,7 +16,7 @@ namespace WAEScript
         /// Returns the description of this script.
         /// All scripts must contain this function.
         /// </summary>
-        public string GetDescription() => "This script replaces all autumn grass overlay (AJGRASS) with summer jungle grass overlay (JGRASS). Continue?";
+        public string GetDescription() => Translate("MapScripts.ReplaceAutumnGrassSummerGrass.Description", "This script replaces all autumn grass overlay (AJGRASS) with summer jungle grass overlay (JGRASS). Continue?");
 
         /// <summary>
         /// Returns the message that is presented to the user if running this script succeeded.
@@ -24,7 +24,8 @@ namespace WAEScript
         /// </summary>
         public string GetSuccessMessage()
         {
-            return error ?? "Successfully replaced " + count + " AJGRASS overlay with JGRASS overlay.";
+            return error ?? string.Format(Translate("MapScripts.ReplaceAutumnGrassSummerGrass.Description",
+                "Successfully replaced {0} AJGRASS overlay with JGRASS overlay."), count);
         }
 
         int count = 0;
@@ -41,7 +42,7 @@ namespace WAEScript
 
             if (jungleGrassOverlayType == null)
             {
-                error = "Failed to find jungle grass overlay type (JGRASS)!";
+                error = Translate("MapScripts.ReplaceAutumnGrassSummerGrass.Errors.JungleGrassOverlay", "Failed to find jungle grass overlay type (JGRASS)!");
                 return;
             }
 

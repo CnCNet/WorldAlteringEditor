@@ -17,8 +17,11 @@ namespace TSMapEditor.Mutations.Classes
 
         public override string GetDisplayString()
         {
-            return $"Set follower of vehicle {followedUnit.ObjectType.GetEditorDisplayName()} at {followedUnit.Position} " +
-                $"to {followerUnit.ObjectType.GetEditorDisplayName()} at {followerUnit.Position}";
+            return string.Format(Translate(this, "DisplayString", 
+                "Set follower of vehicle {0} at {1} " +
+                "to {2} at {3}"),
+                    followedUnit.ObjectType.GetEditorDisplayName(), followedUnit.Position, 
+                    followerUnit.ObjectType.GetEditorDisplayName(), followerUnit.Position);
         }
 
         public override void Perform()

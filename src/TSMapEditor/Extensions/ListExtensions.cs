@@ -21,7 +21,8 @@ namespace TSMapEditor.Extensions
                 var taskForce = TaskForce.ParseTaskForce(rules, iniFile.GetSection(kvp.Value));
                 if (taskForce == null)
                 {
-                    errorLogger($"Failed to load TaskForce {kvp.Value}. It might be missing a section or be otherwise invalid.");
+                    errorLogger(string.Format(Translate("ListExtensions.TaskForceParseError", 
+                        "Failed to load TaskForce {0}. It might be missing a section or be otherwise invalid."), kvp.Value));
 
                     continue;
                 }
@@ -52,7 +53,8 @@ namespace TSMapEditor.Extensions
 
                 if (script == null)
                 {
-                    errorLogger($"Failed to load Script {kvp.Value}. It might be missing a section or be otherwise invalid.");
+                    errorLogger(string.Format(Translate("ListExtensions.ScriptParseError", 
+                        "Failed to load Script {0}. It might be missing a section or be otherwise invalid."), kvp.Value));
 
                     continue;
                 }
@@ -112,7 +114,8 @@ namespace TSMapEditor.Extensions
 
                     if (teamType.HouseType == null)
                     {
-                        errorLogger($"TeamType {teamType.ININame} has an invalid owner ({houseTypeIniName}) specified!");
+                        errorLogger(string.Format(Translate("ListExtensions.ScriptParseError", 
+                            "TeamType {0} has an invalid owner ({1}) specified!"), teamType.ININame, houseTypeIniName));
                     }
                 }
 
@@ -121,12 +124,14 @@ namespace TSMapEditor.Extensions
 
                 if (teamType.Script == null)
                 {
-                    errorLogger($"TeamType {teamType.ININame} has an invalid script ({scriptId}) specified!");
+                    errorLogger(string.Format(Translate("ListExtensions.TeamTypes.ScriptNotFound", 
+                        "TeamType {0} has an invalid script ({1}) specified!"), teamType.ININame, scriptId));
                 }
 
                 if (teamType.TaskForce == null)
                 {
-                    errorLogger($"TeamType {teamType.ININame} has an invalid TaskForce ({taskForceId}) specified!");
+                    errorLogger(string.Format(Translate("ListExtensions.TeamTypes.TaskForceNotFound", 
+                        "TeamType {0} has an invalid TaskForce ({1}) specified!"), teamType.ININame, taskForceId));
                 }
 
                 if (tagFinder != null && !string.IsNullOrWhiteSpace(tagId))
@@ -135,7 +140,8 @@ namespace TSMapEditor.Extensions
 
                     if (teamType.Tag == null)
                     {
-                        errorLogger($"TeamType {teamType.ININame} has an invalid tag ({tagId}) specified!");
+                        errorLogger(string.Format(Translate("ListExtensions.TeamTypes.TagNotFound", 
+                            "TeamType {0} has an invalid tag ({1}) specified!"), teamType.ININame, tagId));
                     }
                 }
 

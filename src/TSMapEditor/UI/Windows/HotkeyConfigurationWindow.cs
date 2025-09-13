@@ -174,7 +174,7 @@ namespace TSMapEditor.UI.Windows
             lblCommandCaption.Text = hotkey.UIName;
             lblDescription.Text = "";
             lblCurrentHotkeyValue.Text = hotkey.Key.GetKeyDisplayString(true);
-            lblNewHotkeyValue.Text = "Press a key...";
+            lblNewHotkeyValue.Text = Translate(this, "PressKey", "Press a key...");
             lblDefaultHotkeyValue.Text = hotkey.DefaultKey.GetKeyDisplayString(true);
             lblCurrentlyAssignedTo.Text = "";
             newHotkeyInput.Key = hotkey.Key.Key;
@@ -204,11 +204,11 @@ namespace TSMapEditor.UI.Windows
                 {
                     if (string.IsNullOrEmpty(lblCurrentlyAssignedTo.Text))
                     {
-                        lblCurrentlyAssignedTo.Text = "Also assigned to: " + otherHotkey.UIName;
+                        lblCurrentlyAssignedTo.Text = string.Format(Translate(this, "AlsoAssigned", "Also assigned to: {0}"), otherHotkey.UIName);
                     }
                     else
                     {
-                        lblCurrentlyAssignedTo.Text += " (and more)";
+                        lblCurrentlyAssignedTo.Text += Translate(this, "AlsoAssignedMore", " (and more)");
                     }
                 }
             }
@@ -216,14 +216,14 @@ namespace TSMapEditor.UI.Windows
 
         private void ClearInfo()
         {
-            lblCommandCaption.Text = "Select a command...";
+            lblCommandCaption.Text = Translate(this, "SelectCommand", "Select a command...");
             lblDescription.Text = "";
             lblCurrentHotkeyValue.Text = "";
             lblNewHotkeyValue.Text = "";
             lblCurrentlyAssignedTo.Text = "";
             lblDefaultHotkeyValue.Text = "";
         }
-
+        
         private KeyboardCommand GetSelectedCommand()
         {
             if (lbKeyboardCommands.SelectedIndex < 0 || lbKeyboardCommands.SelectedIndex >= lbKeyboardCommands.ItemCount)

@@ -37,14 +37,14 @@ namespace TSMapEditor.UI.Sidebar
 
         static List<string> sidebarModeNames = new List<string>
         {
-            "Buildings",
-            "Infantry",
-            "Vehicles",
-            "Aircraft",
-            "Naval",
-            "Terrain Objects",
-            "Overlays",
-            "Smudges"
+            Translate("EditorSidebar.SidebarNames.Buildings", "Buildings"),
+            Translate("EditorSidebar.SidebarNames.Infantry", "Infantry"),
+            Translate("EditorSidebar.SidebarNames.Vehicles", "Vehicles"),
+            Translate("EditorSidebar.SidebarNames.Aircraft", "Aircraft"),
+            Translate("EditorSidebar.SidebarNames.Naval", "Naval"),
+            Translate("EditorSidebar.SidebarNames.TerrainObjects", "Terrain Objects"),
+            Translate("EditorSidebar.SidebarNames.Overlays", "Overlays"),
+            Translate("EditorSidebar.SidebarNames.Smudges", "Smudges")
         };
 
         public override void Initialize()

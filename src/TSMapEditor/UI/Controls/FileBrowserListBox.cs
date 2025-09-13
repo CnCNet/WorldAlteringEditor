@@ -115,7 +115,7 @@ namespace TSMapEditor.UI.Controls
                 return;
             }
 
-            AddItem(new XNAListBoxItem(".. <Directory Up>", Color.Gray) { Tag = new object() });
+            AddItem(new XNAListBoxItem(Translate(this, "'ListFiles.DirectoryUp",".. <Directory Up>"), Color.Gray) { Tag = new object() });
 
             var directories = Directory.GetDirectories(DirectoryPath);
             foreach (string dir in directories)

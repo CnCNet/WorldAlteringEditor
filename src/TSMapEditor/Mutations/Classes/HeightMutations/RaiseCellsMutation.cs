@@ -25,7 +25,9 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
 
         public override string GetDisplayString()
         {
-            return $"Raise cell height at {targetCellCoords} with a brush size of {brushSize}";
+            return string.Format(Translate(this, "DisplayString", 
+                "Raise cell height at {0} with a brush size of {1}"),
+                    targetCellCoords, brushSize);
         }
 
         public override void Perform()

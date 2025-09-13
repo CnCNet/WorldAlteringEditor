@@ -1,4 +1,5 @@
-﻿using Rampastring.Tools;
+﻿using Microsoft.Xna.Framework;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
@@ -48,9 +49,10 @@ namespace TSMapEditor.UI.Windows
             string filePath = (string)lbScriptFiles.SelectedItem.Tag;
             if (!File.Exists(filePath))
             {
-                EditorMessageBox.Show(WindowManager, "Can't find file",
-                    "The selected file does not exist! Maybe it was deleted?", MessageBoxButtons.OK);
-
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "FileNotFound.Title", "Can't find file"),
+                    Translate(this, "FileNotFound.Description", "The selected file does not exist! Maybe it was deleted?"),
+                    MessageBoxButtons.OK);
                 return;
             }
 
@@ -61,9 +63,12 @@ namespace TSMapEditor.UI.Windows
             if (error != null)
             {
                 Logger.Log("Compilation error when attempting to run script: " + error);
-                EditorMessageBox.Show(WindowManager, "Error",
-                    "Compiling the script failed! Check its syntax, or contact its author for support." + Environment.NewLine + Environment.NewLine +
-                    "Returned error was: " + error, MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "ScriptCompilationError.Title", "Error"),
+                    string.Format(Translate(this, "ScriptCompilationError.Description", 
+                        "Compiling the script failed! Check its syntax, or contact its author for support." + Environment.NewLine + Environment.NewLine +
+                        "Returned error was: {0}"), error),
+                   MessageBoxButtons.OK);
                 return;
             }
 
@@ -73,7 +78,8 @@ namespace TSMapEditor.UI.Windows
 
                 confirmation = Renderer.FixText(confirmation, Constants.UIDefaultFont, Width).Text;
 
-                var messageBox = EditorMessageBox.Show(WindowManager, "Are you sure?",
+                var messageBox = EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "Confirm", "Are you sure?"),
                     confirmation, MessageBoxButtons.YesNo);
                 messageBox.YesClickedAction = (_) => ApplyCode();
 
@@ -83,12 +89,18 @@ namespace TSMapEditor.UI.Windows
                 error = ScriptRunner.RunScriptV2();
 
                 if (error != null)
-                    EditorMessageBox.Show(WindowManager, "Error running script", error, MessageBoxButtons.OK);
+                    EditorMessageBox.Show(WindowManager, 
+                        Translate(this, "ScriptRunError.Title", "Error running script"),
+                        error,
+                        MessageBoxButtons.OK);
             }
             else
             {
-                EditorMessageBox.Show(WindowManager, "Unsupported Scripting API Version",
-                    "Script uses an unsupported scripting API version: " + ScriptRunner.ActiveScriptAPIVersion, MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "UnsupportedScriptApiVersion.Title", "Unsupported Scripting API Version"),
+                    string.Format(Translate(this, "UnsupportedScriptApiVersion.Description", 
+                        "Script uses an unsupported scripting API version: {0}"), ScriptRunner.ActiveScriptAPIVersion),
+                    MessageBoxButtons.OK);
             }
         }
 
@@ -100,7 +112,7 @@ namespace TSMapEditor.UI.Windows
             string result = ScriptRunner.RunScriptV1(scriptDependencies.Map, scriptPath);
             result = Renderer.FixText(result, Constants.UIDefaultFont, Width).Text;
 
-            EditorMessageBox.Show(WindowManager, "Result", result, MessageBoxButtons.OK);
+            EditorMessageBox.Show(WindowManager, Translate(this, "Result", "Result"), result, MessageBoxButtons.OK);
             ScriptRun?.Invoke(this, EventArgs.Empty);
         }
 
@@ -113,7 +125,11 @@ namespace TSMapEditor.UI.Windows
             if (!Directory.Exists(directoryPath))
             {
                 Logger.Log("WAE scipts directory not found!");
-                EditorMessageBox.Show(WindowManager, "Error", "Scripts directory not found!\r\n\r\nExpected path: " + directoryPath, MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "WAEScriptsDirectoryNotFound.Title", "Error"),
+                    string.Format(Translate(this, "WAEScriptsDirectoryNotFound.Description", 
+                        "Scripts directory not found!\r\n\r\nExpected path: {0}"), directoryPath),
+                    MessageBoxButtons.OK);
                 return;
             }
 

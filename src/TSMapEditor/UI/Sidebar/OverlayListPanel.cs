@@ -46,7 +46,7 @@ namespace TSMapEditor.UI.Sidebar
             SearchBox.Y = Constants.UIEmptyTopSpace;
             SearchBox.Width = Width - Constants.UIEmptySideSpace * 2;
             SearchBox.Height = Constants.UITextBoxHeight;
-            SearchBox.Suggestion = "Search overlay... (CTRL + F)";
+            SearchBox.Suggestion = Translate(this, "SearchOverlay", "Search overlay... (CTRL + F)");
             AddChild(SearchBox);
             SearchBox.TextChanged += SearchBox_TextChanged;
             SearchBox.EnterPressed += SearchBox_EnterPressed;
@@ -183,13 +183,13 @@ namespace TSMapEditor.UI.Sidebar
 
             categories.Add(new TreeViewCategory()
             {
-                Text = "Erase Overlay",
+                Text = Translate(this, "EraseOverlay", "Erase Overlay"),
                 Tag = new object()
             });
 
             if (Map.EditorConfig.OverlayCollections.Count > 0)
             {
-                var collectionsCategory = new TreeViewCategory() { Text = "Collections" };
+                var collectionsCategory = new TreeViewCategory() { Text = Translate(this, "OverlayCollections", "Collections") };
                 categories.Add(collectionsCategory);
 
                 foreach (var collection in Map.EditorConfig.OverlayCollections)
@@ -225,7 +225,7 @@ namespace TSMapEditor.UI.Sidebar
 
             if (Map.EditorConfig.ConnectedOverlays.Count > 0)
             {
-                var connectedOverlaysCategory = new TreeViewCategory() { Text = "Connected Overlays" };
+                var connectedOverlaysCategory = new TreeViewCategory() { Text = Translate(this, "ConnectedOverlays", "Connected Overlays") };
                 categories.Add(connectedOverlaysCategory);
 
                 foreach (var connectedOverlay in Map.EditorConfig.ConnectedOverlays)
@@ -260,7 +260,7 @@ namespace TSMapEditor.UI.Sidebar
 
                 if (string.IsNullOrEmpty(overlayType.EditorCategory))
                 {
-                    category = FindOrMakeCategory("Uncategorized", categories);
+                    category = FindOrMakeCategory(Translate(this, "Uncategorized", "Uncategorized"), categories);
                 }
                 else
                 {

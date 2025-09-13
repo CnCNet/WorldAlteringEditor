@@ -31,7 +31,7 @@ namespace TSMapEditor.UI.Windows
             lblHeader.Name = nameof(lblHeader);
             lblHeader.X = Constants.UIEmptySideSpace;
             lblHeader.Y = Constants.UIEmptyTopSpace;
-            lblHeader.Text = "Select the destination that you want to save the map to.";
+            lblHeader.Text = Translate(this, "HeaderText", "Select the destination that you want to save the map to.");
             AddChild(lblHeader);
             Width = lblHeader.Right + Constants.UIEmptySideSpace;
 
@@ -48,7 +48,7 @@ namespace TSMapEditor.UI.Windows
             lblFileName.Name = nameof(lblFileName);
             lblFileName.X = Constants.UIEmptySideSpace;
             lblFileName.Y = lbFileList.Bottom + Constants.UIVerticalSpacing;
-            lblFileName.Text = "File name:";
+            lblFileName.Text = Translate(this, "FileNameText", "File name:");
             AddChild(lblFileName);
 
             tbFileName = new EditorTextBox(WindowManager);
@@ -63,7 +63,7 @@ namespace TSMapEditor.UI.Windows
             btnSave.X = Constants.UIEmptySideSpace;
             btnSave.Y = tbFileName.Bottom + Constants.UIEmptyTopSpace;
             btnSave.Width = 100;
-            btnSave.Text = "Save";
+            btnSave.Text = Translate(this, "SaveText", "Save");
             AddChild(btnSave);
             btnSave.LeftClick += BtnSave_LeftClick;
 
@@ -72,7 +72,7 @@ namespace TSMapEditor.UI.Windows
             btnCancel.Width = 100;
             btnCancel.X = Width - Constants.UIEmptySideSpace - btnCancel.Width;
             btnCancel.Y = btnSave.Y;
-            btnCancel.Text = "Cancel";
+            btnCancel.Text = Translate(this, "CancelText", "Cancel");
             AddChild(btnCancel);
             btnCancel.LeftClick += BtnCancel_LeftClick;
 
@@ -92,7 +92,10 @@ namespace TSMapEditor.UI.Windows
         {
             if (tbFileName.Text.Length == 0)
             {
-                EditorMessageBox.Show(WindowManager, "No file name given", "Please enter a name for the map file.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "NoFileName.Title", "No file name given"),
+                    Translate(this, "NoFileName.Description", "Please enter a name for the map file."), 
+                    MessageBoxButtons.OK);
                 return;
             }
 

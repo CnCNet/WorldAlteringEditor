@@ -98,7 +98,7 @@ namespace TSMapEditor.Models
         public Script Clone(string iniName)
         {
             var script = new Script(iniName);
-            script.Name = Name + " (Clone)";
+            script.Name = Name + Translate(this, "CloneName", " (Clone)");
             script.EditorColor = EditorColor;
 
             foreach (var action in Actions)
@@ -120,7 +120,7 @@ namespace TSMapEditor.Models
                 scriptSection.SetStringValue(i.ToString(), $"{Actions[i].Action},{Actions[i].Argument}");
             }
 
-            scriptSection.SetStringValue("Name", Name);            
+            scriptSection.SetStringValue("Name", Name);
         }
 
         public void WriteEditorProperties(IniFile iniFile)

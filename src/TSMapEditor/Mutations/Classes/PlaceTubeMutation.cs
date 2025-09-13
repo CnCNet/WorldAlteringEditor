@@ -15,7 +15,9 @@ namespace TSMapEditor.Mutations.Classes
 
         public override string GetDisplayString()
         {
-            return $"Place tunnel tube of length {tube.Directions.Count} at {tube.EntryPoint}";
+            return string.Format(Translate(this, "DisplayString", 
+                "Place tunnel tube of length {0} at {1}"),
+                    tube.Directions.Count, tube.EntryPoint);
         }
 
         public override void Perform()

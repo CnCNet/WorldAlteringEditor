@@ -43,7 +43,7 @@ namespace TSMapEditor.Scripts
         public static string CompileScript(ScriptDependencies scriptDependencies, string scriptPath)
         {
             if (!File.Exists(scriptPath))
-                return "The script file does not exist!";
+                return Translate("ScriptRunner.CompileScript.NoScriptFile", "The script file does not exist!");
 
             var sourceCode = File.ReadAllText(scriptPath);
             string error = CompileSource(scriptDependencies, sourceCode);
@@ -78,13 +78,16 @@ namespace TSMapEditor.Scripts
                 {
                     ex = ex.InnerException;
                     errorMessage += Environment.NewLine + Environment.NewLine + 
-                        "Inner exception message: " + ex.Message + Environment.NewLine + 
-                        "Stack trace: " + ex.StackTrace;
+                        Translate("ScriptRunner.RunScriptV1.InnerException.Message", "Inner exception message: ") +
+                        ex.Message + Environment.NewLine + 
+                        Translate("ScriptRunner.RunScriptV1.InnerException.StackTrace", "Stack trace: ") + ex.StackTrace;
                 }
 
                 Logger.Log("Exception while running script. Returned exception message: " + errorMessage);
 
-                return "An error occurred while running the script. Returned error message: " + Environment.NewLine + Environment.NewLine + errorMessage;
+                return Translate("ScriptRunner.RunScriptV1.Exception.Message", "An error occurred while running the script. Returned error message: ") + 
+                    Environment.NewLine + Environment.NewLine + 
+                    errorMessage;
             }
         }
 
@@ -102,13 +105,16 @@ namespace TSMapEditor.Scripts
                 {
                     ex = ex.InnerException;
                     errorMessage += Environment.NewLine + Environment.NewLine +
-                        "Inner exception message: " + ex.Message + Environment.NewLine +
-                        "Stack trace: " + ex.StackTrace;
+                        Translate("ScriptRunner.RunScriptV2.InnerException.Message", "Inner exception message: ") +
+                         ex.Message + Environment.NewLine +
+                        Translate("ScriptRunner.RunScriptV2.InnerException.StackTrace", "Stack trace: ") + ex.StackTrace;
                 }
 
                 Logger.Log("Exception while running script. Returned exception message: " + errorMessage);
 
-                return "An error occurred while running the script. Returned error message: " + Environment.NewLine + Environment.NewLine + errorMessage;
+                return Translate("ScriptRunner.RunScriptV2.Exception.Message", "An error occurred while running the script. Returned error message: ") +
+                    Environment.NewLine + Environment.NewLine +
+                    errorMessage;
             }
 
             return null;
@@ -145,7 +151,7 @@ namespace TSMapEditor.Scripts
             {
                 if (apiVersionProperty.PropertyType != typeof(int))
                 {
-                    return "ApiVersion property is not an integer!";
+                    return Translate("ScriptRunner.CompileSource.ApiVersionNotInt", "ApiVersion property is not an integer!");
                 }
 
                 version = (int)apiVersionProperty.GetValue(instance);
@@ -162,7 +168,8 @@ namespace TSMapEditor.Scripts
                 return ExtractScriptV2(instance, scriptDependencies);
             }
 
-            return $"Unsupported scripting API version: {version}. Contact the script's author for troubleshooting.";
+            return string.Format(Translate("ScriptRunner.CompileSource.UnsupportedApiVersion", 
+                "Unsupported scripting API version: {0}. Contact the script's author for troubleshooting."), version);
         }
 
         private static string ExtractScriptV2(object instance, ScriptDependencies scriptDependencies)
@@ -178,9 +185,9 @@ namespace TSMapEditor.Scripts
                     performMethod = method;
                     if (performMethod.GetParameters().Length > 0)
                     {
-                        return "The Perform method has one or more parameters." + Environment.NewLine +
+                        return Translate("ScriptRunner.ExtractScriptV2.PerformParams", "The Perform method has one or more parameters." + Environment.NewLine +
                             "It should have no parameters in a V2 script." + Environment.NewLine +
-                            "To access map data, access ScriptDependencies.Map.";
+                            "To access map data, access ScriptDependencies.Map.");
                     }
                 }
             }
@@ -200,7 +207,7 @@ namespace TSMapEditor.Scripts
 
             if (performMethod == null)
             {
-                return "The script does not declare the Perform method.";
+                return Translate("ScriptRunner.ExtractScriptV2.NoPerformMethod", "The script does not declare the Perform method.");
             }
 
             return null;
@@ -219,7 +226,7 @@ namespace TSMapEditor.Scripts
                     getDescriptionMethod = method;
 
                     if (getDescriptionMethod.ReturnType != typeof(string))
-                        return "GetDescription does not return a string!";
+                        return Translate("ScriptRunner.ExtractScriptV1.DescriptionReturnType", "GetDescription does not return a string!");
                 }
                 else if (method.Name == "Perform")
                 {
@@ -230,13 +237,13 @@ namespace TSMapEditor.Scripts
                     getSuccessMessageMethod = method;
 
                     if (getSuccessMessageMethod.ReturnType != typeof(string))
-                        return "GetSuccessMessage does not return a string!";
+                        return Translate("ScriptRunner.ExtractScriptV1.SuccessMessageReturnType", "GetSuccessMessage does not return a string!");
                 }
             }
 
             if (getDescriptionMethod == null || performMethod == null || getSuccessMessageMethod == null)
             {
-                return "The script does not declare one or more required methods.";
+                return Translate("ScriptRunner.ExtractScriptV1.MissingRequiredMethods", "The script does not declare one or more required methods.");
             }
 
             return null;

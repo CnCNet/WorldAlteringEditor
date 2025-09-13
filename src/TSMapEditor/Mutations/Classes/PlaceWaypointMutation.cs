@@ -23,7 +23,9 @@ namespace TSMapEditor.Mutations.Classes
 
         public override string GetDisplayString()
         {
-            return $"Place waypoint {waypointNumber} at {cellCoords}";
+            return string.Format(Translate(this, "DisplayString", 
+                "Place waypoint {0} at {1}"),
+                    waypointNumber, cellCoords);
         }
 
         public override void Perform()

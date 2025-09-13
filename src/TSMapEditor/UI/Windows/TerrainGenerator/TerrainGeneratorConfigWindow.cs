@@ -48,7 +48,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             var lblHeader = new XNALabel(WindowManager);
             lblHeader.Name = nameof(lblHeader);
             lblHeader.FontIndex = Constants.UIBoldFont;
-            lblHeader.Text = "TERRAIN GENERATOR CONFIGURATION";
+            lblHeader.Text = Translate(this, "HeaderText", "TERRAIN GENERATOR CONFIGURATION");
             lblHeader.Y = Constants.UIEmptyTopSpace;
             AddChild(lblHeader);
             lblHeader.CenterOnParentHorizontally();
@@ -57,7 +57,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             lblPresets.Name = nameof(lblPresets);
             lblPresets.Y = lblHeader.Bottom + Constants.UIEmptyTopSpace;
             lblPresets.X = Constants.UIEmptySideSpace;
-            lblPresets.Text = "Load Preset Config:";
+            lblPresets.Text = Translate(this, "LoadPresetConfig", "Load Preset Config:");
             AddChild(lblPresets);
 
             ddPresets = new XNADropDown(WindowManager);
@@ -74,7 +74,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             btnSaveConfig.Width = 160;
             btnSaveConfig.X = ddPresets.Right + Constants.UIHorizontalSpacing * 2;
             btnSaveConfig.Y = ddPresets.Y;
-            btnSaveConfig.Text = "Save Custom Preset...";
+            btnSaveConfig.Text = Translate(this, "SaveCustomPreset", "Save Custom Preset...");
             AddChild(btnSaveConfig);
             btnSaveConfig.LeftClick += BtnSaveConfig_LeftClick;
 
@@ -83,7 +83,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             btnDeleteConfig.Width = 160;
             btnDeleteConfig.X = btnSaveConfig.Right + Constants.UIHorizontalSpacing;
             btnDeleteConfig.Y = btnSaveConfig.Y;
-            btnDeleteConfig.Text = "Delete Custom Preset...";
+            btnDeleteConfig.Text = Translate(this, "DeleteCustomPreset", "Delete Custom Preset...");
             AddChild(btnDeleteConfig);
             btnDeleteConfig.LeftClick += BtnDeleteConfig_LeftClick;
 
@@ -108,10 +108,10 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             tabControl.Width = Width;
             tabControl.Height = idleTexture.Height;
             tabControl.FontIndex = Constants.UIBoldFont;
-            tabControl.AddTab("Terrain Types", idleTexture, selectedTexture);
-            tabControl.AddTab("Terrain Tiles", idleTexture, selectedTexture);
-            tabControl.AddTab("Overlays", idleTexture, selectedTexture);
-            tabControl.AddTab("Smudges", idleTexture, selectedTexture);
+            tabControl.AddTab(Translate(this, "Tabs.TerrainTypes", "Terrain Types"), idleTexture, selectedTexture);
+            tabControl.AddTab(Translate(this, "Tabs.TerrainTiles", "Terrain Tiles"), idleTexture, selectedTexture);
+            tabControl.AddTab(Translate(this, "Tabs.Overlays", "Overlays"), idleTexture, selectedTexture);
+            tabControl.AddTab(Translate(this, "Tabs.Smudges", "Smudges"), idleTexture, selectedTexture);
             AddChild(tabControl);
             tabControl.SelectedIndexChanged += (s, e) => { HideAllPanels(); panels[tabControl.SelectedTab].Enable(); };
 
@@ -161,7 +161,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
             btnApply.Name = nameof(btnApply);
             btnApply.Y = terrainTypeGroupsPanel.Bottom + Constants.UIEmptyTopSpace;
             btnApply.Width = 100;
-            btnApply.Text = "Apply";
+            btnApply.Text = Translate(this, "Apply", "Apply");
             AddChild(btnApply);
             btnApply.CenterOnParentHorizontally();
             btnApply.LeftClick += BtnApply_LeftClick;
@@ -211,8 +211,10 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
 
             if (!success)
             {
-                EditorMessageBox.Show(WindowManager, "Failed to save presets", 
-                    "Failed to save terrain generator presets. Please see the map editor logfile for details.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "SavePresetFailure.Title", "Failed to save presets"), 
+                    Translate(this, "SavePresetFailure.Description", "Failed to save terrain generator presets. Please see the map editor logfile for details."),
+                    MessageBoxButtons.OK);
             }
         }
 
@@ -230,8 +232,10 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
 
             if (!success)
             {
-                EditorMessageBox.Show(WindowManager, "Failed to save presets",
-                    "Failed to save terrain generator presets. Please see the map editor logfile for details.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager,
+                    Translate(this, "SavePresetFailure.Title", "Failed to save presets"),
+                    Translate(this, "SavePresetFailure.Description", "Failed to save terrain generator presets. Please see the map editor logfile for details."),
+                    MessageBoxButtons.OK);
             }
         }
 
