@@ -1,10 +1,11 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using TSMapEditor.CCEngine;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
 using TSMapEditor.Rendering;
@@ -79,39 +80,39 @@ namespace TSMapEditor.UI
 
             if (editorState.CursorAction != null)
             {
-                textRenderer.AddTextPart(new XNATextPart("Selected tool: ", Constants.UIDefaultFont, subtleTextColor));
+                textRenderer.AddTextPart(new XNATextPart("Selected tool: ".L10N(), Constants.UIDefaultFont, subtleTextColor));
                 textRenderer.AddTextPart(new XNATextPart(editorState.CursorAction.GetName() + Environment.NewLine, Constants.UIDefaultFont, baseTextColor));
             }
             else
             {
-                textRenderer.AddTextPart(new XNATextPart("No tool selected" + Environment.NewLine, Constants.UIDefaultFont, subtleTextColor));
+                textRenderer.AddTextPart(new XNATextPart("No tool selected".L10N() + Environment.NewLine, Constants.UIDefaultFont, subtleTextColor));
             }
 
             textRenderer.AddTextPart(new XNATextPart(MapTile.X + ", " + MapTile.Y + Environment.NewLine, Constants.UIDefaultFont, baseTextColor));
 
             TileImage tileGraphics = theaterGraphics.GetTileGraphics(MapTile.TileIndex);
             TileSet tileSet = theaterGraphics.Theater.TileSets[tileGraphics.TileSetId];
-            textRenderer.AddTextPart(new XNATextPart("TileSet: ", Constants.UIDefaultFont, subtleTextColor));
+            textRenderer.AddTextPart(new XNATextPart("TileSet: ".L10N(), Constants.UIDefaultFont, subtleTextColor));
             textRenderer.AddTextPart(new XNATextPart(tileSet.SetName + " (" + tileGraphics.TileSetId + ")", Constants.UIDefaultFont, baseTextColor));
-            textRenderer.AddTextPart(new XNATextPart("Tile #: ", Constants.UIDefaultFont, subtleTextColor));
+            textRenderer.AddTextPart(new XNATextPart("Tile #: ".L10N(), Constants.UIDefaultFont, subtleTextColor));
             textRenderer.AddTextPart(new XNATextPart((MapTile.TileIndex - tileSet.StartTileIndex).ToString(CultureInfo.InvariantCulture), Constants.UIDefaultFont, baseTextColor));
 
             MGTMPImage subCellImage = MapTile.SubTileIndex < tileGraphics.TMPImages.Length ? tileGraphics.TMPImages[MapTile.SubTileIndex] : null;
             string terrainType = subCellImage != null && subCellImage.TmpImage != null ? Helpers.LandTypeToString(subCellImage.TmpImage.TerrainType) : "Unknown";
 
-            textRenderer.AddTextLine(new XNATextPart("Terrain Type: ", Constants.UIDefaultFont, subtleTextColor));
+            textRenderer.AddTextLine(new XNATextPart("Terrain Type: ".L10N(), Constants.UIDefaultFont, subtleTextColor));
             textRenderer.AddTextPart(new XNATextPart(terrainType, Constants.UIDefaultFont, baseTextColor));
 
             if (!Constants.IsFlatWorld)
             {
-                textRenderer.AddTextLine(new XNATextPart("Height: ", Constants.UIDefaultFont, subtleTextColor));
+                textRenderer.AddTextLine(new XNATextPart("Height: ".L10N(), Constants.UIDefaultFont, subtleTextColor));
                 textRenderer.AddTextPart(new XNATextPart(MapTile.Level.ToString(), Constants.UIDefaultFont, baseTextColor));
             }
 
             CellTag cellTag = MapTile.CellTag;
             if (cellTag != null)
             {
-                textRenderer.AddTextLine(new XNATextPart("CellTag: ",
+                textRenderer.AddTextLine(new XNATextPart("CellTag: ".L10N(),
                     Constants.UIDefaultFont, subtleTextColor));
                 textRenderer.AddTextPart(new XNATextPart(cellTag.Tag.Name + " (" + cellTag.Tag.ID + ")",
                     Constants.UIDefaultFont, cellTag.Tag.Trigger.EditorColor == null ? baseTextColor : cellTag.Tag.Trigger.XNAColor));
@@ -121,7 +122,7 @@ namespace TSMapEditor.UI
             if (overlay != null)
             {
                 textRenderer.AddTextLine(new XNATextPart(
-                    "Overlay: ",
+                    "Overlay: ".L10N(),
                     Constants.UIDefaultFont, subtleTextColor));
 
                 textRenderer.AddTextPart(new XNATextPart(
@@ -129,10 +130,10 @@ namespace TSMapEditor.UI
                     Constants.UIDefaultFont, baseTextColor));
             }
 
-            MapTile.DoForAllAircraft(aircraft => AddObjectInformation("Aircraft: ", aircraft));
-            MapTile.DoForAllVehicles(unit => AddObjectInformation("Vehicle: ", unit));
-            MapTile.DoForAllBuildings(structure => AddObjectInformation("Structure: ", structure));
-            MapTile.DoForAllInfantry(inf => AddObjectInformation("Infantry: ", inf));
+            MapTile.DoForAllAircraft(aircraft => AddObjectInformation("Aircraft: ".L10N(), aircraft));
+            MapTile.DoForAllVehicles(unit => AddObjectInformation("Vehicle: ".L10N(), unit));
+            MapTile.DoForAllBuildings(structure => AddObjectInformation("Structure: ".L10N(), structure));
+            MapTile.DoForAllInfantry(inf => AddObjectInformation("Infantry: ".L10N(), inf));
             MapTile.DoForAllWaypoints(waypoint => AddWaypointInfo(waypoint));
             AddBaseNodeInformation(map.GetBaseNodes(MapTile.CoordsToPoint()));
             AddTerrainObjectInformation(MapTile.TerrainObject);
@@ -242,7 +243,7 @@ namespace TSMapEditor.UI
                 string lastUsage = usages[usages.Count - 1];
                 usages[usages.Count - 1] = lastUsage.Substring(0, lastUsage.Length - 2);
 
-                textRenderer.AddTextLine(new XNATextPart("Usages of waypoint " + waypoint.Identifier + ":", Constants.UIDefaultFont, Color.Gray));
+                textRenderer.AddTextLine(new XNATextPart(("Usages of waypoint " + waypoint.Identifier + ":").L10N(), Constants.UIDefaultFont, Color.Gray));
 
                 foreach (var usage in usages)
                 {
@@ -255,21 +256,21 @@ namespace TSMapEditor.UI
         {
             textRenderer.AddTextLine(new XNATextPart(objectTypeLabel,
                 Constants.UIDefaultFont, Color.Gray));
-            textRenderer.AddTextPart(new XNATextPart(techno.ObjectType.Name + " (" + techno.ObjectType.ININame + "), Owner:",
+            textRenderer.AddTextPart(new XNATextPart(techno.ObjectType.Name + " (" + techno.ObjectType.ININame + "), Owner:".L10N(),
                     Constants.UIDefaultFont, Color.White));
             textRenderer.AddTextPart(new XNATextPart(techno.Owner.ININame, Constants.UIBoldFont, techno.Owner.XNAColor));
 
             if (techno.IsFoot())
             {
                 var technoAsFoot = techno as Foot<T>;
-                textRenderer.AddTextPart(new XNATextPart("Mission: " + technoAsFoot.Mission, Constants.UIDefaultFont, Color.White));
+                textRenderer.AddTextPart(new XNATextPart(("Mission: " + technoAsFoot.Mission).L10N(), Constants.UIDefaultFont, Color.White));
             }
 
             if (techno.WhatAmI() == RTTIType.Unit)
             {
                 var unit = techno as Unit;
                 int id = map.Units.IndexOf(unit);
-                textRenderer.AddTextPart(new XNATextPart("Facing: " + techno.Facing, Constants.UIDefaultFont, Color.White));
+                textRenderer.AddTextPart(new XNATextPart(("Facing: " + techno.Facing).L10N(), Constants.UIDefaultFont, Color.White));
 
                 if (unit.FollowerUnit != null)
                 {
@@ -277,7 +278,7 @@ namespace TSMapEditor.UI
                     if (followerId > -1)
                     {
                         string followerName = unit.FollowerUnit.UnitType.GetEditorDisplayName();
-                        textRenderer.AddTextPart(new XNATextPart("Follower: " + followerName + " at " + unit.FollowerUnit.Position, Constants.UIDefaultFont, Color.White));
+                        textRenderer.AddTextPart(new XNATextPart(("Follower: " + followerName + " at " + unit.FollowerUnit.Position).L10N(), Constants.UIDefaultFont, Color.White));
                     }
                 }
             }
@@ -285,7 +286,7 @@ namespace TSMapEditor.UI
             if (techno.AttachedTag != null)
             {
                 textRenderer.AddTextPart(new XNATextPart(",", Constants.UIDefaultFont, Color.White));
-                textRenderer.AddTextPart(new XNATextPart("Tag:", Constants.UIDefaultFont, Color.White));
+                textRenderer.AddTextPart(new XNATextPart("Tag:".L10N(), Constants.UIDefaultFont, Color.White));
                 textRenderer.AddTextPart(new XNATextPart(techno.AttachedTag.Name + " (" + techno.AttachedTag.ID + ")", Constants.UIBoldFont, Color.White));
             }
         }
@@ -300,7 +301,7 @@ namespace TSMapEditor.UI
                 if (nodeBuildingType == null || house == null)
                     return;
 
-                textRenderer.AddTextLine(new XNATextPart("Base Node: ", Constants.UIDefaultFont, Color.Gray));
+                textRenderer.AddTextLine(new XNATextPart("Base Node: ".L10N(), Constants.UIDefaultFont, Color.Gray));
                 textRenderer.AddTextPart(new XNATextPart($"{nodeBuildingType.Name} ({nodeBuildingType.ININame}), Owner:", Constants.UIDefaultFont, Color.White));
                 textRenderer.AddTextPart(new XNATextPart(house.ININame, Constants.UIBoldFont, house.XNAColor));
             }
@@ -311,7 +312,7 @@ namespace TSMapEditor.UI
             if (terrainObject == null)
                 return;
 
-            textRenderer.AddTextLine(new XNATextPart("Terrain Object: ", Constants.UIDefaultFont, Color.Gray));
+            textRenderer.AddTextLine(new XNATextPart("Terrain Object: ".L10N(), Constants.UIDefaultFont, Color.Gray));
             textRenderer.AddTextPart(new XNATextPart($"{terrainObject.TerrainType.Name} ({terrainObject.TerrainType.ININame})", Constants.UIDefaultFont, Color.White));
         }
     }

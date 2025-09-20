@@ -1,9 +1,10 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
 using TSMapEditor.UI.Controls;
@@ -111,7 +112,7 @@ namespace TSMapEditor.UI.Windows
             selTag = FindChild<EditorPopUpSelector>(nameof(selTag));
             ddTeamTypeColor = FindChild<XNADropDown>(nameof(ddTeamTypeColor));
 
-            ddTeamTypeColor.AddItem("House Color");
+            ddTeamTypeColor.AddItem("House Color".L10N());
             foreach (var supportedColor in TeamType.SupportedColors)
             {
                 ddTeamTypeColor.AddItem(supportedColor.Name, supportedColor.Value);
@@ -180,10 +181,10 @@ namespace TSMapEditor.UI.Windows
             var sortContextMenu = new EditorContextMenu(WindowManager);
             sortContextMenu.Name = nameof(sortContextMenu);
             sortContextMenu.Width = lbTeamTypes.Width;
-            sortContextMenu.AddItem("Sort by ID", () => TeamTypeSortMode = TeamTypeSortMode.ID);
-            sortContextMenu.AddItem("Sort by Name", () => TeamTypeSortMode = TeamTypeSortMode.Name);
-            sortContextMenu.AddItem("Sort by Color", () => TeamTypeSortMode = TeamTypeSortMode.Color);
-            sortContextMenu.AddItem("Sort by Color, then by Name", () => TeamTypeSortMode = TeamTypeSortMode.ColorThenName);
+            sortContextMenu.AddItem("Sort by ID".L10N(), () => TeamTypeSortMode = TeamTypeSortMode.ID);
+            sortContextMenu.AddItem("Sort by Name".L10N(), () => TeamTypeSortMode = TeamTypeSortMode.Name);
+            sortContextMenu.AddItem("Sort by Color".L10N(), () => TeamTypeSortMode = TeamTypeSortMode.Color);
+            sortContextMenu.AddItem("Sort by Color, then by Name".L10N(), () => TeamTypeSortMode = TeamTypeSortMode.ColorThenName);
             AddChild(sortContextMenu);
 
             FindChild<EditorButton>("btnSortOptions").LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
@@ -191,7 +192,7 @@ namespace TSMapEditor.UI.Windows
             var teamTypeContextMenu = new EditorContextMenu(WindowManager);
             teamTypeContextMenu.Name = nameof(teamTypeContextMenu);
             teamTypeContextMenu.Width = lbTeamTypes.Width;
-            teamTypeContextMenu.AddItem("View References", ShowTeamTypeReferences);
+            teamTypeContextMenu.AddItem("View References".L10N(), ShowTeamTypeReferences);
             AddChild(teamTypeContextMenu);
 
             lbTeamTypes.AllowRightClickUnselect = false;
@@ -327,13 +328,13 @@ namespace TSMapEditor.UI.Windows
 
             if (stringBuilder.Length == 0)
             {
-                EditorMessageBox.Show(WindowManager, "No references found",
-                    $"The selected TeamType \"{editedTeamType.Name}\" ({editedTeamType.ININame}) is not used by any Triggers or AITriggers.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "No references found".L10N(),
+                    $"The selected TeamType \"{editedTeamType.Name}\" ({editedTeamType.ININame}) is not used by any Triggers or AITriggers.".L10N(), MessageBoxButtons.OK);
             }
             else
             {
-                EditorMessageBox.Show(WindowManager, "TeamType References",
-                    $"The selected TeamType \"{editedTeamType.Name}\" ({editedTeamType.ININame}) is used by the following scripting elements:" + Environment.NewLine + Environment.NewLine +
+                EditorMessageBox.Show(WindowManager, "TeamType References".L10N(),
+                    $"The selected TeamType \"{editedTeamType.Name}\" ({editedTeamType.ININame}) is used by the following scripting elements:".L10N() + Environment.NewLine + Environment.NewLine +
                     stringBuilder.ToString(), MessageBoxButtons.OK);
             }
         }
@@ -342,7 +343,7 @@ namespace TSMapEditor.UI.Windows
         {
             map.TeamTypesChanged -= Map_TeamTypesChanged;
 
-            var teamType = new TeamType(map.GetNewUniqueInternalId()) { Name = "New TeamType" };
+            var teamType = new TeamType(map.GetNewUniqueInternalId()) { Name = "New TeamType".L10N() };
             map.EditorConfig.TeamTypeFlags.ForEach(flag => { if (flag.DefaultValue) teamType.EnableFlag(flag.Name); });
             map.AddTeamType(teamType);
             ListTeamTypes();
@@ -363,10 +364,10 @@ namespace TSMapEditor.UI.Windows
             else
             {
                 var messageBox = EditorMessageBox.Show(WindowManager,
-                    "Confirm",
-                    $"Are you sure you wish to delete '{editedTeamType.Name}'?" + Environment.NewLine + Environment.NewLine +
-                    $"You'll need to manually fix any Triggers and AITriggers using the TeamType." + Environment.NewLine + Environment.NewLine +
-                    "(You can hold Shift to skip this confirmation dialog.)",
+                    "Confirm".L10N(),
+                    $"Are you sure you wish to delete '{editedTeamType.Name}'?".L10N() + Environment.NewLine + Environment.NewLine +
+                    $"You'll need to manually fix any Triggers and AITriggers using the TeamType.".L10N() + Environment.NewLine + Environment.NewLine +
+                    "(You can hold Shift to skip this confirmation dialog.)".L10N(),
                     MessageBoxButtons.YesNo);
                 messageBox.YesClickedAction = _ => DeleteTeamType();
             }

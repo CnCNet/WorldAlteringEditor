@@ -1,7 +1,8 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Globalization;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Rendering;
 using TSMapEditor.UI.Controls;
@@ -108,7 +109,7 @@ namespace TSMapEditor.UI.Windows
 
         private void RefreshValues()
         {
-            lblSelectedInfantryValue.Text = infantry.ObjectType.GetEditorDisplayName() + ", sub cell: " + infantry.SubCell;
+            lblSelectedInfantryValue.Text = infantry.ObjectType.GetEditorDisplayName() + ", sub cell: ".L10N() + infantry.SubCell;
             trbStrength.Value = infantry.HP;
             ddMission.SelectedIndex = ddMission.Items.FindIndex(item => item.Text == infantry.Mission);
             int veterancyIndex = ddVeterancy.Items.FindIndex(i => (int)i.Tag == infantry.Veterancy);

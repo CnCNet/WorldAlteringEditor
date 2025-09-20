@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using TSMapEditor.CCEngine;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
 using TSMapEditor.Rendering;
@@ -154,7 +155,7 @@ namespace TSMapEditor.UI.Windows
 
             // Init color dropdown options
             ddTriggerColor = FindChild<XNADropDown>(nameof(ddTriggerColor));
-            ddTriggerColor.AddItem("None");
+            ddTriggerColor.AddItem("None".L10N());
             Array.ForEach(Trigger.SupportedColors, sc =>
             {
                 ddTriggerColor.AddItem(sc.Name, sc.Value);
@@ -185,9 +186,9 @@ namespace TSMapEditor.UI.Windows
             AddChild(ctxActionParameterPresetValues);
             ctxActionParameterPresetValues.OptionSelected += CtxActionParameterPresetValues_OptionSelected;
 
-            ddType.AddItem("0 - one-time, single-object condition");
-            ddType.AddItem("1 - one-time, multi-object condition");
-            ddType.AddItem("2 - repeating, single-object condition");
+            ddType.AddItem("0 - one-time, single-object condition".L10N());
+            ddType.AddItem("1 - one-time, multi-object condition".L10N());
+            ddType.AddItem("2 - repeating, single-object condition".L10N());
 
             lbEvents.AllowMultiLineItems = false;
             lbActions.AllowMultiLineItems = false;
@@ -195,31 +196,31 @@ namespace TSMapEditor.UI.Windows
             var triggerContextMenu = new EditorContextMenu(WindowManager);
             triggerContextMenu.Name = nameof(triggerContextMenu);
             triggerContextMenu.Width = 270;
-            triggerContextMenu.AddItem("Place CellTag", PlaceCellTag);
-            triggerContextMenu.AddItem("Clear CellTags", ClearCellTags);
-            triggerContextMenu.AddItem("Attach to Objects", AttachTagToObjects);
-            triggerContextMenu.AddItem("View References", ShowReferences);
+            triggerContextMenu.AddItem("Place CellTag".L10N(), PlaceCellTag);
+            triggerContextMenu.AddItem("Clear CellTags".L10N(), ClearCellTags);
+            triggerContextMenu.AddItem("Attach to Objects".L10N(), AttachTagToObjects);
+            triggerContextMenu.AddItem("View References".L10N(), ShowReferences);
             if (!Constants.IsRA2YR)
             {
-                triggerContextMenu.AddItem("Wrap in EVA disable/enable actions", WrapInEVADisableAndEnableActions);
+                triggerContextMenu.AddItem("Wrap in EVA disable/enable actions".L10N(), WrapInEVADisableAndEnableActions);
             }
-            triggerContextMenu.AddItem("Clone for Easier Diffs", CloneForEasierDifficulties);
-            triggerContextMenu.AddItem("Clone for Easier Diffs (No Dependencies)", CloneForEasierDifficultiesWithoutDependencies);
+            triggerContextMenu.AddItem("Clone for Easier Diffs".L10N(), CloneForEasierDifficulties);
+            triggerContextMenu.AddItem("Clone for Easier Diffs (No Dependencies)".L10N(), CloneForEasierDifficultiesWithoutDependencies);
             AddChild(triggerContextMenu);
 
             FindChild<EditorButton>("btnNewTrigger").LeftClick += BtnNewTrigger_LeftClick;
             FindChild<EditorButton>("btnDeleteTrigger").LeftClick += BtnDeleteTrigger_LeftClick;
             FindChild<EditorButton>("btnCloneTrigger").LeftClick += BtnCloneTrigger_LeftClick;
             ddActions = FindChild<XNADropDown>(nameof(ddActions));
-            ddActions.AddItem("Advanced...");
+            ddActions.AddItem("Advanced...".L10N());
             // Add context menu options to Advanced menu for backwards compatibility
             for (int i = 0; i < triggerContextMenu.Items.Count; i++)
             {
                 var contextMenuOption = triggerContextMenu.Items[i];
                 ddActions.AddItem(new XNADropDownItem() { Text = contextMenuOption.Text, Tag = contextMenuOption.SelectAction });
             }
-            ddActions.AddItem(new XNADropDownItem() { Text = "Re-generate Trigger IDs", Tag = new Action(RegenerateIDs) });
-            ddActions.AddItem(new XNADropDownItem() { Text = "Create Random Trigger Set", Tag = new Action(OpenCreateRandomTriggersSetWindow) });
+            ddActions.AddItem(new XNADropDownItem() { Text = "Re-generate Trigger IDs".L10N(), Tag = new Action(RegenerateIDs) });
+            ddActions.AddItem(new XNADropDownItem() { Text = "Create Random Trigger Set".L10N(), Tag = new Action(OpenCreateRandomTriggersSetWindow) });
 
             ddActions.SelectedIndex = 0;
             ddActions.SelectedIndexChanged += DdActions_SelectedIndexChanged;
@@ -324,10 +325,10 @@ namespace TSMapEditor.UI.Windows
             eventContextMenu = new EditorContextMenu(WindowManager);
             eventContextMenu.Name = nameof(eventContextMenu);
             eventContextMenu.Width = lbEvents.Width;
-            eventContextMenu.AddItem("Move Up", EventContextMenu_MoveUp, () => editedTrigger != null && lbEvents.SelectedItem != null && lbEvents.SelectedIndex > 0);
-            eventContextMenu.AddItem("Move Down", EventContextMenu_MoveDown, () => editedTrigger != null && lbEvents.SelectedItem != null && lbEvents.SelectedIndex < lbEvents.Items.Count - 1);
-            eventContextMenu.AddItem("Clone Event", EventContextMenu_CloneEvent, () => editedTrigger != null && lbEvents.SelectedItem != null);
-            eventContextMenu.AddItem("Delete Event", () => BtnDeleteEvent_LeftClick(this, EventArgs.Empty), () => editedTrigger != null && lbEvents.SelectedItem != null);
+            eventContextMenu.AddItem("Move Up".L10N(), EventContextMenu_MoveUp, () => editedTrigger != null && lbEvents.SelectedItem != null && lbEvents.SelectedIndex > 0);
+            eventContextMenu.AddItem("Move Down".L10N(), EventContextMenu_MoveDown, () => editedTrigger != null && lbEvents.SelectedItem != null && lbEvents.SelectedIndex < lbEvents.Items.Count - 1);
+            eventContextMenu.AddItem("Clone Event".L10N(), EventContextMenu_CloneEvent, () => editedTrigger != null && lbEvents.SelectedItem != null);
+            eventContextMenu.AddItem("Delete Event".L10N(), () => BtnDeleteEvent_LeftClick(this, EventArgs.Empty), () => editedTrigger != null && lbEvents.SelectedItem != null);
             AddChild(eventContextMenu);
 
             lbEvents.AllowRightClickUnselect = false;
@@ -336,10 +337,10 @@ namespace TSMapEditor.UI.Windows
             actionContextMenu = new EditorContextMenu(WindowManager);
             actionContextMenu.Name = nameof(actionContextMenu);
             actionContextMenu.Width = lbActions.Width;
-            actionContextMenu.AddItem("Move Up", ActionContextMenu_MoveUp, () => editedTrigger != null && lbActions.SelectedItem != null && lbActions.SelectedIndex > 0);
-            actionContextMenu.AddItem("Move Down", ActionContextMenu_MoveDown, () => editedTrigger != null && lbActions.SelectedItem != null && lbActions.SelectedIndex < lbActions.Items.Count - 1);
-            actionContextMenu.AddItem("Clone Action", ActionContextMenu_CloneAction, () => editedTrigger != null && lbActions.SelectedItem != null);
-            actionContextMenu.AddItem("Delete Action", () => BtnDeleteAction_LeftClick(this, EventArgs.Empty), () => editedTrigger != null && lbActions.SelectedItem != null);
+            actionContextMenu.AddItem("Move Up".L10N(), ActionContextMenu_MoveUp, () => editedTrigger != null && lbActions.SelectedItem != null && lbActions.SelectedIndex > 0);
+            actionContextMenu.AddItem("Move Down".L10N(), ActionContextMenu_MoveDown, () => editedTrigger != null && lbActions.SelectedItem != null && lbActions.SelectedIndex < lbActions.Items.Count - 1);
+            actionContextMenu.AddItem("Clone Action".L10N(), ActionContextMenu_CloneAction, () => editedTrigger != null && lbActions.SelectedItem != null);
+            actionContextMenu.AddItem("Delete Action".L10N(), () => BtnDeleteAction_LeftClick(this, EventArgs.Empty), () => editedTrigger != null && lbActions.SelectedItem != null);
             AddChild(actionContextMenu);
 
             lbActions.AllowRightClickUnselect = false;
@@ -348,10 +349,10 @@ namespace TSMapEditor.UI.Windows
             var sortContextMenu = new EditorContextMenu(WindowManager);
             sortContextMenu.Name = nameof(sortContextMenu);
             sortContextMenu.Width = lbTriggers.Width;
-            sortContextMenu.AddItem("Sort by ID", () => TriggerSortMode = TriggerSortMode.ID);
-            sortContextMenu.AddItem("Sort by Name", () => TriggerSortMode = TriggerSortMode.Name);
-            sortContextMenu.AddItem("Sort by Color", () => TriggerSortMode = TriggerSortMode.Color);
-            sortContextMenu.AddItem("Sort by Color, then by Name", () => TriggerSortMode = TriggerSortMode.ColorThenName);
+            sortContextMenu.AddItem("Sort by ID".L10N(), () => TriggerSortMode = TriggerSortMode.ID);
+            sortContextMenu.AddItem("Sort by Name".L10N(), () => TriggerSortMode = TriggerSortMode.Name);
+            sortContextMenu.AddItem("Sort by Color".L10N(), () => TriggerSortMode = TriggerSortMode.Color);
+            sortContextMenu.AddItem("Sort by Color, then by Name".L10N(), () => TriggerSortMode = TriggerSortMode.ColorThenName);
             AddChild(sortContextMenu);
 
             FindChild<EditorButton>("btnSortOptions").LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
@@ -422,8 +423,8 @@ namespace TSMapEditor.UI.Windows
             if (tag == null)
                 return;
 
-            var messageBox = EditorMessageBox.Show(WindowManager, "Are you sure?",
-                $"This will delete all CellTags related to trigger \"{editedTrigger.Name}\". No un-do is available. Do you want to continue?",
+            var messageBox = EditorMessageBox.Show(WindowManager, "Are you sure?".L10N(),
+                $"This will delete all CellTags related to trigger \"{editedTrigger.Name}\". No un-do is available. Do you want to continue?".L10N(),
                 MessageBoxButtons.YesNo);
 
             messageBox.YesClickedAction = _ =>
@@ -451,10 +452,10 @@ namespace TSMapEditor.UI.Windows
 
             if (tag == null)
             {
-                EditorMessageBox.Show(WindowManager, "No tag found",
-                    $"The selected trigger '{editedTrigger.Name}' has no" +
-                    $"associated tag. As such, it cannot be attached to any objects." + Environment.NewLine + Environment.NewLine +
-                    "This should never happen, have you modified the map with another editor?",
+                EditorMessageBox.Show(WindowManager, "No tag found".L10N(),
+                    $"The selected trigger '{editedTrigger.Name}' has no".L10N() +
+                    $"associated tag. As such, it cannot be attached to any objects.".L10N() + Environment.NewLine + Environment.NewLine +
+                    "This should never happen, have you modified the map with another editor?".L10N(),
                     MessageBoxButtons.OK);
 
                 return;
@@ -476,7 +477,7 @@ namespace TSMapEditor.UI.Windows
             var tag = map.Tags.Find(t => t.Trigger == editedTrigger);
             if (tag == null)
             {
-                stringBuilder.Append($"The selected trigger {editedTrigger.Name} has no associated tag. As such, it is not attached to any objects.");
+                stringBuilder.Append($"The selected trigger {editedTrigger.Name} has no associated tag. As such, it is not attached to any objects.".L10N());
             }
             else
             {
@@ -488,7 +489,7 @@ namespace TSMapEditor.UI.Windows
 
                 if (objectList.Count > 0)
                 {
-                    stringBuilder.Append($"The selected trigger '{editedTrigger.Name}' is linked to the following objects:\r\n");
+                    stringBuilder.Append($"The selected trigger '{editedTrigger.Name}' is linked to the following objects:\r\n".L10N());
 
                     objectList.ForEach(techno =>
                     {
@@ -519,7 +520,7 @@ namespace TSMapEditor.UI.Windows
                 {
                     foreach (var teamType in teamTypes)
                     {
-                        stringBuilder.Append($"The trigger is linked to TeamType '{teamType.Name}' ({teamType.ININame}).");
+                        stringBuilder.Append($"The trigger is linked to TeamType '{teamType.Name}' ({teamType.ININame}).".L10N());
                         stringBuilder.Append(Environment.NewLine);
                     }
                 }
@@ -563,8 +564,8 @@ namespace TSMapEditor.UI.Windows
 
             if (stringBuilder.Length == 0)
             {
-                EditorMessageBox.Show(WindowManager, "Linked Objects",
-                    $"The selected trigger '{editedTrigger.Name}' is not linked to any objects, CellTags or other triggers.",
+                EditorMessageBox.Show(WindowManager, "Linked Objects".L10N(),
+                    $"The selected trigger '{editedTrigger.Name}' is not linked to any objects, CellTags or other triggers.".L10N(),
                     MessageBoxButtons.OK);
             }
             else
@@ -572,7 +573,7 @@ namespace TSMapEditor.UI.Windows
                 if (stringBuilder[0] == Environment.NewLine[0])
                     stringBuilder.Remove(0, Environment.NewLine.Length);
 
-                EditorMessageBox.Show(WindowManager, "Linked Objects", stringBuilder.ToString(), MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Linked Objects".L10N(), stringBuilder.ToString(), MessageBoxButtons.OK);
             }
 
             return;
@@ -603,13 +604,13 @@ namespace TSMapEditor.UI.Windows
 
             if (!map.EditorConfig.TriggerActionTypes.TryGetValue(TSDisableSpeechActionIndex, out TriggerActionType disableSpeechTriggerActionType))
             {
-                EditorMessageBox.Show(WindowManager, "Trigger action type not found", $"Could not find trigger action type for \"Disable Speech\" {TSDisableSpeechActionIndex}", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Trigger action type not found".L10N(), $"Could not find trigger action type for \"Disable Speech\" {TSDisableSpeechActionIndex}".L10N(), MessageBoxButtons.OK);
                 return;
             }
 
             if (!map.EditorConfig.TriggerActionTypes.TryGetValue(TSEnableSpeechActionIndex, out TriggerActionType enableSpeechTriggerActionType))
             {
-                EditorMessageBox.Show(WindowManager, "Trigger action type not found", $"Could not find trigger action type for \"Enable Speech\" {TSEnableSpeechActionIndex}", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Trigger action type not found".L10N(), $"Could not find trigger action type for \"Enable Speech\" {TSEnableSpeechActionIndex}".L10N(), MessageBoxButtons.OK);
                 return;
             }
 
@@ -623,11 +624,11 @@ namespace TSMapEditor.UI.Windows
 
         private void RegenerateIDs()
         {
-            var messageBox = EditorMessageBox.Show(WindowManager, "Are you sure?",
-                "This will re-generate the internal IDs (01000000, 01000001 etc.) for ALL* of your map's script elements" + Environment.NewLine +
-                "that start their ID with 0100 (all editor-generated script elements do)." + Environment.NewLine + Environment.NewLine +
-                "It might make the list more sensible in case there are deleted triggers. However, this feature is" + Environment.NewLine +
-                "experimental and if it goes wrong, it can destroy all of your scripting. Do you want to continue?",
+            var messageBox = EditorMessageBox.Show(WindowManager, "Are you sure?".L10N(),
+                "This will re-generate the internal IDs (01000000, 01000001 etc.) for ALL* of your map's script elements".L10N() + Environment.NewLine +
+                "that start their ID with 0100 (all editor-generated script elements do).".L10N() + Environment.NewLine + Environment.NewLine +
+                "It might make the list more sensible in case there are deleted triggers. However, this feature is".L10N() + Environment.NewLine +
+                "experimental and if it goes wrong, it can destroy all of your scripting. Do you want to continue?".L10N(),
                 MessageBoxButtons.YesNo);
 
             messageBox.YesClickedAction = _ => map.RegenerateInternalIds();
@@ -2001,7 +2002,7 @@ namespace TSMapEditor.UI.Windows
 
             if (triggerActionType == null)
             {
-                lbActions.AddItem(new XNAListBoxItem() { Text = action.ActionIndex + " Unknown", Tag = action });
+                lbActions.AddItem(new XNAListBoxItem() { Text = action.ActionIndex + " " + "Unknown".L10N(), Tag = action });
                 return;
             }
 
@@ -2025,15 +2026,15 @@ namespace TSMapEditor.UI.Windows
             var triggerCondition = (TriggerCondition)lbEvents.SelectedItem.Tag;
             TriggerEventType triggerEventType = map.EditorConfig.TriggerEventTypes.GetValueOrDefault(triggerCondition.ConditionIndex);
 
-            selEventType.Text = triggerCondition.ConditionIndex + " " + (triggerEventType == null ? "Unknown" : triggerEventType.Name);
-            panelEventDescription.Text = triggerEventType == null ? "Unknown event. It has most likely been added with another editor." : triggerEventType.Description;
+            selEventType.Text = triggerCondition.ConditionIndex + " " + (triggerEventType == null ? "Unknown".L10N() : triggerEventType.Name);
+            panelEventDescription.Text = triggerEventType == null ? "Unknown event. It has most likely been added with another editor.".L10N() : triggerEventType.Description;
 
             lbEventParameters.Clear();
             if (triggerEventType == null)
             {
                 for (int i = 0; i < TriggerEventType.MAX_PARAM_COUNT; i++)
                 {
-                    lbEventParameters.AddItem(new XNAListBoxItem() { Text = $"Parameter {i}", Tag = i });
+                    lbEventParameters.AddItem(new XNAListBoxItem() { Text = $"{"Parameter".L10N()} {i}", Tag = i });
                 }
             }
             else
@@ -2223,7 +2224,7 @@ namespace TSMapEditor.UI.Windows
                         return paramValue;
 
                     if (intValue >= map.Rules.AnimTypes.Count)
-                        return intValue + " - nonexistent animation";
+                        return intValue + " - " + "nonexistent animation".L10N();
 
                     return intValue + " " + map.Rules.AnimTypes[intValue].ININame;
                 case TriggerParamType.HouseType:
@@ -2231,7 +2232,7 @@ namespace TSMapEditor.UI.Windows
                     {
                         var houseType = map.FindHouseType(intValue);
                         if (houseType == null)
-                            return intValue.ToString() + " - Unknown HouseType";
+                            return intValue.ToString() + " - " + "Unknown HouseType".L10N();
 
                         return intValue + " " + houseType.ININame;
                     }
@@ -2242,7 +2243,7 @@ namespace TSMapEditor.UI.Windows
                     {
                         var houses = map.GetHouses();
                         if (intValue >= houses.Count)
-                            return intValue.ToString() + " - Unknown House";
+                            return intValue.ToString() + " - " + "Unknown House".L10N();
 
                         return intValue + " " + houses[intValue].ININame;
                     }
@@ -2253,7 +2254,7 @@ namespace TSMapEditor.UI.Windows
                         return paramValue;
 
                     if (!map.Rules.GlobalVariables.Exists(v => v.Index == intValue))
-                        return intValue + " - nonexistent variable";
+                        return intValue + " - " + "nonexistent variable".L10N();
 
                     return intValue + " " + map.Rules.GlobalVariables.Find(v => v.Index == intValue).Name;
                 case TriggerParamType.LocalVariable:
@@ -2261,7 +2262,7 @@ namespace TSMapEditor.UI.Windows
                         return paramValue;
 
                     if (!map.LocalVariables.Exists(v => v.Index == intValue))
-                        return intValue + " - nonexistent variable";
+                        return intValue + " - " + "nonexistent variable".L10N();
 
                     return intValue + " " + map.LocalVariables.Find(v => v.Index == intValue).Name;
                 case TriggerParamType.WaypointZZ:
@@ -2297,7 +2298,7 @@ namespace TSMapEditor.UI.Windows
                     return GetObjectValueText(RTTIType.Unit, map.Rules.UnitTypes, paramValue);
                 case TriggerParamType.Text:
                     if (!intParseSuccess)
-                        return paramValue + " - Unknown text line";
+                        return paramValue + " - " + "Unknown text line".L10N();
 
                     return paramValue + " " + map.Rules.TutorialLines.GetStringByIdOrEmptyString(intValue);
                 case TriggerParamType.Theme:
@@ -2306,14 +2307,14 @@ namespace TSMapEditor.UI.Windows
 
                     Theme theme = map.Rules.Themes.Get(intValue);
                     if (theme == null)
-                        return paramValue + " - nonexistent theme";
+                        return paramValue + " - " + "nonexistent theme".L10N();
 
                     return theme.ToString();
                 case TriggerParamType.Tag:
                     Tag tag = map.Tags.Find(t => t.ID == paramValue);
 
                     if (tag == null)
-                        return paramValue + " - nonexistent tag";
+                        return paramValue + " - " + "nonexistent tag".L10N();
 
                     return paramValue + " " + tag.Name;
                 case TriggerParamType.SuperWeapon:

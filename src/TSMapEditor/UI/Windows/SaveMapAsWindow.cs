@@ -1,7 +1,8 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.IO;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
@@ -31,7 +32,7 @@ namespace TSMapEditor.UI.Windows
             lblHeader.Name = nameof(lblHeader);
             lblHeader.X = Constants.UIEmptySideSpace;
             lblHeader.Y = Constants.UIEmptyTopSpace;
-            lblHeader.Text = "Select the destination that you want to save the map to.";
+            lblHeader.Text = "Select the destination that you want to save the map to.".L10N();
             AddChild(lblHeader);
             Width = lblHeader.Right + Constants.UIEmptySideSpace;
 
@@ -48,7 +49,7 @@ namespace TSMapEditor.UI.Windows
             lblFileName.Name = nameof(lblFileName);
             lblFileName.X = Constants.UIEmptySideSpace;
             lblFileName.Y = lbFileList.Bottom + Constants.UIVerticalSpacing;
-            lblFileName.Text = "File name:";
+            lblFileName.Text = "File name:".L10N();
             AddChild(lblFileName);
 
             tbFileName = new EditorTextBox(WindowManager);
@@ -63,7 +64,7 @@ namespace TSMapEditor.UI.Windows
             btnSave.X = Constants.UIEmptySideSpace;
             btnSave.Y = tbFileName.Bottom + Constants.UIEmptyTopSpace;
             btnSave.Width = 100;
-            btnSave.Text = "Save";
+            btnSave.Text = "Save".L10N();
             AddChild(btnSave);
             btnSave.LeftClick += BtnSave_LeftClick;
 
@@ -72,7 +73,7 @@ namespace TSMapEditor.UI.Windows
             btnCancel.Width = 100;
             btnCancel.X = Width - Constants.UIEmptySideSpace - btnCancel.Width;
             btnCancel.Y = btnSave.Y;
-            btnCancel.Text = "Cancel";
+            btnCancel.Text = "Cancel".L10N();
             AddChild(btnCancel);
             btnCancel.LeftClick += BtnCancel_LeftClick;
 
@@ -92,7 +93,7 @@ namespace TSMapEditor.UI.Windows
         {
             if (tbFileName.Text.Length == 0)
             {
-                EditorMessageBox.Show(WindowManager, "No file name given", "Please enter a name for the map file.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "No file name given".L10N(), "Please enter a name for the map file.".L10N(), MessageBoxButtons.OK);
                 return;
             }
 

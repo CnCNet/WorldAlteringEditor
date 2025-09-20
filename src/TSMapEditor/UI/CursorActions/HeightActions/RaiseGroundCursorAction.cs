@@ -1,4 +1,5 @@
-﻿using TSMapEditor.GameMath;
+using TSMapEditor.Extensions;
+using TSMapEditor.GameMath;
 using TSMapEditor.Mutations.Classes.HeightMutations;
 
 namespace TSMapEditor.UI.CursorActions.HeightActions
@@ -9,7 +10,7 @@ namespace TSMapEditor.UI.CursorActions.HeightActions
         {
         }
 
-        public override string GetName() => "Raise Ground (Steep Ramps)";
+        public override string GetName() => "Raise Ground (Steep Ramps)".L10N();
 
         public override void OnActionEnter()
         {

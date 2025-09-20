@@ -1,6 +1,7 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using System;
+using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 
@@ -15,7 +16,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Calculate Resource Value";
+        public override string GetName() => "Calculate Resource Value".L10N();
 
         public override bool DrawCellCursor => true;
 
@@ -35,7 +36,7 @@ namespace TSMapEditor.UI.CursorActions
         {
             if (StartCellCoords == null)
             {
-                DrawText(cellCoords, cameraTopLeftPoint, 60, -150, "Click to select starting cell to calculate from.", Color.Yellow);
+                DrawText(cellCoords, cameraTopLeftPoint, 60, -150, "Click to select starting cell to calculate from.".L10N(), Color.Yellow);
                 return;
             }
 
@@ -64,8 +65,8 @@ namespace TSMapEditor.UI.CursorActions
             Renderer.DrawLine(corner1.ToXNAVector(), endPoint.ToXNAVector(), lineColor, thickness);
             Renderer.DrawLine(corner2.ToXNAVector(), endPoint.ToXNAVector(), lineColor, thickness);
 
-            string text = "Click to select starting cell to calculate from." + Environment.NewLine + Environment.NewLine +
-                "Value in current area: " + GetTiberiumValue(startY, endY, startX, endX) + " credits";
+            string text = "Click to select starting cell to calculate from.".L10N() + Environment.NewLine + Environment.NewLine +
+                "Value in current area: ".L10N() + GetTiberiumValue(startY, endY, startX, endX) + " credits".L10N();
             DrawText(cellCoords, cameraTopLeftPoint, 60, -150, text, Color.Yellow);
         }
 

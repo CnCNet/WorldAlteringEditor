@@ -1,4 +1,4 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using TSMapEditor.Mutations.Classes;
 using TSMapEditor.UI.Controls;
@@ -22,6 +22,7 @@ namespace TSMapEditor.UI.Windows
         private XNACheckBox chkStructures;
         private XNACheckBox chkVehicles;
         private XNACheckBox chkInfantry;
+        private XNALabel lblDescription;
 
 
         public override void Initialize()
@@ -29,6 +30,7 @@ namespace TSMapEditor.UI.Windows
             Name = nameof(CopiedEntryTypesWindow);
             base.Initialize();
 
+            lblDescription = FindChild<XNALabel>(nameof(lblDescription));
             chkTerrainTiles = FindChild<XNACheckBox>(nameof(chkTerrainTiles));
             chkOverlay = FindChild<XNACheckBox>(nameof(chkOverlay));
             chkSmudges = FindChild<XNACheckBox>(nameof(chkSmudges));

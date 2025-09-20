@@ -1,7 +1,8 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Globalization;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Rendering;
 using TSMapEditor.UI.Controls;
@@ -135,7 +136,7 @@ namespace TSMapEditor.UI.Windows
             ddVeterancy.SelectedIndex = Math.Max(0, veterancyIndex);
             tbGroup.Value = unit.Group;
             followerSelector.Tag = unit.FollowerUnit;
-            followerSelector.Text = unit.FollowerUnit == null ? "none" : unit.FollowerUnit.UnitType.GetEditorDisplayName() + " at " + unit.FollowerUnit.Position;
+            followerSelector.Text = unit.FollowerUnit == null ? "none".L10N() : unit.FollowerUnit.UnitType.GetEditorDisplayName() + " at ".L10N() + unit.FollowerUnit.Position;
             chkOnBridge.Checked = unit.High;
             chkAutocreateNoRecruitable.Checked = unit.AutocreateNoRecruitable;
             chkAutocreateYesRecruitable.Checked = unit.AutocreateYesRecruitable;

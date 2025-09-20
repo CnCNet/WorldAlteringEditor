@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.UI.Controls;
 
@@ -149,7 +150,7 @@ namespace TSMapEditor.UI.Windows
 
             if (Constants.IsRA2YR)
             {
-                btnEditHouseType.Text = "Edit Country";
+                btnEditHouseType.Text = "Edit Country".L10N();
                 newHouseWindow = new NewHouseWindow(WindowManager, map);
                 var newHouseWindowDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, newHouseWindow);
                 newHouseWindowDarkeningPanel.Hidden += NewHouseWindowDarkeningPanel_Hidden;
@@ -247,13 +248,13 @@ namespace TSMapEditor.UI.Windows
                 return;
 
             HouseType clonedHouseType = (HouseType)editedHouse.HouseType.Clone();
-            clonedHouseType.ININame = editedHouse.HouseType.ININame + " Clone";
+            clonedHouseType.ININame = editedHouse.HouseType.ININame + " " + "Clone".L10N();
             clonedHouseType.Index = map.HouseTypes.Count;
             map.HouseTypes.Add(clonedHouseType);
 
             House clonedHouse = (House)editedHouse.Clone();
             clonedHouse.HouseType = clonedHouseType;
-            clonedHouse.ININame = editedHouse.ININame + " Clone";
+            clonedHouse.ININame = editedHouse.ININame + " " + "Clone".L10N();
             clonedHouse.Allies.ForEach(ally =>
             {
                 if (ally == clonedHouse)
@@ -274,9 +275,9 @@ namespace TSMapEditor.UI.Windows
             if (map.Houses.Count > 0)
             {
                 EditorMessageBox.Show(WindowManager,
-                    "Houses already exist",
-                    "Cannot generate standard because the map already has one or more houses specified." + Environment.NewLine + Environment.NewLine +
-                    "If you want to generate standard houses, please delete the existing houses first.", MessageBoxButtons.OK);
+                    "Houses already exist".L10N(),
+                    "Cannot generate standard because the map already has one or more houses specified.".L10N() + Environment.NewLine + Environment.NewLine +
+                    "If you want to generate standard houses, please delete the existing houses first.".L10N(), MessageBoxButtons.OK);
 
                 return;
             }
@@ -296,14 +297,14 @@ namespace TSMapEditor.UI.Windows
         {
             if (editedHouse == null)
             {
-                EditorMessageBox.Show(WindowManager, "No House Selected", "Select a house first.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "No House Selected".L10N(), "Select a house first.".L10N(), MessageBoxButtons.OK);
                 return;
             }
 
             var dialog = EditorMessageBox.Show(WindowManager,
-                "Are you sure?",
-                "This enables the \"AI Repairs\" flag on all buildings of the house, which makes the AI repair them." + Environment.NewLine + Environment.NewLine +
-                "No un-do is available. Do you wish to continue?", MessageBoxButtons.YesNo);
+                "Are you sure?".L10N(),
+                "This enables the \"AI Repairs\" flag on all buildings of the house, which makes the AI repair them.".L10N() + Environment.NewLine + Environment.NewLine +
+                "No un-do is available. Do you wish to continue?".L10N(), MessageBoxButtons.YesNo);
             dialog.YesClickedAction = _ =>
             {
                 map.Structures.FindAll(s => s.Owner == editedHouse).ForEach(b => b.AIRepairable = true);
@@ -315,14 +316,14 @@ namespace TSMapEditor.UI.Windows
         {
             if (editedHouse == null)
             {
-                EditorMessageBox.Show(WindowManager, "No House Selected", "Select a house first.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "No House Selected".L10N(), "Select a house first.".L10N(), MessageBoxButtons.OK);
                 return;
             }
 
             var dialog = EditorMessageBox.Show(WindowManager,
-                "Are you sure?",
-                "This disables the \"AI Repairs\" flag on all buildings of the house, which makes the AI NOT repair them." + Environment.NewLine + Environment.NewLine +
-                "No un-do is available. Do you wish to continue?", MessageBoxButtons.YesNo);
+                "Are you sure?".L10N(),
+                "This disables the \"AI Repairs\" flag on all buildings of the house, which makes the AI NOT repair them.".L10N() + Environment.NewLine + Environment.NewLine +
+                "No un-do is available. Do you wish to continue?".L10N(), MessageBoxButtons.YesNo);
             dialog.YesClickedAction = _ =>
             {
                 map.Structures.FindAll(s => s.Owner == editedHouse).ForEach(b => b.AIRepairable = false);
@@ -562,7 +563,7 @@ namespace TSMapEditor.UI.Windows
                 return;
             }
 
-            lblStatsPower.Text = "Power: " + map.Structures.Aggregate<Structure, int>(0, (value, structure) =>
+            lblStatsPower.Text = "Power: ".L10N() + map.Structures.Aggregate<Structure, int>(0, (value, structure) =>
             {
                 if (structure.Owner == editedHouse)
                     return value + structure.ObjectType.Power;
@@ -572,12 +573,12 @@ namespace TSMapEditor.UI.Windows
 
             string objectCountStats = "";
 
-            objectCountStats += "Aircraft: " + map.Aircraft.Count(s => s.Owner == editedHouse) + Environment.NewLine;
-            objectCountStats += "Infantry: " + map.Infantry.Count(s => s.Owner == editedHouse) + Environment.NewLine;
-            objectCountStats += "Vehicles: " + map.Units.Count(s => s.Owner == editedHouse) + Environment.NewLine;
-            objectCountStats += "Buildings: " + map.Structures.Count(s => s.Owner == editedHouse) + Environment.NewLine;
-            objectCountStats += "  AI repairable: " + map.Structures.Count(s => s.Owner == editedHouse && s.AIRepairable) + Environment.NewLine;
-            objectCountStats += "  not AI repairable: " + map.Structures.Count(s => s.Owner == editedHouse && !s.AIRepairable);
+            objectCountStats += "Aircraft: ".L10N() + map.Aircraft.Count(s => s.Owner == editedHouse) + Environment.NewLine;
+            objectCountStats += "Infantry: ".L10N() + map.Infantry.Count(s => s.Owner == editedHouse) + Environment.NewLine;
+            objectCountStats += "Vehicles: ".L10N() + map.Units.Count(s => s.Owner == editedHouse) + Environment.NewLine;
+            objectCountStats += "Buildings: ".L10N() + map.Structures.Count(s => s.Owner == editedHouse) + Environment.NewLine;
+            objectCountStats += "  AI repairable: ".L10N() + map.Structures.Count(s => s.Owner == editedHouse && s.AIRepairable) + Environment.NewLine;
+            objectCountStats += "  not AI repairable: ".L10N() + map.Structures.Count(s => s.Owner == editedHouse && !s.AIRepairable);
 
             lblStatsObjectsCount.Text = objectCountStats;
 
@@ -586,19 +587,19 @@ namespace TSMapEditor.UI.Windows
             List<House> oneSidedEnemyHouses = map.Houses.FindAll(house => !editedHouse.Allies.Contains(house) && house.Allies.Contains(editedHouse));
             List<House> enemyHouses = map.Houses.FindAll(house => !editedHouse.Allies.Contains(house) && !house.Allies.Contains(editedHouse));
 
-            lblStatsAllianceMutualAlliance.Text = $"Mutual Alliances: {mutualAllianceHouses.Count}";
-            lblStatsAllianceOneSidedAllies.Text = $"One-Sided Allies: {oneSidedAlliesHouses.Count}";
-            lblStatsAllianceOneSidedEnemies.Text = $"One-Sided Enemies: {oneSidedEnemyHouses.Count}";
-            lblStatsAllianceEnemies.Text = $"Enemies: {enemyHouses.Count}";
+            lblStatsAllianceMutualAlliance.Text = $"{"Mutual Alliances: ".L10N()}{mutualAllianceHouses.Count}";
+            lblStatsAllianceOneSidedAllies.Text = $"{"One-Sided Allies: ".L10N()}{oneSidedAlliesHouses.Count}";
+            lblStatsAllianceOneSidedEnemies.Text = $"{"One-Sided Enemies: ".L10N()}{oneSidedEnemyHouses.Count}";
+            lblStatsAllianceEnemies.Text = $"{"Enemies: ".L10N()}{enemyHouses.Count}";
 
-            mutualAllianceToolTip.Text = "Houses that are in a mutual alliance with this house:" + Environment.NewLine +
-                (mutualAllianceHouses.Count == 0 ? "None" : string.Join(", ", mutualAllianceHouses.Select(house => house.ININame)));
-            oneSidedAlliesToolTip.Text = "Houses that this house is allied to, but are hostile in return:" + Environment.NewLine +
-                (oneSidedAlliesHouses.Count == 0 ? "None" : string.Join(", ", oneSidedAlliesHouses.Select(house => house.ININame)));
-            oneSidedEnemiesToolTip.Text = "Houses that this house is hostile towards, but are allied in return:" + Environment.NewLine +
-                (oneSidedEnemyHouses.Count == 0 ? "None" : string.Join(", ", oneSidedEnemyHouses.Select(house => house.ININame)));
-            enemiesToolTip.Text = "Houses that this house is mutually hostile towards:" + Environment.NewLine +
-                (enemyHouses.Count == 0 ? "None" : string.Join(", ", enemyHouses.Select(house => house.ININame)));
+            mutualAllianceToolTip.Text = "Houses that are in a mutual alliance with this house:".L10N() + Environment.NewLine +
+                (mutualAllianceHouses.Count == 0 ? "None".L10N() : string.Join(", ", mutualAllianceHouses.Select(house => house.ININame)));
+            oneSidedAlliesToolTip.Text = "Houses that this house is allied to, but are hostile in return:".L10N() + Environment.NewLine +
+                (oneSidedAlliesHouses.Count == 0 ? "None".L10N() : string.Join(", ", oneSidedAlliesHouses.Select(house => house.ININame)));
+            oneSidedEnemiesToolTip.Text = "Houses that this house is hostile towards, but are allied in return:".L10N() + Environment.NewLine +
+                (oneSidedEnemyHouses.Count == 0 ? "None".L10N() : string.Join(", ", oneSidedEnemyHouses.Select(house => house.ININame)));
+            enemiesToolTip.Text = "Houses that this house is mutually hostile towards:".L10N() + Environment.NewLine +
+                (enemyHouses.Count == 0 ? "None".L10N() : string.Join(", ", enemyHouses.Select(house => house.ININame)));
 
             foreach (var tooltip in tooltips)
                 tooltip.Enabled = true;            

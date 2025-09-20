@@ -11,6 +11,8 @@ using System.Threading;
 using System.Windows.Forms;
 #endif
 using TSMapEditor.CCEngine;
+using TSMapEditor.Extensions;
+using TSMapEditor.I18N;
 using TSMapEditor.Misc;
 using TSMapEditor.Settings;
 using TSMapEditor.UI;
@@ -126,6 +128,9 @@ namespace TSMapEditor.Rendering
 
             windowManager = new WindowManager(this, graphics);
             windowManager.Initialize(Content, Environment.CurrentDirectory + DSC + "Content" + DSC);
+            
+            // Set INI parser for localization support
+            windowManager.SetINIParser(TranslationINIParser.Instance);
 
             new Parser(windowManager);
 

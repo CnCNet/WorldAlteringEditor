@@ -1,8 +1,9 @@
-﻿using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Input;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
+using TSMapEditor.Extensions;
 using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
 
@@ -120,7 +121,7 @@ namespace TSMapEditor.UI.Windows
 
             foreach (KeyboardCommand hotkey in keyboardCommands)
             {
-                lbKeyboardCommands.AddItem(new string[] { hotkey.UIName, hotkey.Key.GetKeyDisplayString(hotkey.AllowedWithModifiersOnly) }, true);
+                lbKeyboardCommands.AddItem(new string[] { hotkey.UIName.L10N(), hotkey.Key.GetKeyDisplayString(hotkey.AllowedWithModifiersOnly) }, true);
             }
 
             ClearInfo();
@@ -171,10 +172,10 @@ namespace TSMapEditor.UI.Windows
                 return;
             }
 
-            lblCommandCaption.Text = hotkey.UIName;
+            lblCommandCaption.Text = hotkey.UIName.L10N();
             lblDescription.Text = "";
             lblCurrentHotkeyValue.Text = hotkey.Key.GetKeyDisplayString(true);
-            lblNewHotkeyValue.Text = "Press a key...";
+            lblNewHotkeyValue.Text = "Press a key...".L10N();
             lblDefaultHotkeyValue.Text = hotkey.DefaultKey.GetKeyDisplayString(true);
             lblCurrentlyAssignedTo.Text = "";
             newHotkeyInput.Key = hotkey.Key.Key;
@@ -204,11 +205,11 @@ namespace TSMapEditor.UI.Windows
                 {
                     if (string.IsNullOrEmpty(lblCurrentlyAssignedTo.Text))
                     {
-                        lblCurrentlyAssignedTo.Text = "Also assigned to: " + otherHotkey.UIName;
+                        lblCurrentlyAssignedTo.Text = "Also assigned to: ".L10N() + otherHotkey.UIName.L10N();
                     }
                     else
                     {
-                        lblCurrentlyAssignedTo.Text += " (and more)";
+                        lblCurrentlyAssignedTo.Text += " (and more)".L10N();
                     }
                 }
             }
@@ -216,7 +217,7 @@ namespace TSMapEditor.UI.Windows
 
         private void ClearInfo()
         {
-            lblCommandCaption.Text = "Select a command...";
+            lblCommandCaption.Text = "Select a command...".L10N();
             lblDescription.Text = "";
             lblCurrentHotkeyValue.Text = "";
             lblNewHotkeyValue.Text = "";

@@ -1,5 +1,6 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using System;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
@@ -38,7 +39,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
 
             if (userPresets.GetConfigurationsForCurrentTheater().Exists(c => c.Theater.Equals(map.LoadedTheaterName, StringComparison.OrdinalIgnoreCase) && c.Name == tbPresetName.Text))
             {
-                EditorMessageBox.Show(WindowManager, "Preset already exists", $"A preset with the name {tbPresetName.Text} already exists for the current theater!", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Preset already exists".L10N(), $"A preset with the name {tbPresetName.Text} already exists for the current theater!".L10N(), MessageBoxButtons.OK);
                 return;
             }
 

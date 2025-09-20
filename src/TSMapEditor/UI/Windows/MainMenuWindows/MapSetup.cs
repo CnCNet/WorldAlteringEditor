@@ -127,13 +127,13 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
 
             if (errorListHeight > windowManager.RenderResolutionY - margin)
             {
-                EditorMessageBox.Show(windowManager, "Errors while loading map",
-                    "A massive number of errors was encountered while loading the map. See MapEditorLog.log for details.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(windowManager, "Errors while loading map".L10N(),
+                    "A massive number of errors was encountered while loading the map. See MapEditorLog.log for details.".L10N(), MessageBoxButtons.OK);
             }
             else if (MapLoader.MapLoadErrors.Count > 0)
             {
-                EditorMessageBox.Show(windowManager, "Errors while loading map",
-                    "One or more errors were encountered while loading the map:\r\n\r\n" + errorList, MessageBoxButtons.OK);
+                EditorMessageBox.Show(windowManager, "Errors while loading map".L10N(),
+                    "One or more errors were encountered while loading the map:\r\n\r\n".L10N() + errorList, MessageBoxButtons.OK);
             }
         }
 

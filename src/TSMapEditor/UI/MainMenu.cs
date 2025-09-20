@@ -1,10 +1,12 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.IO;
 using TSMapEditor.Settings;
+using TSMapEditor.I18N;
+using TSMapEditor.Extensions;
 using TSMapEditor.UI.Controls;
 using TSMapEditor.UI.Windows;
 using TSMapEditor.UI.Windows.MainMenuWindows;
@@ -50,7 +52,7 @@ namespace TSMapEditor.UI
             lblGameDirectory.Name = nameof(lblGameDirectory);
             lblGameDirectory.X = Constants.UIEmptySideSpace;
             lblGameDirectory.Y = Constants.UIEmptyTopSpace;
-            lblGameDirectory.Text = "Path to the game directory:";
+            lblGameDirectory.Text = "Path to the game directory:".L10N("UI:MainMenu:GameDirectoryPath");
             AddChild(lblGameDirectory);
 
             tbGameDirectory = new EditorTextBox(WindowManager);
@@ -79,7 +81,7 @@ namespace TSMapEditor.UI
             btnBrowseGameDirectory = new EditorButton(WindowManager);
             btnBrowseGameDirectory.Name = nameof(btnBrowseGameDirectory);
             btnBrowseGameDirectory.Width = BrowseButtonWidth;
-            btnBrowseGameDirectory.Text = "Browse...";
+            btnBrowseGameDirectory.Text = "Browse...".L10N("UI:MainMenu:Browse");
             btnBrowseGameDirectory.Y = tbGameDirectory.Y;
             btnBrowseGameDirectory.X = tbGameDirectory.Right + Constants.UIEmptySideSpace;
             btnBrowseGameDirectory.Height = tbGameDirectory.Height;
@@ -90,7 +92,7 @@ namespace TSMapEditor.UI
             lblMapPath.Name = nameof(lblMapPath);
             lblMapPath.X = Constants.UIEmptySideSpace;
             lblMapPath.Y = tbGameDirectory.Bottom + Constants.UIEmptyTopSpace;
-            lblMapPath.Text = "Path of the map file to load (can be relative to game directory):";
+            lblMapPath.Text = "Path of the map file to load (can be relative to game directory):".L10N("UI:MainMenu:MapFilePath");
             AddChild(lblMapPath);
 
             tbMapPath = new EditorTextBox(WindowManager);
@@ -105,7 +107,7 @@ namespace TSMapEditor.UI
             btnBrowseMapPath = new EditorButton(WindowManager);
             btnBrowseMapPath.Name = nameof(btnBrowseMapPath);
             btnBrowseMapPath.Width = BrowseButtonWidth;
-            btnBrowseMapPath.Text = "Browse...";
+            btnBrowseMapPath.Text = "Browse...".L10N("UI:MainMenu:Browse");
             btnBrowseMapPath.Y = tbMapPath.Y;
             btnBrowseMapPath.X = tbMapPath.Right + Constants.UIEmptySideSpace;
             btnBrowseMapPath.Height = tbMapPath.Height;
@@ -115,7 +117,7 @@ namespace TSMapEditor.UI
             btnLoad = new EditorButton(WindowManager);
             btnLoad.Name = nameof(btnLoad);
             btnLoad.Width = 150;
-            btnLoad.Text = "Load";
+            btnLoad.Text = "Load".L10N("UI:MainMenu:Load");
             btnLoad.Y = Height - btnLoad.Height - Constants.UIEmptyBottomSpace;
             btnLoad.X = Width - btnLoad.Width - Constants.UIEmptySideSpace;
             AddChild(btnLoad);
@@ -124,7 +126,7 @@ namespace TSMapEditor.UI
             var btnCreateNewMap = new EditorButton(WindowManager);
             btnCreateNewMap.Name = nameof(btnCreateNewMap);
             btnCreateNewMap.Width = 150;
-            btnCreateNewMap.Text = "New Map...";
+            btnCreateNewMap.Text = "New Map...".L10N("UI:MainMenu:NewMap");
             btnCreateNewMap.X = Constants.UIEmptySideSpace;
             btnCreateNewMap.Y = btnLoad.Y;
             AddChild(btnCreateNewMap);
@@ -132,7 +134,7 @@ namespace TSMapEditor.UI
 
             var lblCopyright = new XNALabel(WindowManager);
             lblCopyright.Name = nameof(lblCopyright);
-            lblCopyright.Text = "Created by Rampastring";
+            lblCopyright.Text = "Created by Rampastring".L10N("UI:MainMenu:Copyright");
             lblCopyright.TextColor = UISettings.ActiveSettings.SubtleTextColor;
             AddChild(lblCopyright);
             lblCopyright.CenterOnControlVertically(btnCreateNewMap);
@@ -148,7 +150,7 @@ namespace TSMapEditor.UI
                 lblRecentFiles.Name = nameof(lblRecentFiles);
                 lblRecentFiles.X = Constants.UIEmptySideSpace;
                 lblRecentFiles.Y = directoryListingY;
-                lblRecentFiles.Text = "Recent files:";
+                lblRecentFiles.Text = "Recent files:".L10N("UI:MainMenu:RecentFiles");
                 AddChild(lblRecentFiles);
 
                 var recentFilesPanel = new RecentFilesPanel(WindowManager);
@@ -166,7 +168,7 @@ namespace TSMapEditor.UI
             lblDirectoryListing.Name = nameof(lblDirectoryListing);
             lblDirectoryListing.X = Constants.UIEmptySideSpace;
             lblDirectoryListing.Y = directoryListingY;
-            lblDirectoryListing.Text = "Alternatively, select a map file below:";
+            lblDirectoryListing.Text = "Alternatively, select a map file below:".L10N("UI:MainMenu:SelectMapFile");
             AddChild(lblDirectoryListing);
 
             lbFileList = new FileBrowserListBox(WindowManager);
@@ -189,7 +191,7 @@ namespace TSMapEditor.UI
 
             var lblVersion = new XNALabel(WindowManager);
             lblVersion.Name = nameof(lblVersion);
-            lblVersion.Text = "Version " + Constants.ReleaseVersion;
+            lblVersion.Text = ("Version " + Constants.ReleaseVersion).L10N("UI:MainMenu:Version");
             lblVersion.TextColor = UISettings.ActiveSettings.SubtleTextColor;
             AddChild(lblVersion);
             lblVersion.CenterOnControlVertically(btnLoad);
@@ -364,8 +366,8 @@ namespace TSMapEditor.UI
             if (!VerifyGameDirectory())
             {
                 EditorMessageBox.Show(WindowManager,
-                    "Invalid game directory",
-                    $"{Constants.ExpectedClientExecutableNames[0]} not found, please check that you typed the correct game directory.",
+                    "Invalid game directory".L10N(),
+                    $"{Constants.ExpectedClientExecutableNames[0]} not found, please check that you typed the correct game directory.".L10N(),
                     MessageBoxButtons.OK);
 
                 return false;
@@ -448,8 +450,8 @@ namespace TSMapEditor.UI
             if (!File.Exists(mapPath))
             {
                 EditorMessageBox.Show(WindowManager,
-                    "Invalid map path",
-                    "Specified map file not found. Please re-check the path to the map file.",
+                    "Invalid map path".L10N(),
+                    "Specified map file not found. Please re-check the path to the map file.".L10N(),
                     MessageBoxButtons.OK);
 
                 return;
@@ -486,7 +488,7 @@ namespace TSMapEditor.UI
             {
                 ApplySettings();
 
-                var messageBox = new EditorMessageBox(WindowManager, "Loading", "Please wait, loading map...", MessageBoxButtons.None);
+                var messageBox = new EditorMessageBox(WindowManager, "Loading".L10N(), "Please wait, loading map...".L10N(), MessageBoxButtons.None);
                 var dp = new DarkeningPanel(WindowManager);
                 AddChild(dp);
                 dp.AddChild(messageBox);
@@ -495,7 +497,7 @@ namespace TSMapEditor.UI
             }
 
             loadingStage = 0;
-            EditorMessageBox.Show(WindowManager, "Error Loading File", error, MessageBoxButtons.OK);
+            EditorMessageBox.Show(WindowManager, "Error Loading File".L10N(), error, MessageBoxButtons.OK);
         }
 
         private void LoadTheater()

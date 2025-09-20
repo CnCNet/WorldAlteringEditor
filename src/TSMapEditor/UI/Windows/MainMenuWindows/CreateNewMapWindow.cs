@@ -1,7 +1,8 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Globalization;
+using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.UI.Controls;
 
@@ -77,31 +78,31 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
         {
             if (tbWidth.Value < MinMapSize)
             {
-                EditorMessageBox.Show(WindowManager, "Map too narrow", "Map width must be at least " + MinMapSize + " cells.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Map too narrow".L10N(), "Map width must be at least ".L10N() + MinMapSize + " cells.".L10N(), MessageBoxButtons.OK);
                 return;
             }
 
             if (tbHeight.Value < MinMapSize)
             {
-                EditorMessageBox.Show(WindowManager, "Map too small", "Map height must be at least " + MinMapSize + " cells.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Map too small".L10N(), "Map height must be at least ".L10N() + MinMapSize + " cells.".L10N(), MessageBoxButtons.OK);
                 return;
             }
 
             if (tbWidth.Value > Constants.MaxMapWidth)
             {
-                EditorMessageBox.Show(WindowManager, "Map too wide", "Map width cannot exceed " + Constants.MaxMapWidth + " cells.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Map too wide".L10N(), "Map width cannot exceed ".L10N() + Constants.MaxMapWidth + " cells.".L10N(), MessageBoxButtons.OK);
                 return;
             }
 
             if (tbHeight.Value > Constants.MaxMapHeight)
             {
-                EditorMessageBox.Show(WindowManager, "Map too long", "Map height cannot exceed " + Constants.MaxMapHeight + " cells.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Map too long".L10N(), "Map height cannot exceed ".L10N() + Constants.MaxMapHeight + " cells.".L10N(), MessageBoxButtons.OK);
                 return;
             }
 
             if (tbWidth.Value + tbHeight.Value > MaxMapSize)
             {
-                EditorMessageBox.Show(WindowManager, "Map too large", "Map width + height cannot exceed " + MaxMapSize + " cells.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "Map too large".L10N(), "Map width + height cannot exceed ".L10N() + MaxMapSize + " cells.".L10N(), MessageBoxButtons.OK);
                 return;
             }
 

@@ -1,6 +1,7 @@
-﻿using Rampastring.XNAUI;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 using TSMapEditor.UI.Controls;
 
@@ -53,8 +54,8 @@ namespace TSMapEditor.UI.Windows
         {
             if (string.IsNullOrWhiteSpace(tbHouseName.Text))
             {
-                EditorMessageBox.Show(WindowManager, "House Name Required",
-                    "Please input a name for the house.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, "House Name Required".L10N(),
+                    "Please input a name for the house.".L10N(), MessageBoxButtons.OK);
 
                 return;
             }
@@ -125,7 +126,7 @@ namespace TSMapEditor.UI.Windows
             ListParentCountries();
 
             ddParentCountry.SelectedIndex = 0;
-            tbHouseName.Text = "NewHouse";
+            tbHouseName.Text = "NewHouse".L10N();
 
             Success = false;
         }

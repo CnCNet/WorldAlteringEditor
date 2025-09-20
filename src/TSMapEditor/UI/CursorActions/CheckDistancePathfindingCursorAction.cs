@@ -1,8 +1,9 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.Input;
 using System;
 using System.Collections.Generic;
+using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
@@ -30,7 +31,7 @@ namespace TSMapEditor.UI.CursorActions
             targetCellCoords = Point2D.NegativeOne;
         }
 
-        public override string GetName() => "Check Distance (Path)";
+        public override string GetName() => "Check Distance (Path)".L10N();
 
         private byte[][] landPathfindingCache;
         private byte[][] navalPathfindingCache;
@@ -107,13 +108,13 @@ namespace TSMapEditor.UI.CursorActions
 
             if (source == null)
             {
-                DrawText(cellCoords, cameraTopLeftPoint, "Click to select source coordinate, or right-click to exit", sourceColor);
+                DrawText(cellCoords, cameraTopLeftPoint, "Click to select source coordinate, or right-click to exit".L10N(), sourceColor);
                 return;
             }
 
             string instruction = Environment.NewLine + Environment.NewLine +
-                "Current mode: " + (isInfantry ? "Infantry" : "Vehicle") + " (switch by pressing I)" + Environment.NewLine + Environment.NewLine +
-                "Current movement zone: " + movementZone + " (cycle between Land, Water and both by pressing C)";
+                "Current mode: ".L10N() + (isInfantry ? "Infantry".L10N() : "Vehicle".L10N()) + " (switch by pressing I)".L10N() + Environment.NewLine + Environment.NewLine +
+                "Current movement zone: ".L10N() + movementZone + " (cycle between Land, Water and both by pressing C)".L10N();
 
             Func<Point2D, Map, Point2D> getCellCenterPoint = Is2DMode ? CellMath.CellCenterPointFromCellCoords : CellMath.CellCenterPointFromCellCoords_3D;
 
@@ -142,9 +143,9 @@ namespace TSMapEditor.UI.CursorActions
             string text;
 
             if (pathCellCoords.Count == 0)
-                text = "No path found!\r\n\r\nClick to select new source coordinate, or right-click to exit" + instruction;
+                text = "No path found!\r\n\r\nClick to select new source coordinate, or right-click to exit".L10N() + instruction;
             else
-                text = "Path Length In Cells: " + pathCellCoords.Count + "\r\n\r\nClick to select new source coordinate, or right-click to exit" + instruction;
+                text = "Path Length In Cells: ".L10N() + pathCellCoords.Count + "\r\n\r\nClick to select new source coordinate, or right-click to exit".L10N() + instruction;
 
             DrawText(cellCoords, cameraTopLeftPoint, text, pathColor);
         }

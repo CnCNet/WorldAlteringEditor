@@ -1,7 +1,8 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
+using TSMapEditor.Extensions;
 using TSMapEditor.Models;
 
 namespace TSMapEditor.UI.Windows
@@ -36,7 +37,7 @@ namespace TSMapEditor.UI.Windows
         {
             lbObjectList.Clear();
 
-            lbObjectList.AddItem(new XNAListBoxItem() { Text = "None" });
+            lbObjectList.AddItem(new XNAListBoxItem() { Text = "None".L10N() });
 
             foreach (Tag tag in map.Tags)
             {

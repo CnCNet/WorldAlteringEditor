@@ -1,8 +1,9 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.Input;
 using System;
 using System.Collections.Generic;
+using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Misc;
 using TSMapEditor.Models;
@@ -21,7 +22,7 @@ namespace TSMapEditor.UI.CursorActions
         private BaseNode draggedBaseNode = null;
         private bool isDragging = false;
 
-        public override string GetName() => "Manage Base Nodes";
+        public override string GetName() => "Manage Base Nodes".L10N();
 
         public override bool DrawCellCursor => true;
 
