@@ -7,6 +7,7 @@ using TSMapEditor.Models;
 using TSMapEditor.CCEngine;
 using TSMapEditor.Rendering;
 using TSMapEditor.GameMath;
+using TSMapEditor.Misc;
 
 namespace WAEScript
 {
@@ -16,7 +17,7 @@ namespace WAEScript
         /// Returns the description of this script.
         /// All scripts must contain this function.
         /// </summary>
-        public string GetDescription() => "This script replaces all autumn grass terrain with summer tall grass terrain. Continue?";
+        public string GetDescription() => Translator.Translate("MapScripts.ReplaceAutumnGrassTallGrass.Description", "This script replaces all autumn grass terrain with summer tall grass terrain. Continue?");
 
         /// <summary>
         /// Returns the message that is presented to the user if running this script succeeded.
@@ -24,7 +25,8 @@ namespace WAEScript
         /// </summary>
         public string GetSuccessMessage()
         {
-            return error ?? "Successfully replaced the terrain of " + count + " cells.";
+            return error ?? string.Format(Translator.Translate("MapScripts.ReplaceAutumnGrassTallGrass.SuccessMessage", 
+                "Successfully replaced the terrain of {0} cells."), count);
         }
 
         int count = 0;
@@ -44,25 +46,25 @@ namespace WAEScript
 
             if (tallGrassTileSet == null)
             {
-                error = "Failed to find tall grass TileSet!";
+                error = Translator.Translate("MapScripts.ReplaceAutumnGrassTallGrass.Errors.TallGrassTileSet", "Failed to find tall grass TileSet!");
                 return;
             }
 
             if (tallGrassLATTileSet == null)
             {
-                error = "Failed to find tall grass LAT transition TileSet!";
+                error = Translator.Translate("MapScripts.ReplaceAutumnGrassTallGrass.Errors.TallGrassTileSetLAT", "Failed to find tall grass LAT transition TileSet!");
                 return;
             }
 
             if (autumnGrassTileSet == null)
             {
-                error = "Failed to find autumn grass TileSet!";
+                error = Translator.Translate("MapScripts.ReplaceAutumnGrassTallGrass.Errors.AutumnGrassTileSet", "Failed to find autumn grass TileSet!");
                 return;
             }
 
             if (autumnGrassLATTileSet == null)
             {
-                error = "Failed to find autumn grass LAT transition TileSet!";
+                error = Translator.Translate("MapScripts.ReplaceAutumnGrassTallGrass.Errors.AutumnGrassTileSetLAT", "Failed to find autumn grass LAT transition TileSet!");
                 return;
             }
 

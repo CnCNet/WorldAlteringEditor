@@ -7,6 +7,7 @@ using TSMapEditor.Models;
 using TSMapEditor.CCEngine;
 using TSMapEditor.Rendering;
 using TSMapEditor.GameMath;
+using TSMapEditor.Misc;
 
 namespace WAEScript
 {
@@ -16,7 +17,7 @@ namespace WAEScript
 		/// Returns the description of this script.
 		/// All scripts must contain this function.
 		/// </summary>
-		public string GetDescription() => "This script remove all terrain objects (trees etc.) from the map. Continue?";
+		public string GetDescription() => Translator.Translate("MapScripts.RemoveTerrainObjects.Description", "This script remove all terrain objects (trees etc.) from the map. Continue?");
 
 		/// <summary>
 		/// Returns the message that is presented to the user if running this script succeeded.
@@ -24,7 +25,7 @@ namespace WAEScript
 		/// </summary>
 		public string GetSuccessMessage()
 		{
-			return "Successfully removed all terrain objects from the map.";
+			return Translator.Translate("MapScripts.RemoveTerrainObjects.Description", "Successfully removed all terrain objects from the map.");
 		}
 
 		/// <summary>

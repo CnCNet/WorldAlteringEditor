@@ -41,7 +41,7 @@ namespace TSMapEditor.UI.Windows
             lblHeader.Name = nameof(lblHeader);
             lblHeader.X = Constants.UIEmptySideSpace;
             lblHeader.Y = Constants.UIEmptyTopSpace;
-            lblHeader.Text = "Select the map file to load:";
+            lblHeader.Text = Translate(this, "SelectMapFile", "Select the map file to load:");
             AddChild(lblHeader);
 
             lbFileList = new FileBrowserListBox(WindowManager);
@@ -59,7 +59,7 @@ namespace TSMapEditor.UI.Windows
             btnLoad.Width = 100;
             btnLoad.X = Width - Constants.UIEmptySideSpace - btnLoad.Width;
             btnLoad.Y = lbFileList.Bottom + Constants.UIEmptyTopSpace;
-            btnLoad.Text = "Open";
+            btnLoad.Text = Translate(this, "Open", "Open");
             AddChild(btnLoad);
             btnLoad.LeftClick += BtnLoad_LeftClick;
 
@@ -68,7 +68,7 @@ namespace TSMapEditor.UI.Windows
             btnCancel.Width = 100;
             btnCancel.X = Constants.UIEmptySideSpace;
             btnCancel.Y = btnLoad.Y;
-            btnCancel.Text = "Cancel";
+            btnCancel.Text = Translate(this, "Cancel", "Cancel");
             AddChild(btnCancel);
             btnCancel.LeftClick += BtnCancel_LeftClick;
 
@@ -91,7 +91,10 @@ namespace TSMapEditor.UI.Windows
         {
             if (string.IsNullOrWhiteSpace(filePath))
             {
-                EditorMessageBox.Show(WindowManager, "No file selected", "Please select the map file to open.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "NoFileSelected.Title", "No file selected"),
+                    Translate(this, "NoFileSelected.Description", "Please select the map file to open."), 
+                    MessageBoxButtons.OK);
                 return;
             }
 

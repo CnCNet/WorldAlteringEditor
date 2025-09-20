@@ -9,6 +9,7 @@ using TSMapEditor.Models;
 using TSMapEditor.CCEngine;
 using TSMapEditor.Rendering;
 using TSMapEditor.GameMath;
+using TSMapEditor.Misc;
 
 namespace WAEScript
 {
@@ -18,7 +19,7 @@ namespace WAEScript
         /// Returns the description of this script.
         /// All scripts must contain this function.
         /// </summary>
-        public string GetDescription() => "This script will count credit value of all Tiberium and ore overlays. Continue?";
+        public string GetDescription() => Translator.Translate("MapScripts.CountCreditsOnMap.Description", "This script will count credit value of all Tiberium and ore overlays. Continue?");
 
         /// <summary>
         /// Returns the message that is presented to the user if running this script succeeded.
@@ -26,7 +27,8 @@ namespace WAEScript
         /// </summary>
         public string GetSuccessMessage()
         {
-            return $"There are {count} credits' worth of resources present.";
+            return string.Format(Translator.Translate("MapScripts.CountCreditsOnMap.SuccessMessage", 
+                "There are {0} credits' worth of resources present."), count);
         }
 
         int count = 0;

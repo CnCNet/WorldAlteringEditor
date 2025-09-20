@@ -135,7 +135,10 @@ namespace TSMapEditor.UI.Windows
             ddVeterancy.SelectedIndex = Math.Max(0, veterancyIndex);
             tbGroup.Value = unit.Group;
             followerSelector.Tag = unit.FollowerUnit;
-            followerSelector.Text = unit.FollowerUnit == null ? "none" : unit.FollowerUnit.UnitType.GetEditorDisplayName() + " at " + unit.FollowerUnit.Position;
+            followerSelector.Text = unit.FollowerUnit == null ? Translate(this, "None", "none") :
+                string.Format(Translate(this, "FollowerSelectorText",
+                    "{0} at {1}"), 
+                    unit.FollowerUnit.UnitType.GetEditorDisplayName(), unit.FollowerUnit.Position);
             chkOnBridge.Checked = unit.High;
             chkAutocreateNoRecruitable.Checked = unit.AutocreateNoRecruitable;
             chkAutocreateYesRecruitable.Checked = unit.AutocreateYesRecruitable;

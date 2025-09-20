@@ -43,7 +43,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblTerrainTypes.X = Constants.UIEmptySideSpace;
                 lblTerrainTypes.Y = y;
                 lblTerrainTypes.FontIndex = Constants.UIBoldFont;
-                lblTerrainTypes.Text = $"Terrain Types (Group #{i + 1})";
+                lblTerrainTypes.Text = string.Format(Translate(this, "TerrainTypeGroups", "Terrain Types (Group #{0})"), i + 1);
                 AddChild(lblTerrainTypes);
 
                 var tbTerrainTypes = new EditorTextBox(WindowManager);
@@ -58,7 +58,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblOpenChance.Name = nameof(lblOpenChance) + i;
                 lblOpenChance.X = tbTerrainTypes.Right + Constants.UIHorizontalSpacing;
                 lblOpenChance.Y = lblTerrainTypes.Y;
-                lblOpenChance.Text = "Open cell chance:";
+                lblOpenChance.Text = Translate(this, "OpenCelLChance", "Open cell chance:");
                 AddChild(lblOpenChance);
 
                 var tbOpenChance = new EditorNumberTextBox(WindowManager);
@@ -74,7 +74,7 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                 lblOccupiedChance.Name = nameof(lblOccupiedChance) + i;
                 lblOccupiedChance.X = tbOpenChance.Right + Constants.UIHorizontalSpacing;
                 lblOccupiedChance.Y = lblOpenChance.Y;
-                lblOccupiedChance.Text = "Occupied cell chance:";
+                lblOccupiedChance.Text = Translate(this, "OccupiedCellChance", "Occupied cell chance:");
                 AddChild(lblOccupiedChance);
 
                 var tbOccupiedChance = new EditorNumberTextBox(WindowManager);
@@ -111,8 +111,11 @@ namespace TSMapEditor.UI.Windows.TerrainGenerator
                     var terrainType = map.Rules.TerrainTypes.Find(tt => tt.ININame == parts[a]);
                     if (terrainType == null)
                     {
-                        EditorMessageBox.Show(WindowManager, "Generator Config Error",
-                            $"Specified terrain type '{ parts[a] }' does not exist!", MessageBoxButtons.OK);
+                        EditorMessageBox.Show(WindowManager, 
+                            Translate(this, "GeneratorConfigError.TerrainTypeNotFound.Title", "Generator Config Error"),
+                            string.Format(Translate(this, "GeneratorConfigError.TerrainTypeNotFound.Description",
+                                "Specified terrain type '{0}' does not exist!"), parts[a]),
+                            MessageBoxButtons.OK);
                         return null;
                     }
                     terrainTypes.Add(terrainType);

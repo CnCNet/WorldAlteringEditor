@@ -496,7 +496,9 @@ namespace TSMapEditor.Mutations.Classes
 
         public override string GetDisplayString()
         {
-            return $"Paste copied terrain of size {copiedMapData.Width}x{copiedMapData.Height} at {origin}";
+            return string.Format(Translate(this, "DisplayString", 
+                "Paste copied terrain of size {0}x{1} at {2}"),
+                    copiedMapData.Width, copiedMapData.Height, origin);
         }
 
         private void AddRefresh()

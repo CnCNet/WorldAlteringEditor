@@ -53,8 +53,10 @@ namespace TSMapEditor.UI.Windows
         {
             if (string.IsNullOrWhiteSpace(tbHouseName.Text))
             {
-                EditorMessageBox.Show(WindowManager, Translate(this, "NoHouseNameError.Title", "House Name Required"),
-                    Translate(this, "NoHouseNameError.Description", "Please input a name for the house."), MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "NoHouseNameError.Title", "House Name Required"),
+                    Translate(this, "NoHouseNameError.Description", "Please input a name for the house."),
+                    MessageBoxButtons.OK);
 
                 return;
             }

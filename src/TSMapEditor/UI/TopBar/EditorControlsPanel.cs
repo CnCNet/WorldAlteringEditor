@@ -252,7 +252,9 @@ namespace TSMapEditor.UI.TopBar
                     return lg.BaseTileSet.SetName;
                 }).ToArray();
 
-                toolTip.Text = string.Format(Translate(this, $"PlacedOnTopOf", "{0} (placed on top of {1})"), autoLATGround.GroundTileSet.SetName, string.Join(Translate(this, "Or", " or "), allBases));
+                toolTip.Text = string.Format(Translate(this, "PlacedOnTopOf",
+                    "{0} (placed on top of {1})"),
+                        autoLATGround.GroundTileSet.SetName, string.Join(Translate(this, "Or", " or "), allBases));
 
                 toolTip.ToolTipDelay = 0;
 

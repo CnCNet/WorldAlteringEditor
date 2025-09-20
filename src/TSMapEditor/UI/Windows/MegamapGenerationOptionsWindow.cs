@@ -54,13 +54,13 @@ namespace TSMapEditor.UI.Windows
 
             if (IsForPreview)
             {
-                lblDescription.Text = "Preview generation options:";
-                btnGenerate.Text = "Generate Preview";
+                lblDescription.Text = Translate(this, "Preview.Description", "Preview generation options:");
+                btnGenerate.Text = Translate(this, "Preview.Generate", "Generate Preview");
             }
             else
             {
-                lblDescription.Text = "Megamap extraction options:";
-                btnGenerate.Text = "Extract Megamap";
+                lblDescription.Text = Translate(this, "Extract.Description", "Megamap extraction options:");
+                btnGenerate.Text = Translate(this, "Preview.Generate", "Extract Megamap");
             }
 
             Show();

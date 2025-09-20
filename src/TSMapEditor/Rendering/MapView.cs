@@ -1356,7 +1356,7 @@ namespace TSMapEditor.Rendering
         {
             if (tileUnderCursor == null)
             {
-                Renderer.DrawString("Null tile", 0, new Vector2(0f, 40f), Color.White);
+                Renderer.DrawString(Translate(this, "DrawOnTileUnderCursor.NullTile", "Null tile"), 0, new Vector2(0f, 40f), Color.White);
                 return;
             }
 
@@ -1892,8 +1892,12 @@ namespace TSMapEditor.Rendering
                 Logger.Log("Failed to extract megamap texture. Returned error message: " + ex.Message);
                 Logger.Log("Stacktrace: " + ex.StackTrace);
 
-                EditorMessageBox.Show(windowManager, "Failed to extract megamap",
-                    "Error encountered while attempting to extract megamap. Returned operating system error message: " + ex.Message, MessageBoxButtons.OK);
+                EditorMessageBox.Show(windowManager, 
+                    Translate(this, "ExtractMegamapTo.Failure.Title", "Failed to extract megamap"),
+                    string.Format(Translate(this, "ExtractMegamapTo.Failure.Description", 
+                        "Error encountered while attempting to extract megamap. Returned operating system error message: {0}"),
+                            ex.Message), 
+                    MessageBoxButtons.OK);
             }
 
             megamapTexture.Dispose();

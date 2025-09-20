@@ -250,8 +250,10 @@ namespace TSMapEditor.UI.Windows
         {
             if (e.Tag.Trigger == null)
             {
-                EditorMessageBox.Show(windowParentControl.WindowManager, "No trigger attached",
-                    "The specified Tag has no attached Trigger!", MessageBoxButtons.OK);
+                EditorMessageBox.Show(windowParentControl.WindowManager, 
+                    Translate(this, "NoTriggerAttached.Title", "No trigger attached"),
+                    Translate(this, "NoTriggerAttached.Description", "The specified Tag has no attached Trigger!"),
+                    MessageBoxButtons.OK);
 
                 return;
             }

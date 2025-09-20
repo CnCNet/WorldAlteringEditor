@@ -21,7 +21,8 @@ namespace TSMapEditor.Mutations.Classes
 
         public override string GetDisplayString()
         {
-            return $"Place smudge collection {smudgeCollection.Name} at {cellCoords}";
+            return string.Format(Translate(this, "DisplayString", "Place smudge collection {0} at {1}"),
+                smudgeCollection.Name, cellCoords);
         }
 
         public override void Perform()

@@ -14,6 +14,7 @@ using TSMapEditor.Rendering;
 using TSMapEditor.Scripts;
 using TSMapEditor.UI;
 using TSMapEditor.UI.Windows;
+using TSMapEditor.Misc;
 
 namespace WAEScript
 {
@@ -37,7 +38,7 @@ namespace WAEScript
             /// </summary>
             private string missionName = "Area Guard";
 
-            public override string GetName() => $"Apply '{missionName}' Mission To Units";
+            public override string GetName() => Translator.Translate("MapScripts.AreaGuardMissionCursorAction.Name", "Apply Area Guard Mission To Units");
 
             public override void LeftClick(Point2D cellCoords)
             {
@@ -89,7 +90,7 @@ namespace WAEScript
 
                 cellCenterPoint = cellCenterPoint.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
 
-                const string text = "Assign Mission";
+                string text = Translator.Translate("MapScripts.AreaGuardMissionCursorAction.CursorActionText", "Assign Mission");
                 var textDimensions = Renderer.GetTextDimensions(text, Constants.UIBoldFont);
                 int x = cellCenterPoint.X - (int)(textDimensions.X / 2);
                 int y = cellCenterPoint.Y - (int)(textDimensions.Y / 2);

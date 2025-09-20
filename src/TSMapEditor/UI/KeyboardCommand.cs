@@ -37,22 +37,22 @@ namespace TSMapEditor.UI
                 // Build a different kind of string when there's only modifiers
 
                 if ((Modifiers & KeyboardModifiers.Ctrl) == KeyboardModifiers.Ctrl)
-                    key += "CTRL";
+                    key += Translate(this, "CTRL", "CTRL");
 
                 if ((Modifiers & KeyboardModifiers.Shift) == KeyboardModifiers.Shift)
                 {
                     if (key.Length > 0)
-                        key += "+ Shift";
+                        key += Translate(this, "PlusWithShift", "+ Shift");
                     else
-                        key += "Shift";
+                        key += Translate(this, "Shift", "Shift");
                 }
 
                 if ((Modifiers & KeyboardModifiers.Alt) == KeyboardModifiers.Alt)
                 {
                     if (key.Length > 0)
-                        key += "+ Alt";
+                        key += Translate(this, "PlusWithAlt", "+ Alt");
                     else
-                        key += "Alt";
+                        key += Translate(this, "Alt", "Alt");
                 }
 
                 return key;
@@ -60,13 +60,13 @@ namespace TSMapEditor.UI
 
             // Add modifiers to key display string
             if ((Modifiers & KeyboardModifiers.Ctrl) == KeyboardModifiers.Ctrl)
-                key += "CTRL + ";
+                key += Translate(this, "CTRLWithPlus", "CTRL + ");
 
             if ((Modifiers & KeyboardModifiers.Shift) == KeyboardModifiers.Shift)
-                key += "Shift + ";
+                key += Translate(this, "ShiftWithPlus", "Shift + ");
 
             if ((Modifiers & KeyboardModifiers.Alt) == KeyboardModifiers.Alt)
-                key += "Alt + ";
+                key += Translate(this, "AltWithPlus", "Alt + ");
 
             return key + Key.ToString();
         }

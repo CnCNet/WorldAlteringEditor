@@ -55,7 +55,7 @@ namespace TSMapEditor.UI.Sidebar
             lblOwner.Name = nameof(lblOwner);
             lblOwner.X = Constants.UIEmptySideSpace;
             lblOwner.Y = Constants.UIEmptyTopSpace;
-            lblOwner.Text = "Owner:";
+            lblOwner.Text = Translate(this, "Owner", "Owner:");
             AddChild(lblOwner);
 
             ddOwner = new XNADropDown(WindowManager);
@@ -72,7 +72,7 @@ namespace TSMapEditor.UI.Sidebar
             SearchBox.Y = ddOwner.Bottom + Constants.UIEmptyTopSpace;
             SearchBox.Width = Width - Constants.UIEmptySideSpace * 2;
             SearchBox.Height = Constants.UITextBoxHeight;
-            SearchBox.Suggestion = "Search object... (CTRL + F)";
+            SearchBox.Suggestion = Translate(this, "SearchObject", "Search object... (CTRL + F)");
             AddChild(SearchBox);
             SearchBox.TextChanged += SearchBox_TextChanged;
             SearchBox.EnterPressed += SearchBox_EnterPressed;

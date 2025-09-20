@@ -24,7 +24,12 @@ namespace TSMapEditor.Mutations.Classes
 
         public override string GetDisplayString()
         {
-            return $"{(enableIceGrowth ? "Enable" : "Disable")} ice growth at {cellCoords} with a brush size of {brushSize}";
+            return string.Format(Translate(this, "DisplayString", 
+                "{0} ice growth at {1} with a brush size of {2}"),
+                    enableIceGrowth ? 
+                        Translate(this, "Enable", "Enable") :
+                        Translate(this, "Disable", "Disable"),
+                    cellCoords, brushSize);
         }
 
         public override void Perform()

@@ -83,7 +83,7 @@ namespace TSMapEditor.UI
             tbSearch = new EditorSuggestionTextBox(WindowManager);
             tbSearch.Name = nameof(tbSearch);
             tbSearch.Width = TileSetListWidth - btnSort.Width;
-            tbSearch.Suggestion = "Search TileSet...";
+            tbSearch.Suggestion = Translate(this, "SearchTileSets", "Search TileSet...");
             AddChild(tbSearch);
             UIHelpers.AddSearchTipsBoxToControl(tbSearch);
             tbSearch.TextChanged += TbSearch_TextChanged;
@@ -110,8 +110,8 @@ namespace TSMapEditor.UI
             var sortContextMenu = new EditorContextMenu(WindowManager);
             sortContextMenu.Name = nameof(sortContextMenu);
             sortContextMenu.Width = 200;
-            sortContextMenu.AddItem("Sort by ID", () => TileSetSortMode = TileSetSortMode.ID);
-            sortContextMenu.AddItem("Sort by Name", () => TileSetSortMode = TileSetSortMode.Name);
+            sortContextMenu.AddItem(Translate(this, "SortById", "Sort by ID"), () => TileSetSortMode = TileSetSortMode.ID);
+            sortContextMenu.AddItem(Translate(this, "SortByName", "Sort by Name"), () => TileSetSortMode = TileSetSortMode.Name);
             AddChild(sortContextMenu);
 
             btnSort.LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
@@ -119,15 +119,15 @@ namespace TSMapEditor.UI
             tileSetContextMenu = new EditorContextMenu(WindowManager);
             tileSetContextMenu.Name = nameof(tileSetContextMenu);
             tileSetContextMenu.Width = 200;
-            tileSetContextMenu.AddItem("Pin",
+            tileSetContextMenu.AddItem(Translate(this, "Pin", "Pin"),
                 () => { lbTileSetList.SetTileSetAsFavourite(((TileSet)lbTileSetList.SelectedItem.Tag).Index); RefreshTileSets(); },
                 null,
                 () => lbTileSetList.SelectedItem != null && !lbTileSetList.IsTileSetFavourite(((TileSet)lbTileSetList.SelectedItem.Tag).Index));
-            tileSetContextMenu.AddItem("Unpin",
+            tileSetContextMenu.AddItem(Translate(this, "Unpin", "Unpin"),
                 () => { lbTileSetList.ClearFavouriteStatus(((TileSet)lbTileSetList.SelectedItem.Tag).Index); RefreshTileSets(); },
                 null,
                 () => lbTileSetList.SelectedItem != null && lbTileSetList.IsTileSetFavourite(((TileSet)lbTileSetList.SelectedItem.Tag).Index));
-            tileSetContextMenu.AddItem("Unselect", () => lbTileSetList.SelectedIndex = -1);
+            tileSetContextMenu.AddItem(Translate(this, "Unselect", "Unselect"), () => lbTileSetList.SelectedIndex = -1);
             AddChild(tileSetContextMenu);
 
             lbTileSetList.RightClick += LbTileSetList_RightClick;

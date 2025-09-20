@@ -15,10 +15,10 @@
         {
             return value switch
             {
-                BuildingWithPropertyType.LeastThreat => "Least threat",
-                BuildingWithPropertyType.HighestThreat => "Highest threat",
-                BuildingWithPropertyType.Nearest => "Nearest",
-                BuildingWithPropertyType.Farthest => "Farthest",
+                BuildingWithPropertyType.LeastThreat => Translate("BuildingWithPropertyTypeExtension.LeastThreat", "Least threat"),
+                BuildingWithPropertyType.HighestThreat => Translate("BuildingWithPropertyTypeExtension.HighestThreat", "Highest threat"),
+                BuildingWithPropertyType.Nearest => Translate("BuildingWithPropertyTypeExtension.Nearest", "Nearest"),
+                BuildingWithPropertyType.Farthest => Translate("BuildingWithPropertyTypeExtension.Farthest", "Farthest"),
                 _ => string.Empty,
             };
         }

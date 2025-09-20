@@ -685,7 +685,10 @@ namespace TSMapEditor.UI
                     text.Append(Environment.NewLine);
                 }
 
-                EditorMessageBox.Show(WindowManager, "Hotkey Help", text.ToString(), MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "HotkeyHelp.Title", "Hotkey Help"),
+                    text.ToString(),
+                    MessageBoxButtons.OK);
                 e.Handled = true;
             }
         }

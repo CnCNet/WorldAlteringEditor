@@ -10,6 +10,7 @@ using TSMapEditor.Models;
 using TSMapEditor.CCEngine;
 using TSMapEditor.Rendering;
 using TSMapEditor.GameMath;
+using TSMapEditor.Misc;
 
 namespace WAEScript
 {
@@ -19,7 +20,7 @@ namespace WAEScript
         /// Returns the description of this script.
         /// All scripts must contain this function.
         /// </summary>
-        public string GetDescription() => "This script will replace all water on the map with animated water. Continue?";
+        public string GetDescription() => Translator.Translate("MapScripts.ApplyAnimatedWater.Description", "This script will replace all water on the map with animated water. Continue?");
 
 		/// <summary>
 		/// Returns the message that is presented to the user if running this script succeeded.
@@ -28,7 +29,7 @@ namespace WAEScript
 		public string GetSuccessMessage()
 		{
 			if (error == null)
-			    return "Successfully replaced water with animated water.";
+			    return Translator.Translate("MapScripts.ApplyAnimatedWater.SuccessMessage", "Successfully replaced water with animated water.");
 
 			return error;
 		}
@@ -49,14 +50,14 @@ namespace WAEScript
 			var animatedWaterTileSet = map.TheaterInstance.Theater.FindTileSet(AnimatedWaterTileSetName);
 			if (animatedWaterTileSet == null)
 			{
-				error = "TileSet for animated water not found!";
+				error = Translator.Translate("MapScripts.ApplyAnimatedWater.Errors.AnimatedWaterTileSetNotFound", "TileSet for animated water not found!");
 				return;
 			}
 
 			waterTileSet = map.TheaterInstance.Theater.FindTileSet(WaterTileSetName);
 			if (waterTileSet == null)
 			{
-				error = "TileSet for regular (non-animated) water not found!";
+				error = Translator.Translate("MapScripts.ApplyAnimatedWater.Errors.RegularWaterTileSetNotFound", "TileSet for regular (non-animated) water not found!");
 				return;
 			}
 
