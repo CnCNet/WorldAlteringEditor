@@ -13,7 +13,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Place Overlay Collection";
+        public override string GetName() => Translate("Name", "Place Overlay Collection");
 
         private OverlayCollection _overlayCollection;
         public OverlayCollection OverlayCollection

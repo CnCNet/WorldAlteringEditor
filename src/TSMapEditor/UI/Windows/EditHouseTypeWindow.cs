@@ -212,7 +212,7 @@ namespace TSMapEditor.UI.Windows
             }
             else
             {
-                ddParentCountry.AddItem("Standard country - no parent");
+                ddParentCountry.AddItem(Translate(this, "StandardCountry", "Standard country - no parent"));
                 ddParentCountry.SelectedIndex = 0;
                 ddParentCountry.AllowDropDown = false;
             }

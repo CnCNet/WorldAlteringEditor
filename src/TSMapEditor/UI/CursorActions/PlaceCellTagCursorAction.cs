@@ -10,7 +10,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Place CellTag";
+        public override string GetName() => Translate("Name", "Place CellTag");
 
         private Tag _tag;
         public Tag Tag

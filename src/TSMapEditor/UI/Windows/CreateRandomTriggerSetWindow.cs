@@ -52,7 +52,7 @@ namespace TSMapEditor.UI.Windows
             cbEveryDiff = FindChild<XNACheckBox>(nameof(cbEveryDiff));
             btnApply = FindChild<EditorButton>(nameof(btnApply));
 
-            ddColor.AddItem("None");
+            ddColor.AddItem(Translate(this, "None", "None"));
             Array.ForEach(Trigger.SupportedColors, sc =>
             {
                 ddColor.AddItem(sc.Name, sc.Value);
@@ -69,7 +69,7 @@ namespace TSMapEditor.UI.Windows
             }
 
             string name = tbName.Text;
-            string color = ddColor.SelectedItem.Text == "None" ? string.Empty : ddColor.SelectedItem.Text;
+            string color = ddColor.SelectedItem.Text == Translate(this, "None", "None") ? string.Empty : ddColor.SelectedItem.Text;
             int elapsedTime = tbElapsedTime.Value;
             int count = tbNumTriggers.Value;
             int delay = tbDelay.Value;
@@ -111,29 +111,37 @@ namespace TSMapEditor.UI.Windows
         {
             if (string.IsNullOrWhiteSpace(tbName.Text))
             {
-                EditorMessageBox.Show(WindowManager, "Missing Trigger Name",
-                    "Please enter a name for the triggers", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "ValidateMissingTriggerName.Title", "Missing Trigger Name"),
+                    Translate(this, "ValidateMissingTriggerName.Description", "Please enter a name for the triggers"),
+                    MessageBoxButtons.OK);
                 return false;
             }
 
             if (tbNumTriggers.Value < 2)
             {
-                EditorMessageBox.Show(WindowManager, "Invalid Number of Triggers",
-                    "Please enter a value of 2 or more", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "InvalidTriggersNumber.Title", "Invalid Number of Triggers"),
+                    Translate(this, "InvalidTriggersNumber.Description", "Please enter a value of 2 or more"),
+                    MessageBoxButtons.OK);
                 return false;
             }
 
             if (tbElapsedTime.Value < 0)
             {
-                EditorMessageBox.Show(WindowManager, "Invalid Elapsed Time",
-                    "Please enter a value of 0 or more", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "InvalidElapsedTime.Title", "Invalid Elapsed Time"),
+                    Translate(this, "InvalidElapsedTime.Description", "Please enter a value of 0 or more"),
+                    MessageBoxButtons.OK);
                 return false;
             }
 
             if (tbDelay.Value < 10)
             {
-                EditorMessageBox.Show(WindowManager, "Invalid Random Delay",
-                    "Please enter a value of 10 or more", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager,
+                    Translate(this, "InvalidRandomDelay.Title", "Invalid Random Delay"),
+                    Translate(this, "InvalidRandomDelay.Description", "Please enter a value of 10 or more"),
+                    MessageBoxButtons.OK);
                 return false;
             }
 

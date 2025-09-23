@@ -91,6 +91,19 @@ namespace TSMapEditor.UI
             this.primaryControl = primaryControl;
         }
 
+        private string GetExprValueStringWithContextSave(string input, XNAControl parsingControl)
+        {
+            string originalInput = Input;
+            int originalTokenPlace = tokenPlace;
+            string originalTranslationKeyName = translationKeyName;
+            string value = GetExprValueString(input, "Unused", parsingControl);
+            Input = originalInput;
+            tokenPlace = originalTokenPlace;
+            translationKeyName = originalTranslationKeyName;
+
+            return value;
+        }
+
         public string GetExprValueString(string input, string translationKeyName, XNAControl parsingControl)
         {
             this.parsingControl = parsingControl;
@@ -414,25 +427,40 @@ namespace TSMapEditor.UI
         {
             (string functionName, List<string> parameters) = GetFunctionNameAndParameters();
 
+            string identifier;
+
             switch (functionName)
             {
                 case "translate":
                     if (parameters.Count != 1)
                         throw new InvalidOperationException($"Incorrect number of parameters for function {functionName} in expression {Input}");
 
-                    string identifier = primaryControl.Name + ".";
+                    identifier = primaryControl.Name + ".";
                     if (primaryControl != parsingControl)
-                        identifier = identifier + parsingControl.Name + ".";
+                        identifier += parsingControl.Name + ".";
 
                     if (!string.IsNullOrWhiteSpace(translationKeyName))
                         identifier += translationKeyName;
 
-                    return Translate(identifier, parameters[0]);
+                    return Translate(identifier, parameters[0].Replace("@", Environment.NewLine));
+                case "translateFunctionOutput":
+                    string functionOutput = GetExprValueStringWithContextSave(parameters[0], parsingControl);
+
+                    identifier = primaryControl.Name + ".";
+                    if (primaryControl != parsingControl)
+                        identifier += parsingControl.Name + ".";
+
+                    if (!string.IsNullOrWhiteSpace(translationKeyName))
+                        identifier += translationKeyName;
+
+                    return Translate(identifier, functionOutput);
                 case "translateWithoutContext":
                     if (parameters.Count != 2)
                         throw new InvalidOperationException($"Incorrect number of parameters for function {functionName} in expression {Input}");
 
                     return Translate(parameters[0], parameters[1]);
+                case "getText":
+                    return GetControl(parameters[0]).Text;
                 default:
                     throw new INIConfigException("Unknown function " + functionName + " in expression " + Input);
             }

@@ -91,8 +91,8 @@ namespace TSMapEditor.UI.Windows
             var technoTypeDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectTechnoTypeWindow);
             technoTypeDarkeningPanel.Hidden += TechnoTypeDarkeningPanel_Hidden;
 
-            ddActions.AddItem("Advanced...");
-            ddActions.AddItem(new XNADropDownItem() { Text = "Clone for Easier Difficulties", Tag = new Action(CloneForEasierDifficulties) });
+            ddActions.AddItem(Translate(this, "Actions.Advanced", "Advanced..."));
+            ddActions.AddItem(new XNADropDownItem() { Text = Translate(this, "Actions.CloneForEasierDiffs", "Clone for Easier Difficulties"), Tag = new Action(CloneForEasierDifficulties) });
             ddActions.SelectedIndex = 0;
             ddActions.SelectedIndexChanged += DdActions_SelectedIndexChanged;            
 
@@ -105,8 +105,8 @@ namespace TSMapEditor.UI.Windows
                 return;
 
             var messageBox = EditorMessageBox.Show(WindowManager,
-                "Are you sure?",
-                "Cloning this AI trigger for easier difficulties will create duplicate instances" + Environment.NewLine +
+                Translate(this, "CloneForEasierDiffs.Title", "Are you sure?"),
+                Translate(this, "CloneForEasierDiffs.Description", "Cloning this AI trigger for easier difficulties will create duplicate instances" + Environment.NewLine +
                 "of this AI trigger for Medium and Easy difficulties, setting the difficulty" + Environment.NewLine +
                 "setting for each AI trigger to Medium and Easy, respectively." + Environment.NewLine +
                 "This will set the current AI trigger's difficulty to Hard only." + Environment.NewLine + Environment.NewLine +
@@ -116,7 +116,9 @@ namespace TSMapEditor.UI.Windows
                 "TeamTypes instead." + Environment.NewLine + Environment.NewLine +
                 "The script assumes that this AI Trigger has the words 'H' or 'Hard'" + Environment.NewLine +
                 "in their name and in their respective TeamTypes and TaskForces." + Environment.NewLine + Environment.NewLine +
-                "No un-do is available. Do you want to continue?", MessageBoxButtons.YesNo);
+                "No un-do is available. Do you want to continue?"),
+				MessageBoxButtons.YesNo
+			);
 
             messageBox.YesClickedAction = _ => DoCloneForEasierDifficulties();
         }
@@ -242,7 +244,7 @@ namespace TSMapEditor.UI.Windows
         {
             var aiTrigger = new AITriggerType(map.GetNewUniqueInternalId());
             aiTrigger.Name = "New AITrigger";
-            aiTrigger.OwnerName = "<all>";            
+            aiTrigger.OwnerName = "<all>";
             map.AITriggerTypes.Add(aiTrigger);
             ListAITriggers();
             SelectAITrigger(aiTrigger);

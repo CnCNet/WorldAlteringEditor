@@ -99,7 +99,7 @@ namespace TSMapEditor.UI.Windows
             lblActionDescriptionValue = FindChild<XNALabel>(nameof(lblActionDescriptionValue));
             ddScriptColor = FindChild<XNADropDown>(nameof(ddScriptColor));            
 
-            ddScriptColor.AddItem("None");
+            ddScriptColor.AddItem(Translate(this, "None", "None"));
             Array.ForEach(Script.SupportedColors, supportedColor =>
             {
                 ddScriptColor.AddItem(supportedColor.Name, supportedColor.Value);
@@ -124,10 +124,10 @@ namespace TSMapEditor.UI.Windows
             var sortContextMenu = new EditorContextMenu(WindowManager);
             sortContextMenu.Name = nameof(sortContextMenu);
             sortContextMenu.Width = lbScriptTypes.Width;
-            sortContextMenu.AddItem("Sort by ID", () => ScriptSortMode = ScriptSortMode.ID);
-            sortContextMenu.AddItem("Sort by Name", () => ScriptSortMode = ScriptSortMode.Name);
-            sortContextMenu.AddItem("Sort by Color", () => ScriptSortMode = ScriptSortMode.Color);
-            sortContextMenu.AddItem("Sort by Color, then by Name", () => ScriptSortMode = ScriptSortMode.ColorThenName);
+            sortContextMenu.AddItem(Translate(this, "SortByID", "Sort by ID"), () => ScriptSortMode = ScriptSortMode.ID);
+            sortContextMenu.AddItem(Translate(this, "SortByName", "Sort by Name"), () => ScriptSortMode = ScriptSortMode.Name);
+            sortContextMenu.AddItem(Translate(this, "SortByColor", "Sort by Color"), () => ScriptSortMode = ScriptSortMode.Color);
+            sortContextMenu.AddItem(Translate(this, "SortByColorName", "Sort by Color, then by Name"), () => ScriptSortMode = ScriptSortMode.ColorThenName);
             AddChild(sortContextMenu);
 
             FindChild<EditorButton>("btnSortOptions").LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
@@ -135,7 +135,7 @@ namespace TSMapEditor.UI.Windows
             var scriptContextMenu = new EditorContextMenu(WindowManager);
             scriptContextMenu.Name = nameof(scriptContextMenu);
             scriptContextMenu.Width = lbScriptTypes.Width;
-            scriptContextMenu.AddItem("View References", ShowScriptReferences);
+            scriptContextMenu.AddItem(Translate(this, "ViewReferences", "View References"), ShowScriptReferences);
             AddChild(scriptContextMenu);
 
             lbScriptTypes.AllowRightClickUnselect = false;
@@ -180,11 +180,11 @@ namespace TSMapEditor.UI.Windows
             actionListContextMenu = new EditorContextMenu(WindowManager);
             actionListContextMenu.Name = nameof(actionListContextMenu);
             actionListContextMenu.Width = 180;
-            actionListContextMenu.AddItem("Move Up", MoveActionUp, () => editedScript != null && lbActions.SelectedItem != null && lbActions.SelectedIndex > 0);
-            actionListContextMenu.AddItem("Move Down", MoveActionDown, () => editedScript != null && lbActions.SelectedItem != null && lbActions.SelectedIndex < lbActions.Items.Count - 1);
-            actionListContextMenu.AddItem("Clone Action", CloneAction, () => editedScript != null && lbActions.SelectedItem != null);
-            actionListContextMenu.AddItem("Insert New Action Here", InsertAction, () => editedScript != null && lbActions.SelectedItem != null);
-            actionListContextMenu.AddItem("Delete Action", ActionListContextMenu_Delete, () => editedScript != null && lbActions.SelectedItem != null);
+            actionListContextMenu.AddItem(Translate(this, "MoveUp", "Move Up"), MoveActionUp, () => editedScript != null && lbActions.SelectedItem != null && lbActions.SelectedIndex > 0);
+            actionListContextMenu.AddItem(Translate(this, "MoveDown", "Move Down"), MoveActionDown, () => editedScript != null && lbActions.SelectedItem != null && lbActions.SelectedIndex < lbActions.Items.Count - 1);
+            actionListContextMenu.AddItem(Translate(this, "CloneAction", "Clone Action"), CloneAction, () => editedScript != null && lbActions.SelectedItem != null);
+            actionListContextMenu.AddItem(Translate(this, "InsertNewAction", "Insert New Action Here"), InsertAction, () => editedScript != null && lbActions.SelectedItem != null);
+            actionListContextMenu.AddItem(Translate(this, "DeleteAction", "Delete Action"), ActionListContextMenu_Delete, () => editedScript != null && lbActions.SelectedItem != null);
             AddChild(actionListContextMenu);
 
             lbActions.AllowRightClickUnselect = false;
@@ -313,7 +313,7 @@ namespace TSMapEditor.UI.Windows
             if (action.ParamType == TriggerParamType.Cell)
             {
                 editorState.CursorAction = selectCellCursorAction;
-                notificationManager.AddNotification("Select a cell from the map.");
+                notificationManager.AddNotification(Translate(this, "SelectCell", "Select a cell from the map."));
             }
             else if (action.ParamType == TriggerParamType.BuildingWithProperty)
             {
@@ -349,8 +349,11 @@ namespace TSMapEditor.UI.Windows
 
             if (referringLocalTeamTypes.Count == 0 && referringGlobalTeamTypes.Count == 0)
             {
-                EditorMessageBox.Show(WindowManager, "No references found",
-                    $"The selected Script \"{editedScript.Name}\" ({editedScript.ININame}) is not used by any TeamTypes, either local (map) or global (AI.ini).", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager,
+                    Translate(this, "NoReferencesFound.Title", "No references found"),
+                    string.Format(Translate(this, "NoReferencesFound.Description", "The selected Script \"{0}\" ({1}) is not used by any TeamTypes, either local (map) or global (AI.ini)."), 
+                        editedScript.Name, editedScript.ININame),
+                    MessageBoxButtons.OK);
             }
             else
             {
@@ -358,9 +361,11 @@ namespace TSMapEditor.UI.Windows
                 referringLocalTeamTypes.ForEach(tt => stringBuilder.AppendLine($"- Local TeamType \"{tt.Name}\" ({tt.ININame})"));
                 referringGlobalTeamTypes.ForEach(tt => stringBuilder.AppendLine($"- Global TeamType \"{tt.Name}\" ({tt.ININame})"));
 
-                EditorMessageBox.Show(WindowManager, "Script References",
-                    $"The selected Script \"{editedScript.Name}\" ({editedScript.ININame}) is used by the following TeamTypes:" + Environment.NewLine + Environment.NewLine +
-                    stringBuilder.ToString(), MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "ScriptReferences.Title", "Script References"),
+                    string.Format(Translate(this, "ScriptReferences.Description", "The selected Script \"{0}\" ({1}) is used by the following TeamTypes:" + Environment.NewLine + Environment.NewLine + "{2}"),
+                        editedScript.Name, editedScript.ININame, stringBuilder.ToString()),
+                    MessageBoxButtons.OK);
             }
         }
 
@@ -384,10 +389,11 @@ namespace TSMapEditor.UI.Windows
             else
             {
                 var messageBox = EditorMessageBox.Show(WindowManager,
-                    "Confirm",
-                    $"Are you sure you wish to delete '{editedScript.Name}'?" + Environment.NewLine + Environment.NewLine +
-                    $"You'll need to manually fix any TeamTypes using the Script." + Environment.NewLine + Environment.NewLine +
-                    "(You can hold Shift to skip this confirmation dialog.)",
+                    Translate(this, "DeleteConfirm.Title", "Confirm"),
+                    string.Format(Translate(this, "DeleteConfirm.Description", "Are you sure you wish to delete '{0}'?" + Environment.NewLine + Environment.NewLine +
+                        "You'll need to manually fix any TeamTypes using the Script." + Environment.NewLine + Environment.NewLine +
+                        "(You can hold Shift to skip this confirmation dialog.)"), 
+                        editedScript.Name),
                     MessageBoxButtons.YesNo);
                 messageBox.YesClickedAction = _ => DeleteScript();
             }
@@ -632,7 +638,7 @@ namespace TSMapEditor.UI.Windows
                 if (scriptActionEntry.Argument > -1 && scriptActionEntry.Argument < map.Rules.AnimTypes.Count)
                     tbParameterValue.Text = scriptActionEntry.Argument.ToString(CultureInfo.InvariantCulture) + " - " + map.Rules.AnimTypes[scriptActionEntry.Argument].ININame;
                 else
-                    tbParameterValue.Text = scriptActionEntry.Argument.ToString(CultureInfo.InvariantCulture) + " - unknown animation";
+                    tbParameterValue.Text = scriptActionEntry.Argument.ToString(CultureInfo.InvariantCulture) + Translate(this, "UnknownAnimation", " - unknown animation");
 
                 return;
             }
@@ -668,7 +674,7 @@ namespace TSMapEditor.UI.Windows
             int value = buildingTypeIndex + (int)property;
 
             if (buildingType == null)
-                return value + " - invalid value";
+                return value + Translate(this, "InvalidValue", " - invalid value");
 
             return value + " - " + buildingType.GetEditorDisplayName() + " (" + description + ")";
         }
@@ -867,7 +873,7 @@ namespace TSMapEditor.UI.Windows
         private string GetActionDescriptionFromIndex(int index)
         {
             ScriptAction action = GetScriptAction(index);
-            string description = action == null ? "Unknown script action. It has most likely been added with another editor." : action.Description;
+            string description = action == null ? Translate(this, "UnknownScriptAction", "Unknown script action. It has most likely been added with another editor.") : action.Description;
 
             return Renderer.FixText(description,
                 lblActionDescriptionValue.FontIndex,

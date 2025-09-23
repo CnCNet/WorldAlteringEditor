@@ -13,7 +13,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Delete Tube";
+        public override string GetName() => Translate("Name", "Delete Tube");
 
         public override void DrawPreview(Point2D cellCoords, Point2D cameraTopLeftPoint)
         {
@@ -25,7 +25,7 @@ namespace TSMapEditor.UI.CursorActions
             cellPixelCoords = new Point2D(cellPixelCoords.X + Constants.CellSizeX / 2, cellPixelCoords.Y);
             cellPixelCoords = cellPixelCoords.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
 
-            const string text = "Delete Tunnel";
+            string text = Translate("Text", "Delete Tube");
             var textDimensions = Renderer.GetTextDimensions(text, Constants.UIBoldFont);
             int x = cellPixelCoords.X - (int)(textDimensions.X / 2);
 

@@ -111,7 +111,7 @@ namespace TSMapEditor.UI.Windows
             selTag = FindChild<EditorPopUpSelector>(nameof(selTag));
             ddTeamTypeColor = FindChild<XNADropDown>(nameof(ddTeamTypeColor));
 
-            ddTeamTypeColor.AddItem("House Color");
+            ddTeamTypeColor.AddItem(Translate(this, "HouseColor", "House Color"));
             foreach (var supportedColor in TeamType.SupportedColors)
             {
                 ddTeamTypeColor.AddItem(supportedColor.Name, supportedColor.Value);
@@ -180,10 +180,10 @@ namespace TSMapEditor.UI.Windows
             var sortContextMenu = new EditorContextMenu(WindowManager);
             sortContextMenu.Name = nameof(sortContextMenu);
             sortContextMenu.Width = lbTeamTypes.Width;
-            sortContextMenu.AddItem("Sort by ID", () => TeamTypeSortMode = TeamTypeSortMode.ID);
-            sortContextMenu.AddItem("Sort by Name", () => TeamTypeSortMode = TeamTypeSortMode.Name);
-            sortContextMenu.AddItem("Sort by Color", () => TeamTypeSortMode = TeamTypeSortMode.Color);
-            sortContextMenu.AddItem("Sort by Color, then by Name", () => TeamTypeSortMode = TeamTypeSortMode.ColorThenName);
+            sortContextMenu.AddItem(Translate(this, "SortByID", "Sort by ID"), () => TeamTypeSortMode = TeamTypeSortMode.ID);
+            sortContextMenu.AddItem(Translate(this, "SortByName", "Sort by Name"), () => TeamTypeSortMode = TeamTypeSortMode.Name);
+            sortContextMenu.AddItem(Translate(this, "SortByColor", "Sort by Color"), () => TeamTypeSortMode = TeamTypeSortMode.Color);
+            sortContextMenu.AddItem(Translate(this, "SortByColorName", "Sort by Color, then by Name"), () => TeamTypeSortMode = TeamTypeSortMode.ColorThenName);
             AddChild(sortContextMenu);
 
             FindChild<EditorButton>("btnSortOptions").LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
@@ -191,7 +191,7 @@ namespace TSMapEditor.UI.Windows
             var teamTypeContextMenu = new EditorContextMenu(WindowManager);
             teamTypeContextMenu.Name = nameof(teamTypeContextMenu);
             teamTypeContextMenu.Width = lbTeamTypes.Width;
-            teamTypeContextMenu.AddItem("View References", ShowTeamTypeReferences);
+            teamTypeContextMenu.AddItem(Translate(this, "ViewReferences", "View References"), ShowTeamTypeReferences);
             AddChild(teamTypeContextMenu);
 
             lbTeamTypes.AllowRightClickUnselect = false;
@@ -297,12 +297,16 @@ namespace TSMapEditor.UI.Windows
 
                 if (refActionCount > 0)
                 {
-                    stringBuilder.AppendLine($"- Trigger \"{trigger.Name}\" ({trigger.ID}) in {refActionCount} action parameter(s)");
+                    stringBuilder.AppendLine(
+                        string.Format(Translate(this, "RefActions", "- Trigger \"{0}\" ({1}) in {2} action parameter(s)"), 
+                            trigger.Name, trigger.ID, refActionCount));
                 }
 
                 if (refConditionCount > 0)
                 {
-                    stringBuilder.AppendLine($"- Trigger \"{trigger.Name}\" ({trigger.ID}) in {refConditionCount} event parameter(s)");
+                    stringBuilder.AppendLine(
+                        string.Format(Translate(this, "RefEvents", "- Trigger \"{0}\" ({1}) in {2} event parameter(s)"),
+                            trigger.Name, trigger.ID, refConditionCount));
                 }
             }
 
@@ -310,31 +314,42 @@ namespace TSMapEditor.UI.Windows
             {
                 if (aiTrigger.PrimaryTeam == editedTeamType)
                 {
-                    stringBuilder.AppendLine($"- Local AITrigger \"{aiTrigger.Name}\" ({aiTrigger.ININame}) as primary team");
+                    stringBuilder.AppendLine(
+                        string.Format(Translate(this, "AITriggerPrimaryTeamReference", "- Local AITrigger \"{0}\" ({1}) as primary team"), 
+                            aiTrigger.Name, aiTrigger.ININame));
                 }
 
                 if (aiTrigger.SecondaryTeam == editedTeamType)
                 {
-                    stringBuilder.AppendLine($"- Local AITrigger \"{aiTrigger.Name}\" ({aiTrigger.ININame}) as secondary team");
+                    stringBuilder.AppendLine(
+                        string.Format(Translate(this, "AITriggerSecondaryTeamReference", "- Local AITrigger \"{0}\" ({1}) as secondary team"),
+                            aiTrigger.Name, aiTrigger.ININame));
                 }
             }
 
             var globalTeamType = map.Rules.TeamTypes.Find(tt => tt.ININame == editedTeamType.ININame);
             if (globalTeamType != null)
             {
-                stringBuilder.AppendLine($"- This TeamType overrides a global TeamType {globalTeamType.ININame}. As such, it maybe be used by global AI Triggers.");
+                stringBuilder.AppendLine(
+                    string.Format(Translate(this, "GlobalTeamTypeOverridden", "- This TeamType overrides a global TeamType {0}. As such, it may be used by global AI Triggers."),
+                        globalTeamType.ININame));
             }
 
             if (stringBuilder.Length == 0)
             {
-                EditorMessageBox.Show(WindowManager, "No references found",
-                    $"The selected TeamType \"{editedTeamType.Name}\" ({editedTeamType.ININame}) is not used by any Triggers or AITriggers.", MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "NoRefs.Title", "No references found"),
+                    string.Format(Translate(this, "NoRefs.Description", "The selected TeamType \"{0}\" ({1}) is not used by any Triggers or AITriggers."),
+                        editedTeamType.Name, editedTeamType.ININame),
+                    MessageBoxButtons.OK);
             }
             else
             {
-                EditorMessageBox.Show(WindowManager, "TeamType References",
-                    $"The selected TeamType \"{editedTeamType.Name}\" ({editedTeamType.ININame}) is used by the following scripting elements:" + Environment.NewLine + Environment.NewLine +
-                    stringBuilder.ToString(), MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "TeamTypeRefs.Title", "TeamType References"),
+                    string.Format(Translate(this, "TeamTypeRefs.Description", "The selected TeamType \"{0}\" ({1}) is used by the following scripting elements:" + Environment.NewLine + Environment.NewLine + "{2}"),
+                        editedTeamType.Name, editedTeamType.ININame, stringBuilder.ToString()),
+                    MessageBoxButtons.OK);
             }
         }
 
@@ -363,10 +378,11 @@ namespace TSMapEditor.UI.Windows
             else
             {
                 var messageBox = EditorMessageBox.Show(WindowManager,
-                    "Confirm",
-                    $"Are you sure you wish to delete '{editedTeamType.Name}'?" + Environment.NewLine + Environment.NewLine +
-                    $"You'll need to manually fix any Triggers and AITriggers using the TeamType." + Environment.NewLine + Environment.NewLine +
-                    "(You can hold Shift to skip this confirmation dialog.)",
+                    Translate(this, "DeleteConfirm.Title", "Confirm"),
+                    string.Format(Translate(this, "DeleteConfirm.Description", "Are you sure you wish to delete '{0}'?" + Environment.NewLine + Environment.NewLine +
+                        "You'll need to manually fix any Triggers and AITriggers using the TeamType." + Environment.NewLine + Environment.NewLine +
+                        "(You can hold Shift to skip this confirmation dialog.)"),
+                        editedTeamType.Name),
                     MessageBoxButtons.YesNo);
                 messageBox.YesClickedAction = _ => DeleteTeamType();
             }

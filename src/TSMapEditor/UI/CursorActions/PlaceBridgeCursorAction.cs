@@ -18,7 +18,7 @@ namespace TSMapEditor.UI.CursorActions
             this.bridgeType = bridgeType;
         }
 
-        public override string GetName() => "Draw Bridge";
+        public override string GetName() => Translate("Name", "Draw Bridge");
 
         public override bool HandlesKeyboardInput => true;
 
@@ -43,7 +43,7 @@ namespace TSMapEditor.UI.CursorActions
 
             cellTopLeftPoint = cellTopLeftPoint.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
 
-            const string text = "Hold left click to draw bridge.\r\n\r\nENTER to confirm\r\nBackspace to clear\r\nRight-click or ESC to exit";
+            string text = Translate("Text", "Hold left click to draw bridge.\r\n\r\nENTER to confirm\r\nBackspace to clear\r\nRight-click or ESC to exit");
             var textDimensions = Renderer.GetTextDimensions(text, Constants.UIBoldFont);
             int x = cellTopLeftPoint.X - (int)(textDimensions.X - Constants.CellSizeX) / 2;
 

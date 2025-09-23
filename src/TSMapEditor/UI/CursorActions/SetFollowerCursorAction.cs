@@ -16,7 +16,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Select Follower";
+        public override string GetName() => Translate("Name", "Select Follower");
 
         public sealed override bool DrawCellCursor => true;
 

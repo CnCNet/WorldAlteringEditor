@@ -9,7 +9,7 @@ namespace TSMapEditor.UI.CursorActions.HeightActions
         {
         }
 
-        public override string GetName() => "Lower Cells";
+        public override string GetName() => Translate("Name", "Lower Cells");
 
         public override bool DrawCellCursor => true;
 

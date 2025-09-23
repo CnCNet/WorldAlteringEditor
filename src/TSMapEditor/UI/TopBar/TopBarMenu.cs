@@ -73,47 +73,47 @@ namespace TSMapEditor.UI.TopBar
 
             var fileContextMenu = new EditorContextMenu(WindowManager);
             fileContextMenu.Name = nameof(fileContextMenu);
-            fileContextMenu.AddItem("New", () => windowController.CreateNewMapWindow.Open(), null, null, null);
-            fileContextMenu.AddItem("Open", () => Open(), null, null, null);
+            fileContextMenu.AddItem(Translate(this, "File.New", "New"), () => windowController.CreateNewMapWindow.Open(), null, null, null);
+            fileContextMenu.AddItem(Translate(this, "File.Open", "Open"), () => Open(), null, null, null);
 
-            fileContextMenu.AddItem("Save", () => SaveMap());
-            fileContextMenu.AddItem("Save As", () => SaveAs(), null, null, null);
+            fileContextMenu.AddItem(Translate(this, "File.Save", "Save"), () => SaveMap());
+            fileContextMenu.AddItem(Translate(this, "File.SaveAs", "Save As"), () => SaveAs(), null, null, null);
             fileContextMenu.AddItem(" ", null, () => false, null, null);
-            fileContextMenu.AddItem("Reload Input File",
+            fileContextMenu.AddItem(Translate(this, "File.ReloadInputFile", "Reload Input File"),
                 () => InputFileReloadRequested?.Invoke(this, EventArgs.Empty),
                 () => !string.IsNullOrWhiteSpace(map.LoadedINI.FileName),
                 null, null);
             fileContextMenu.AddItem(" ", null, () => false, null, null);
-            fileContextMenu.AddItem("Extract Megamap...", () => windowController.MegamapGenerationOptionsWindow.Open(false));
-            fileContextMenu.AddItem("Generate Map Preview...", WriteMapPreviewConfirmation);
+            fileContextMenu.AddItem(Translate(this, "File.ExtractMegamap", "Extract Megamap..."), () => windowController.MegamapGenerationOptionsWindow.Open(false));
+            fileContextMenu.AddItem(Translate(this, "File.GenerateMapPreview", "Generate Map Preview..."), WriteMapPreviewConfirmation);
             fileContextMenu.AddItem(" ", null, () => false, null, null, null);
-            fileContextMenu.AddItem("Open With Text Editor", OpenWithTextEditor, () => !string.IsNullOrWhiteSpace(map.LoadedINI.FileName));
+            fileContextMenu.AddItem(Translate(this, "File.OpenWithTextEditor", "Open With Text Editor"), OpenWithTextEditor, () => !string.IsNullOrWhiteSpace(map.LoadedINI.FileName));
             fileContextMenu.AddItem(" ", null, () => false, null, null);
-            fileContextMenu.AddItem("Exit", WindowManager.CloseGame);
+            fileContextMenu.AddItem(Translate(this, "File.Exit", "Exit"), WindowManager.CloseGame);
 
             var fileButton = new MenuButton(WindowManager, fileContextMenu);
             fileButton.Name = nameof(fileButton);
-            fileButton.Text = "File";
+            fileButton.Text = Translate(this, "File.Header", "File");
             AddChild(fileButton);
 
             var editContextMenu = new EditorContextMenu(WindowManager);
             editContextMenu.Name = nameof(editContextMenu);
-            editContextMenu.AddItem("Configure Copied Objects...", () => windowController.CopiedEntryTypesWindow.Open(), null, null, null, () => KeyboardCommands.Instance.ConfigureCopiedObjects.GetKeyDisplayString());
-            editContextMenu.AddItem("Copy", () => KeyboardCommands.Instance.Copy.DoTrigger(), null, null, null, () => KeyboardCommands.Instance.Copy.GetKeyDisplayString());
-            editContextMenu.AddItem("Copy Custom Shape", () => KeyboardCommands.Instance.CopyCustomShape.DoTrigger(), null, null, null, () => KeyboardCommands.Instance.CopyCustomShape.GetKeyDisplayString());
-            editContextMenu.AddItem("Paste", () => KeyboardCommands.Instance.Paste.DoTrigger(), null, null, null, () => KeyboardCommands.Instance.Paste.GetKeyDisplayString());
+            editContextMenu.AddItem(Translate(this, "Edit.ConfigureCopiedObjects", "Configure Copied Objects..."), () => windowController.CopiedEntryTypesWindow.Open(), null, null, null, () => KeyboardCommands.Instance.ConfigureCopiedObjects.GetKeyDisplayString());
+            editContextMenu.AddItem(Translate(this, "Edit.Copy", "Copy"), () => KeyboardCommands.Instance.Copy.DoTrigger(), null, null, null, () => KeyboardCommands.Instance.Copy.GetKeyDisplayString());
+            editContextMenu.AddItem(Translate(this, "Edit.CopyCustomShape", "Copy Custom Shape"), () => KeyboardCommands.Instance.CopyCustomShape.DoTrigger(), null, null, null, () => KeyboardCommands.Instance.CopyCustomShape.GetKeyDisplayString());
+            editContextMenu.AddItem(Translate(this, "Edit.Paste", "Paste"), () => KeyboardCommands.Instance.Paste.DoTrigger(), null, null, null, () => KeyboardCommands.Instance.Paste.GetKeyDisplayString());
             editContextMenu.AddItem(" ", null, () => false, null, null);
-            editContextMenu.AddItem("Undo", () => mutationManager.Undo(), () => mutationManager.CanUndo(), null, null, () => KeyboardCommands.Instance.Undo.GetKeyDisplayString());
-            editContextMenu.AddItem("Redo", () => mutationManager.Redo(), () => mutationManager.CanRedo(), null, null, () => KeyboardCommands.Instance.Redo.GetKeyDisplayString());
-            editContextMenu.AddItem("Action History", () => windowController.HistoryWindow.Open());
+            editContextMenu.AddItem(Translate(this, "Edit.Undo", "Undo"), () => mutationManager.Undo(), () => mutationManager.CanUndo(), null, null, () => KeyboardCommands.Instance.Undo.GetKeyDisplayString());
+            editContextMenu.AddItem(Translate(this, "Edit.Redo", "Redo"), () => mutationManager.Redo(), () => mutationManager.CanRedo(), null, null, () => KeyboardCommands.Instance.Redo.GetKeyDisplayString());
+            editContextMenu.AddItem(Translate(this, "Edit.ActionHistory", "Action History"), () => windowController.HistoryWindow.Open());
             editContextMenu.AddItem(" ", null, () => false, null, null);
-            editContextMenu.AddItem("Basic", () => windowController.BasicSectionConfigWindow.Open(), null, null, null);
-            editContextMenu.AddItem("Map Size", () => windowController.MapSizeWindow.Open(), null, null, null, null);
+            editContextMenu.AddItem(Translate(this, "Edit.Basic", "Basic"), () => windowController.BasicSectionConfigWindow.Open(), null, null, null);
+            editContextMenu.AddItem(Translate(this, "Edit.MapSize", "Map Size"), () => windowController.MapSizeWindow.Open(), null, null, null, null);
             editContextMenu.AddItem(" ", null, () => false, null, null);
-            editContextMenu.AddItem("Lighting", () => windowController.LightingSettingsWindow.Open(), null, null, null);
+            editContextMenu.AddItem(Translate(this, "Edit.Lighting", "Lighting"), () => windowController.LightingSettingsWindow.Open(), null, null, null);
             editContextMenu.AddItem(" ", null, () => false, null, null);
-            editContextMenu.AddItem("Place Tunnel", () => mapUI.EditorState.CursorAction = placeTubeCursorAction, null, null, null, () => KeyboardCommands.Instance.PlaceTunnel.GetKeyDisplayString());
-            editContextMenu.AddItem("Delete Tunnel", () => mapUI.EditorState.CursorAction = deleteTunnelCursorAction, null, null, null);
+            editContextMenu.AddItem(Translate(this, "Edit.PlaceTunnel", "Place Tunnel"), () => mapUI.EditorState.CursorAction = placeTubeCursorAction, null, null, null, () => KeyboardCommands.Instance.PlaceTunnel.GetKeyDisplayString());
+            editContextMenu.AddItem(Translate(this, "Edit.DeleteTunnel", "Delete Tunnel"), () => mapUI.EditorState.CursorAction = deleteTunnelCursorAction, null, null, null);
             editContextMenu.AddItem(" ", null, () => false, null, null);
 
             int bridgeCount = map.EditorConfig.Bridges.Count;
@@ -122,12 +122,12 @@ namespace TSMapEditor.UI.TopBar
                 var bridges = map.EditorConfig.Bridges;
                 if (bridgeCount == 1 && bridges[0].Kind == BridgeKind.Low)
                 {
-                    editContextMenu.AddItem("Draw Low Bridge", () => mapUI.EditorState.CursorAction =
+                    editContextMenu.AddItem(Translate(this, "Edit.DrawLowBridge", "Draw Low Bridge"), () => mapUI.EditorState.CursorAction =
                         new PlaceBridgeCursorAction(mapUI, bridges[0]), null, null, null);
                 }
                 else
                 {
-                    editContextMenu.AddItem("Draw Bridge...", SelectBridge, null, null, null);
+                    editContextMenu.AddItem(Translate(this, "Edit.DrawBridge", "Draw Bridge..."), SelectBridge, null, null, null);
                 }
             }
 
@@ -138,116 +138,116 @@ namespace TSMapEditor.UI.TopBar
             {
                 if (cliffCount == 1)
                 {
-                    editContextMenu.AddItem("Draw Connected Tiles", () => mapUI.EditorState.CursorAction =
+                    editContextMenu.AddItem(Translate(this, "Edit.DrawConnectedTiles", "Draw Connected Tiles"), () => mapUI.EditorState.CursorAction =
                         new DrawCliffCursorAction(mapUI, theaterMatchingCliffs[0]), null, null, null);
                 }
                 else
                 {
-                    editContextMenu.AddItem("Repeat Last Connected Tile", RepeatLastConnectedTile, null, null, null, () => KeyboardCommands.Instance.RepeatConnectedTile.GetKeyDisplayString());
-                    editContextMenu.AddItem("Draw Connected Tiles...", () => windowController.SelectConnectedTileWindow.Open(), null, null, null, () => KeyboardCommands.Instance.PlaceConnectedTile.GetKeyDisplayString());
+                    editContextMenu.AddItem(Translate(this, "Edit.RepeatLastConnectedTile", "Repeat Last Connected Tile"), RepeatLastConnectedTile, null, null, null, () => KeyboardCommands.Instance.RepeatConnectedTile.GetKeyDisplayString());
+                    editContextMenu.AddItem(Translate(this, "Edit.DrawManyConnectedTiles", "Draw Connected Tiles..."), () => windowController.SelectConnectedTileWindow.Open(), null, null, null, () => KeyboardCommands.Instance.PlaceConnectedTile.GetKeyDisplayString());
                 }
             }
 
-            editContextMenu.AddItem("Toggle IceGrowth", () => { mapUI.EditorState.CursorAction = toggleIceGrowthCursorAction; toggleIceGrowthCursorAction.ToggleIceGrowth = true; mapUI.EditorState.HighlightIceGrowth = true; }, null, null, null);
-            editContextMenu.AddItem("Clear IceGrowth", () => { mapUI.EditorState.CursorAction = toggleIceGrowthCursorAction; toggleIceGrowthCursorAction.ToggleIceGrowth = false; mapUI.EditorState.HighlightIceGrowth = true; }, null, null, null);
+            editContextMenu.AddItem(Translate(this, "Edit.ToggleIcegrowth", "Toggle IceGrowth"), () => { mapUI.EditorState.CursorAction = toggleIceGrowthCursorAction; toggleIceGrowthCursorAction.ToggleIceGrowth = true; mapUI.EditorState.HighlightIceGrowth = true; }, null, null, null);
+            editContextMenu.AddItem(Translate(this, "Edit.ClearIceGrowth", "Clear IceGrowth"), () => { mapUI.EditorState.CursorAction = toggleIceGrowthCursorAction; toggleIceGrowthCursorAction.ToggleIceGrowth = false; mapUI.EditorState.HighlightIceGrowth = true; }, null, null, null);
             editContextMenu.AddItem(" ", null, () => false, null, null);
-            editContextMenu.AddItem("Manage Base Nodes", ManageBaseNodes_Selected, null, null, null);
+            editContextMenu.AddItem(Translate(this, "Edit.ManageBaseNodes", "Manage Base Nodes"), ManageBaseNodes_Selected, null, null, null);
 
             if (map.Rules.OverlayTypes.Exists(ot => ot.ININame == Constants.VeinholeMonsterTypeName) && map.Rules.OverlayTypes.Exists(ot => ot.ININame == Constants.VeinholeDummyTypeName))
             {
                 editContextMenu.AddItem(" ", null, () => false, null, null);
-                editContextMenu.AddItem("Place Veinhole Monster", () => mapUI.EditorState.CursorAction = placeVeinholeMonsterCursorAction, null, null, null, null);
+                editContextMenu.AddItem(Translate(this, "Edit.PlaceVeinholeMonster", "Place Veinhole Monster"), () => mapUI.EditorState.CursorAction = placeVeinholeMonsterCursorAction, null, null, null, null);
             }
 
             var editButton = new MenuButton(WindowManager, editContextMenu);
             editButton.Name = nameof(editButton);
             editButton.X = fileButton.Right;
-            editButton.Text = "Edit";
+            editButton.Text = Translate(this, "Edit.Header", "Edit");
             AddChild(editButton);
 
             var viewContextMenu = new EditorContextMenu(WindowManager);
             viewContextMenu.Name = nameof(viewContextMenu);
-            viewContextMenu.AddItem("Configure Rendered Objects...", () => windowController.RenderedObjectsConfigurationWindow.Open());
+            viewContextMenu.AddItem(Translate(this, "View.ConfigureRenderedObjects", "Configure Rendered Objects..."), () => windowController.RenderedObjectsConfigurationWindow.Open());
             viewContextMenu.AddItem(" ", null, () => false, null, null);
-            viewContextMenu.AddItem("Toggle Impassable Cells", () => mapUI.EditorState.HighlightImpassableCells = !mapUI.EditorState.HighlightImpassableCells, null, null, null);
-            viewContextMenu.AddItem("Toggle IceGrowth Preview", () => mapUI.EditorState.HighlightIceGrowth = !mapUI.EditorState.HighlightIceGrowth, null, null, null);
+            viewContextMenu.AddItem(Translate(this, "View.ToggleImpassableCells", "Toggle Impassable Cells"), () => mapUI.EditorState.HighlightImpassableCells = !mapUI.EditorState.HighlightImpassableCells, null, null, null);
+            viewContextMenu.AddItem(Translate(this, "View.ToggleIceGrowthPreview", "Toggle IceGrowth Preview"), () => mapUI.EditorState.HighlightIceGrowth = !mapUI.EditorState.HighlightIceGrowth, null, null, null);
             viewContextMenu.AddItem(" ", null, () => false, null, null);
-            viewContextMenu.AddItem("View Minimap", () => windowController.MinimapWindow.Open());
+            viewContextMenu.AddItem(Translate(this, "View.ViewMinimap", "View Minimap"), () => windowController.MinimapWindow.Open());
             viewContextMenu.AddItem(" ", null, () => false, null, null);
-            viewContextMenu.AddItem("Find Waypoint...", () => windowController.FindWaypointWindow.Open());
-            viewContextMenu.AddItem("Center of Map", () => mapUI.Camera.CenterOnMapCenterCell());
+            viewContextMenu.AddItem(Translate(this, "View.FindWaypoint", "Find Waypoint..."), () => windowController.FindWaypointWindow.Open());
+            viewContextMenu.AddItem(Translate(this, "View.CenterOfMap", "Center of Map"), () => mapUI.Camera.CenterOnMapCenterCell());
             viewContextMenu.AddItem(" ", null, () => false, null, null);
-            viewContextMenu.AddItem("No Lighting", () => mapUI.EditorState.LightingPreviewState = LightingPreviewMode.NoLighting);
-            viewContextMenu.AddItem("Normal Lighting", () => mapUI.EditorState.LightingPreviewState = LightingPreviewMode.Normal);
+            viewContextMenu.AddItem(Translate(this, "View.NoLighting", "No Lighting"), () => mapUI.EditorState.LightingPreviewState = LightingPreviewMode.NoLighting);
+            viewContextMenu.AddItem(Translate(this, "View.NormalLighting", "Normal Lighting"), () => mapUI.EditorState.LightingPreviewState = LightingPreviewMode.Normal);
             if (Constants.IsRA2YR)
             {
-                viewContextMenu.AddItem("Lightning Storm Lighting", () => mapUI.EditorState.LightingPreviewState = LightingPreviewMode.IonStorm);
-                viewContextMenu.AddItem("Dominator Lighting", () => mapUI.EditorState.LightingPreviewState = LightingPreviewMode.Dominator);
+                viewContextMenu.AddItem(Translate(this, "View.LightningStormLighting", "Lightning Storm Lighting"), () => mapUI.EditorState.LightingPreviewState = LightingPreviewMode.IonStorm);
+                viewContextMenu.AddItem(Translate(this, "View.DominatorLighting", "Dominator Lighting"), () => mapUI.EditorState.LightingPreviewState = LightingPreviewMode.Dominator);
             }
             else
             {
-                viewContextMenu.AddItem("Ion Storm Lighting", () => mapUI.EditorState.LightingPreviewState = LightingPreviewMode.IonStorm);
+                viewContextMenu.AddItem(Translate(this, "View.IonStormLighting", "Ion Storm Lighting"), () => mapUI.EditorState.LightingPreviewState = LightingPreviewMode.IonStorm);
             }
             viewContextMenu.AddItem(" ", null, () => false, null, null);
-            viewContextMenu.AddItem("Toggle Light From Disabled Buildings", () => mapUI.EditorState.LightDisabledLightSources = !mapUI.EditorState.LightDisabledLightSources);
+            viewContextMenu.AddItem(Translate(this, "View.ToggleLightDisabledBuildings", "Toggle Light From Disabled Buildings"), () => mapUI.EditorState.LightDisabledLightSources = !mapUI.EditorState.LightDisabledLightSources);
             viewContextMenu.AddItem(" ", null, () => false, null, null);
-            viewContextMenu.AddItem("Toggle Fullscreen Mode", () => KeyboardCommands.Instance.ToggleFullscreen.DoTrigger());
+            viewContextMenu.AddItem(Translate(this, "View.ToggleFullscreenMode", "Toggle Fullscreen Mode"), () => KeyboardCommands.Instance.ToggleFullscreen.DoTrigger());
 
             var viewButton = new MenuButton(WindowManager, viewContextMenu);
             viewButton.Name = nameof(viewButton);
             viewButton.X = editButton.Right;
-            viewButton.Text = "View";
+            viewButton.Text = Translate(this, "View.Header", "View");
             AddChild(viewButton);
 
             var toolsContextMenu = new EditorContextMenu(WindowManager);
             toolsContextMenu.Name = nameof(toolsContextMenu);
             // toolsContextMenu.AddItem("Options");
             if (windowController.AutoApplyImpassableOverlayWindow.IsAvailable)
-                toolsContextMenu.AddItem("Apply Impassable Overlay...", () => windowController.AutoApplyImpassableOverlayWindow.Open(), null, null, null);
+                toolsContextMenu.AddItem(Translate(this, "Tools.ApplyImpassableOverlay", "Apply Impassable Overlay..."), () => windowController.AutoApplyImpassableOverlayWindow.Open(), null, null, null);
 
-            toolsContextMenu.AddItem("Terrain Generator Options...", () => windowController.TerrainGeneratorConfigWindow.Open(), null, null, null, () => KeyboardCommands.Instance.ConfigureTerrainGenerator.GetKeyDisplayString());
-            toolsContextMenu.AddItem("Generate Terrain", () => EnterTerrainGenerator(), null, null, null, () => KeyboardCommands.Instance.GenerateTerrain.GetKeyDisplayString());
+            toolsContextMenu.AddItem(Translate(this, "Tools.TerrainGeneratorOptions", "Terrain Generator Options..."), () => windowController.TerrainGeneratorConfigWindow.Open(), null, null, null, () => KeyboardCommands.Instance.ConfigureTerrainGenerator.GetKeyDisplayString());
+            toolsContextMenu.AddItem(Translate(this, "Tools.GenerateTerrain", "Generate Terrain"), () => EnterTerrainGenerator(), null, null, null, () => KeyboardCommands.Instance.GenerateTerrain.GetKeyDisplayString());
             toolsContextMenu.AddItem(" ", null, () => false, null, null);
-            toolsContextMenu.AddItem("Apply INI Code...", () => windowController.ApplyINICodeWindow.Open(), null, null, null);
-            toolsContextMenu.AddItem("Run Script...", () => windowController.RunScriptWindow.Open(), null, null, null, null);
+            toolsContextMenu.AddItem(Translate(this, "Tools.ApplyINICode", "Apply INI Code..."), () => windowController.ApplyINICodeWindow.Open(), null, null, null);
+            toolsContextMenu.AddItem(Translate(this, "Tools.RunScript", "Run Script..."), () => windowController.RunScriptWindow.Open(), null, null, null, null);
             toolsContextMenu.AddItem(" ", null, () => false, null, null);
-            toolsContextMenu.AddItem("Deletion Options...", () => windowController.DeletionModeConfigurationWindow.Open());
+            toolsContextMenu.AddItem(Translate(this, "Tools.DeletionOptions", "Deletion Options..."), () => windowController.DeletionModeConfigurationWindow.Open());
             toolsContextMenu.AddItem(" ", null, () => false, null, null);
-            toolsContextMenu.AddItem("Change Map Height...", () => windowController.ChangeHeightWindow.Open(), null, () => !Constants.IsFlatWorld, null, null);
+            toolsContextMenu.AddItem(Translate(this, "Tools.ChangeMapHeight", "Change Map Height..."), () => windowController.ChangeHeightWindow.Open(), null, () => !Constants.IsFlatWorld, null, null);
             toolsContextMenu.AddItem(" ", null, () => false, () => !Constants.IsFlatWorld, null);
-            toolsContextMenu.AddItem("Smoothen Ice", SmoothenIce, null, null, null, null);
+            toolsContextMenu.AddItem(Translate(this, "Tools.SmoothenIce", "Smoothen Ice"), SmoothenIce, null, null, null, null);
             toolsContextMenu.AddItem(" ", null, () => false, null, null);
-            toolsContextMenu.AddItem("Check Distance...", () => mapUI.EditorState.CursorAction = checkDistanceCursorAction, null, null, null, () => KeyboardCommands.Instance.CheckDistance.GetKeyDisplayString());
-            toolsContextMenu.AddItem("Check Distance (Pathfinding)...", () => mapUI.EditorState.CursorAction = checkDistancePathfindingCursorAction, null, null, null, () => KeyboardCommands.Instance.CheckDistancePathfinding.GetKeyDisplayString());
+            toolsContextMenu.AddItem(Translate(this, "Tools.CheckDistance", "Check Distance..."), () => mapUI.EditorState.CursorAction = checkDistanceCursorAction, null, null, null, () => KeyboardCommands.Instance.CheckDistance.GetKeyDisplayString());
+            toolsContextMenu.AddItem(Translate(this, "Tools.CheckDistancePathfinding", "Check Distance (Pathfinding)..."), () => mapUI.EditorState.CursorAction = checkDistancePathfindingCursorAction, null, null, null, () => KeyboardCommands.Instance.CheckDistancePathfinding.GetKeyDisplayString());
             toolsContextMenu.AddItem(" ", null, () => false, null, null);
-            toolsContextMenu.AddItem("Calculate Credits...", () => mapUI.EditorState.CursorAction = calculateTiberiumValueCursorAction, null, null, null, () => KeyboardCommands.Instance.CalculateCredits.GetKeyDisplayString());
+            toolsContextMenu.AddItem(Translate(this, "Tools.CalculateCredits", "Calculate Credits..."), () => mapUI.EditorState.CursorAction = calculateTiberiumValueCursorAction, null, null, null, () => KeyboardCommands.Instance.CalculateCredits.GetKeyDisplayString());
             toolsContextMenu.AddItem(" ", null, () => false, null, null);
-            toolsContextMenu.AddItem("Load Map-Wide Overlay...", () => MapWideOverlayLoadRequested?.Invoke(this, EventArgs.Empty), null, null, null, null);
+            toolsContextMenu.AddItem(Translate(this, "Tools.LoadMapWideOverlay", "Load Map-Wide Overlay..."), () => MapWideOverlayLoadRequested?.Invoke(this, EventArgs.Empty), null, null, null, null);
             toolsContextMenu.AddItem(" ", null, () => false, null, null);
-            toolsContextMenu.AddItem("Configure Hotkeys...", () => windowController.HotkeyConfigurationWindow.Open(), null, null, null);
+            toolsContextMenu.AddItem(Translate(this, "Tools.ConfigureHotkeys", "Configure Hotkeys..."), () => windowController.HotkeyConfigurationWindow.Open(), null, null, null);
             toolsContextMenu.AddItem(" ", null, () => false, null, null);
-            toolsContextMenu.AddItem("About", () => windowController.AboutWindow.Open(), null, null, null, null);
+            toolsContextMenu.AddItem(Translate(this, "Tools.About", "About"), () => windowController.AboutWindow.Open(), null, null, null, null);
 
             var toolsButton = new MenuButton(WindowManager, toolsContextMenu);
             toolsButton.Name = nameof(toolsButton);
             toolsButton.X = viewButton.Right;
-            toolsButton.Text = "Tools";
+            toolsButton.Text = Translate(this, "Tools.Header", "Tools");
             AddChild(toolsButton);
 
             var scriptingContextMenu = new EditorContextMenu(WindowManager);
             scriptingContextMenu.Name = nameof(scriptingContextMenu);
-            scriptingContextMenu.AddItem("Houses", () => windowController.HousesWindow.Open(), null, null, null);
-            scriptingContextMenu.AddItem("Triggers", () => windowController.TriggersWindow.Open(), null, null, null);
-            scriptingContextMenu.AddItem("TaskForces", () => windowController.TaskForcesWindow.Open(), null, null, null);
-            scriptingContextMenu.AddItem("Scripts", () => windowController.ScriptsWindow.Open(), null, null, null);
-            scriptingContextMenu.AddItem("TeamTypes", () => windowController.TeamTypesWindow.Open(), null, null, null);
-            scriptingContextMenu.AddItem("Local Variables", () => windowController.LocalVariablesWindow.Open(), null, null, null);
-            scriptingContextMenu.AddItem("AITriggers", () => windowController.AITriggersWindow.Open(), null, null, null, null);
+            scriptingContextMenu.AddItem(Translate(this, "Scipting.Houses", "Houses"), () => windowController.HousesWindow.Open(), null, null, null);
+            scriptingContextMenu.AddItem(Translate(this, "Scripting.Triggers", "Triggers"), () => windowController.TriggersWindow.Open(), null, null, null);
+            scriptingContextMenu.AddItem(Translate(this, "Scripting.TaskForces", "TaskForces"), () => windowController.TaskForcesWindow.Open(), null, null, null);
+            scriptingContextMenu.AddItem(Translate(this, "Scripting.Scripts", "Scripts"), () => windowController.ScriptsWindow.Open(), null, null, null);
+            scriptingContextMenu.AddItem(Translate(this, "Scripting.TeamTypes", "TeamTypes"), () => windowController.TeamTypesWindow.Open(), null, null, null);
+            scriptingContextMenu.AddItem(Translate(this, "Scripting.LocalVariables", "Local Variables"), () => windowController.LocalVariablesWindow.Open(), null, null, null);
+            scriptingContextMenu.AddItem(Translate(this, "Scripting.AITriggers", "AITriggers"), () => windowController.AITriggersWindow.Open(), null, null, null, null);
 
             var scriptingButton = new MenuButton(WindowManager, scriptingContextMenu);
             scriptingButton.Name = nameof(scriptingButton);
             scriptingButton.X = toolsButton.Right;
-            scriptingButton.Text = "Scripting";
+            scriptingButton.Text = Translate(this, "Scripting.Header", "Scripting");
             AddChild(scriptingButton);
 
             base.Initialize();
@@ -299,11 +299,11 @@ namespace TSMapEditor.UI.TopBar
                 {
                     Logger.Log("Failed to save the map file. Returned error message: " + ex.Message);
 
-                    EditorMessageBox.Show(WindowManager, "Failed to save map",
-                        "Failed to write the map file. Please make sure that WAE has write access to the path." + Environment.NewLine + Environment.NewLine +
+                    EditorMessageBox.Show(WindowManager, Translate(this, "MapSaveFailedTitle", "Failed to save map"),
+                        string.Format(Translate(this, "MapSaveFailedDescription", "Failed to write the map file. Please make sure that WAE has write access to the path." + Environment.NewLine + Environment.NewLine +
                         "A common source of this error is trying to save the map to Program Files or another" + Environment.NewLine +
                         "write-protected directory without running WAE with administrative rights." + Environment.NewLine + Environment.NewLine +
-                        "Returned error was: " + ex.Message, Windows.MessageBoxButtons.OK);
+                        "Returned error was: {0}"), ex.Message), Windows.MessageBoxButtons.OK);
                 }
                 else
                 {
@@ -314,15 +314,15 @@ namespace TSMapEditor.UI.TopBar
 
         private void WriteMapPreviewConfirmation()
         {
-            var messageBox = EditorMessageBox.Show(WindowManager, "Confirmation",
-                "This will write the current minimap as the map preview to the map file." + Environment.NewLine + Environment.NewLine +
+            var messageBox = EditorMessageBox.Show(WindowManager, Translate(this, "GenerateMapPreviewConfirmationTitle", "Confirmation"),
+                Translate(this, "GenerateMapPreviewConfirmationDescription", "This will write the current minimap as the map preview to the map file." + Environment.NewLine + Environment.NewLine +
                 "This provides the map with a preview if it is used as a custom map" + Environment.NewLine + 
                 "in the CnCNet Client or in-game, but is not necessary if the map will" + Environment.NewLine +
                 "have an external preview. It will also significantly increase the size" + Environment.NewLine +
                 "of the map file." + Environment.NewLine + Environment.NewLine +
                 "Do you want to continue?" + Environment.NewLine + Environment.NewLine +
                 "Note: The preview won't be actually written to the map before" + Environment.NewLine + 
-                "you save the map.", Windows.MessageBoxButtons.YesNo);
+                "you save the map."), Windows.MessageBoxButtons.YesNo);
 
             messageBox.YesClickedAction = _ => windowController.MegamapGenerationOptionsWindow.Open(true);
         }
@@ -345,7 +345,9 @@ namespace TSMapEditor.UI.TopBar
 
                 if (textEditorPath == null)
                 {
-                    EditorMessageBox.Show(WindowManager, "No text editor found!", "No valid text editor has been configured and no default choice was found.", Windows.MessageBoxButtons.OK);
+                    EditorMessageBox.Show(WindowManager, 
+                        Translate(this, "NoTextEditorFoundTitle", "No text editor found!"), 
+                        Translate(this, "NoTextEditorFoundDescription", "No valid text editor has been configured and no default choice was found."), Windows.MessageBoxButtons.OK);
                     return;
                 }
             }
@@ -357,9 +359,11 @@ namespace TSMapEditor.UI.TopBar
             catch (Exception ex) when (ex is Win32Exception || ex is ObjectDisposedException)
             {
                 Logger.Log("Failed to launch text editor! Message: " + ex.Message);
-                EditorMessageBox.Show(WindowManager, "Failed to launch text editor",
-                    "An error occurred when trying to open the map file with the text editor." + Environment.NewLine + Environment.NewLine +
-                    "Received error was: " + ex.Message, Windows.MessageBoxButtons.OK);
+
+                EditorMessageBox.Show(WindowManager,
+                    Translate(this, "FailedToLaunchTextEditorTitle", "Failed to launch text editor"),
+                    string.Format(Translate(this, "FailedToLaunchTextEditorDescription", "An error occurred when trying to open the map file with the text editor." + Environment.NewLine + Environment.NewLine +
+                    "Received error was: {0}"), ex.Message), Windows.MessageBoxButtons.OK);
             }
         }
 
@@ -389,9 +393,11 @@ namespace TSMapEditor.UI.TopBar
         {
             if (map.Houses.Count == 0)
             {
-                EditorMessageBox.Show(WindowManager, "Houses Required",
-                    "The map has no houses set up. Houses need to be configured before base nodes can be added." + Environment.NewLine + Environment.NewLine +
-                    "You can configure Houses from Scripting -> Houses.", TSMapEditor.UI.Windows.MessageBoxButtons.OK);
+                EditorMessageBox.Show(WindowManager, 
+                    Translate(this, "ManageBaseNodesNoHouseSelected.Title", "Houses Required"),
+                    Translate(this, "ManageBaseNodesNoHouseSelected.Description", "The map has no houses set up. Houses need to be configured before base nodes can be added." + Environment.NewLine + Environment.NewLine +
+                        "You can configure Houses from Scripting -> Houses."), 
+                    Windows.MessageBoxButtons.OK);
 
                 return;
             }

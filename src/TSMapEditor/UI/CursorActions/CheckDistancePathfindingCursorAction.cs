@@ -30,7 +30,7 @@ namespace TSMapEditor.UI.CursorActions
             targetCellCoords = Point2D.NegativeOne;
         }
 
-        public override string GetName() => "Check Distance (Path)";
+        public override string GetName() => Translate("Name", "Check Distance (Path)");
 
         private byte[][] landPathfindingCache;
         private byte[][] navalPathfindingCache;
@@ -112,8 +112,8 @@ namespace TSMapEditor.UI.CursorActions
             }
 
             string instruction = Environment.NewLine + Environment.NewLine +
-                "Current mode: " + (isInfantry ? "Infantry" : "Vehicle") + " (switch by pressing I)" + Environment.NewLine + Environment.NewLine +
-                "Current movement zone: " + movementZone + " (cycle between Land, Water and both by pressing C)";
+                Translate("Mode", "Current mode: ") + (isInfantry ? Translate("Infantry", "Infantry") : Translate("Vehicle", "Vehicle")) + Translate("SwitchText", " (switch by pressing I)") + Environment.NewLine + Environment.NewLine +
+                Translate("MovementZone", "Current movement zone: ") + movementZone + Translate("CycleText", " (cycle between Land, Water and both by pressing C)");
 
             Func<Point2D, Map, Point2D> getCellCenterPoint = Is2DMode ? CellMath.CellCenterPointFromCellCoords : CellMath.CellCenterPointFromCellCoords_3D;
 
@@ -142,9 +142,9 @@ namespace TSMapEditor.UI.CursorActions
             string text;
 
             if (pathCellCoords.Count == 0)
-                text = "No path found!\r\n\r\nClick to select new source coordinate, or right-click to exit" + instruction;
+                text = Translate("NoPathFound", "No path found!\r\n\r\nClick to select new source coordinate, or right-click to exit") + instruction;
             else
-                text = "Path Length In Cells: " + pathCellCoords.Count + "\r\n\r\nClick to select new source coordinate, or right-click to exit" + instruction;
+                text = Translate("PathLength", "Path Length In Cells: ") + pathCellCoords.Count + Translate("ClickText", "\r\n\r\nClick to select new source coordinate, or right-click to exit") + instruction;
 
             DrawText(cellCoords, cameraTopLeftPoint, text, pathColor);
         }

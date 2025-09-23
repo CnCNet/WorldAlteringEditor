@@ -15,7 +15,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Change Object Owner";
+        public override string GetName() => Translate("Name", "Change Object Owner");
 
         public override void DrawPreview(Point2D cellCoords, Point2D cameraTopLeftPoint)
         {
@@ -38,7 +38,7 @@ namespace TSMapEditor.UI.CursorActions
 
             if (tile.HasTechnoThatPassesCheck(techno => techno.Owner != newOwner))
             {
-                const string text = "Change Owner";
+                string text = Translate("Text", "Change Owner");
                 var textDimensions = Renderer.GetTextDimensions(text, Constants.UIBoldFont);
                 int x = cellTopLeftPoint.X - (int)(textDimensions.X - Constants.CellSizeX) / 2;
 

@@ -64,7 +64,7 @@ namespace TSMapEditor.Misc
 
         private string ProcessEscapes(string str)
         {
-            return str.Replace("\\s", " ");
+            return str.Replace("\\s", " ").Replace("@", Environment.NewLine);
         }
 
         private string EscapeString(string str)

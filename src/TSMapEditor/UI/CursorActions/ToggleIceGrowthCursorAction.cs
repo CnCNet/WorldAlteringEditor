@@ -13,7 +13,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => ToggleIceGrowth ? "Enable Ice Growth" : "Disable Ice Growth";
+        public override string GetName() => ToggleIceGrowth ? Translate("EnableName", "Enable Ice Growth") : Translate("DisableName", "Disable Ice Growth");
 
         public bool ToggleIceGrowth { get; set; } = true;
 

@@ -16,7 +16,7 @@ namespace TSMapEditor.UI.CursorActions
             this.keyboard = keyboard;
         }
 
-        public override string GetName() => "Place Building";
+        public override string GetName() => Translate("Name", "Place Building");
 
         private Structure structure;
 

@@ -17,7 +17,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Generate Terrain";
+        public override string GetName() => Translate("Name", "Generate Terrain");
 
         public TerrainGeneratorConfiguration TerrainGeneratorConfiguration { get; set; }
 

@@ -9,7 +9,7 @@ namespace TSMapEditor.UI.CursorActions
         {
         }
 
-        public override string GetName() => "Place Veinhole Monster";
+        public override string GetName() => Translate("Name", "Place Veinhole Monster");
 
         public override bool DrawCellCursor => true;
 

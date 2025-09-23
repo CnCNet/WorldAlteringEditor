@@ -35,7 +35,7 @@ namespace TSMapEditor.UI.Windows
         {
             lbObjectList.Clear();
 
-            lbObjectList.AddItem("None");
+            lbObjectList.AddItem(Translate(this, "None", "None"));
 
             foreach (Trigger trigger in map.Triggers)
             {
