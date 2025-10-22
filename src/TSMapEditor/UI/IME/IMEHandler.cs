@@ -42,7 +42,11 @@ public abstract class IMEHandler : IIMEHandler
 
     public bool CompositionEmpty => string.IsNullOrEmpty(_composition);
 
+    /// <summary>
+    /// Indicates whether an IME event has been received ever. Used to distinguish IME users from non-IME users.
+    /// </summary>
     protected bool IMEEventReceived = false;
+
     protected bool LastActionIMEChatInput = true;
 
     private void OnCompositionChanged(string oldValue, string newValue)
@@ -73,21 +77,34 @@ public abstract class IMEHandler : IIMEHandler
     {
         //Debug.WriteLine($"IME: OnIMETextInput: {character} {(short)character}; IMEFocus is null? {IMEFocus == null}");
 
-        IMEEventReceived = true;
         LastActionIMEChatInput = true;
 
-        if (IMEFocus != null)
+        // Handle ESC. The IME reports ESC key as a text input.
+        if (character == 27)
         {
-            // Handle ESC
-            if (character == 27 && CompositionEmpty)
+            LastActionIMEChatInput = false;
+            if (HandleEscapeKey())
             {
-                IMEFocus.Text = string.Empty;
+                // Do not return this ESC key back to the textbox if HandleEscapeKey returns true.
+                return;
             }
             else
             {
-                TextBoxHandleChatInputCallbacks.TryGetValue(IMEFocus, out var handleChatInput);
-                handleChatInput?.Invoke(character);
+                // handleChatInput() method rejects the ESC message. Therefore, we need to manually clear the TextBox here.
+                if (IMEFocus != null)
+                {
+                    // TODO: wrap this logic as a new action in RegisterXNATextBox(). This requires an API breaking change on XNAUI, and therefore left as a TODO.
+                    IMEFocus.Text = string.Empty;
+                }
+
+                return;
             }
+        }
+
+        if (IMEFocus != null)
+        {
+            TextBoxHandleChatInputCallbacks.TryGetValue(IMEFocus, out var handleChatInput);
+            handleChatInput?.Invoke(character);
         }
     }
 
@@ -212,8 +229,20 @@ public abstract class IMEHandler : IIMEHandler
 
     bool IIMEHandler.HandleEscapeKey(XNATextBox sender)
     {
+        return HandleEscapeKey();
+    }
+
+    private bool HandleEscapeKey()
+    {
         //Debug.WriteLine($"IME: HandleEscapeKey: handled: {IMEEventReceived}");
-        return IMEEventReceived;
+
+        // This method disables the ESC handling of the TextBox as long as the user has used IME.
+        // This is because IME users often use ESC to cancel composition, and even if currently the composition is empty,
+        // the user still expects ESC to cancel composition rather than deleting the whole sentence.
+        // For example, the user might mistakenly hit ESC key twice to cancel composition -- deleting the whole sentence is definitely a heavy punishment for such a small mistake.
+
+        // Note: "!string.IsNullOrEmpty(Composition) =>IMEEventReceived" should hold, but just in case
+        return IMEEventReceived || !string.IsNullOrEmpty(Composition);
     }
 
     void IIMEHandler.OnTextChanged(XNATextBox sender) { }
