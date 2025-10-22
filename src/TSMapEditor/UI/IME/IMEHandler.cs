@@ -78,16 +78,8 @@ public abstract class IMEHandler : IIMEHandler
 
         if (IMEFocus != null)
         {
-            // Handle ESC
-            if (character == 27 && CompositionEmpty)
-            {
-                IMEFocus.Text = string.Empty;
-            }
-            else
-            {
-                TextBoxHandleChatInputCallbacks.TryGetValue(IMEFocus, out var handleChatInput);
-                handleChatInput?.Invoke(character);
-            }
+            TextBoxHandleChatInputCallbacks.TryGetValue(IMEFocus, out var handleChatInput);
+            handleChatInput?.Invoke(character);
         }
     }
 
