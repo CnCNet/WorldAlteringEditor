@@ -42,10 +42,26 @@ namespace TSMapEditor.UI.Windows
             {
                 Color color = lbObjectList.DefaultItemColor;
                 var trigger = tag.Trigger;
-                if (trigger != null && !string.IsNullOrWhiteSpace(trigger.EditorColor))
-                    color = trigger.XNAColor;
+                string tagText = $"{tag.Name} ({tag.ID})";
 
-                lbObjectList.AddItem(new XNAListBoxItem() { Text = $"{tag.Name} ({tag.ID})", TextColor = color, Tag = tag });
+                if (trigger != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(trigger.EditorColor))
+                        color = trigger.XNAColor;
+
+                    string tagName = tag.Name;
+
+                    int index = tag.Name.IndexOf(" (tag)");
+                    if (index >= 0)
+                    {
+                        tagName = tag.Name.Substring(0, index).Trim();
+                    }
+
+                    if (!tagName.Equals(trigger.Name.Trim()))
+                        tagText += $" [{trigger.Name}]";
+                }
+
+                lbObjectList.AddItem(new XNAListBoxItem() { Text = tagText, TextColor = color, Tag = tag });
                 if (tag == SelectedObject)
                     lbObjectList.SelectedIndex = lbObjectList.Items.Count - 1;
             }
