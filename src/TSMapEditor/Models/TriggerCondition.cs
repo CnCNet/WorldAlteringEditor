@@ -1,5 +1,6 @@
 ﻿using Rampastring.Tools;
 using System;
+using System.IO;
 using TSMapEditor.CCEngine;
 
 namespace TSMapEditor.Models
@@ -87,6 +88,26 @@ namespace TSMapEditor.Models
                 return null;
 
             return triggerCondition;
+        }
+
+        public void Serialize(MemoryStream memoryStream)
+        {
+            StreamHelpers.WriteInt(memoryStream, ConditionIndex);
+
+            foreach (var parameter in Parameters)
+            {
+                StreamHelpers.WriteUnicodeString(memoryStream, parameter);
+            }
+        }
+
+        public void Deserialize(MemoryStream memoryStream)
+        {   
+            ConditionIndex = StreamHelpers.ReadInt(memoryStream);
+
+            for (int i = 0; i < Parameters.Length; i++)
+            {
+                Parameters[i] = StreamHelpers.ReadUnicodeString(memoryStream);
+            }
         }
     }
 }
