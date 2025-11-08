@@ -1099,6 +1099,23 @@ namespace TSMapEditor.Initialization
             }
 
             Logger.Log("AITriggerTypes read successfully.");
+
+            section = mapIni.GetSection("AITriggerTypesEnable");
+            if (section == null)
+                return;
+
+            foreach (var kvp in section.Keys)
+            {
+                string aiTriggerININame = kvp.Key;
+
+                var aiTrigger = map.AITriggerTypes.Find(aiTriggerType => aiTriggerType.ININame == aiTriggerININame);
+                if (aiTrigger == null)
+                    continue;
+
+                aiTrigger.Disabled = !Conversions.BooleanFromString(kvp.Value, true); // enabled by default
+            }
+
+            Logger.Log("AITriggerTypesEnable read successfully.");
         }
 
         public static void ReadHouseTypes(IMap map, IniFile mapIni)
