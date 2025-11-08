@@ -1,4 +1,5 @@
 ﻿using Rampastring.Tools;
+using System.IO;
 
 namespace TSMapEditor.Models
 {
@@ -23,5 +24,17 @@ namespace TSMapEditor.Models
         }
 
         public string GetDisplayString() => Name + " (" + ID + ")";
+
+        public void Serialize(MemoryStream memoryStream)
+        {
+            StreamHelpers.WriteUnicodeString(memoryStream, Name);
+            StreamHelpers.WriteInt(memoryStream, Repeating);            
+        }
+
+        public void Deserialize(MemoryStream memoryStream)
+        {   
+            Name = StreamHelpers.ReadUnicodeString(memoryStream);
+            Repeating = StreamHelpers.ReadInt(memoryStream);
+        }
     }
 }
