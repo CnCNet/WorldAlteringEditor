@@ -57,15 +57,23 @@ namespace TSMapEditor.UI.Windows
                 return;
             }
 
-            if (tbWaypointNumber.Value < 0 || tbWaypointNumber.Value >= Constants.MaxWaypoint)
+            int waypointNumber = tbWaypointNumber.Value;
+
+            PlaceWaypoint(waypointNumber, cellCoords);
+            Hide();
+        }
+
+        public void PlaceWaypoint(int waypointNumber, Point2D cellCoords)
+        {
+            if (waypointNumber < 0 || waypointNumber >= Constants.MaxWaypoint)
                 return;
 
-            if (map.Waypoints.Exists(w => w.Identifier == tbWaypointNumber.Value))
+            if (map.Waypoints.Exists(w => w.Identifier == waypointNumber))
             {
                 EditorMessageBox.Show(WindowManager,
                     Translate(this, "WaypointExists.Title", "Waypoint already exists"),
-                    string.Format(Translate(this, "WaypointExists.Description", 
-                        "A waypoint with the given number {0} already exists on the map!"), tbWaypointNumber.Value),
+                    string.Format(Translate(this, "WaypointExists.Description",
+                        "A waypoint with the given number {0} already exists on the map!"), waypointNumber),
                     MessageBoxButtons.OK);
 
                 return;
@@ -73,15 +81,24 @@ namespace TSMapEditor.UI.Windows
 
             string waypointColor = ddWaypointColor.SelectedItem != null ? ddWaypointColor.SelectedItem.Text : null;
 
-            mutationManager.PerformMutation(new PlaceWaypointMutation(mutationTarget, cellCoords, tbWaypointNumber.Value, waypointColor));
-
-            Hide();
+            mutationManager.PerformMutation(new PlaceWaypointMutation(mutationTarget, cellCoords, waypointNumber, waypointColor));
         }
 
         public void Open(Point2D cellCoords)
         {
             this.cellCoords = cellCoords;
 
+            int availableWaypointNumber = GetAvailableWaypointNumber();
+            if (availableWaypointNumber < 0)
+                return;
+
+            tbWaypointNumber.Value = availableWaypointNumber;
+
+            Show();
+        }
+
+        public int GetAvailableWaypointNumber()
+        {
             if (map.Waypoints.Count == Constants.MaxWaypoint)
             {
                 EditorMessageBox.Show(WindowManager,
@@ -89,19 +106,18 @@ namespace TSMapEditor.UI.Windows
                     Translate(this, "MaxWaypoints.Description", "All valid waypoints on the map are already in use!"),
                     MessageBoxButtons.OK);
 
-                return;
+                return -1;
             }
 
             for (int i = 0; i < Constants.MaxWaypoint; i++)
             {
                 if (!map.Waypoints.Exists(w => w.Identifier == i) && (Constants.IsRA2YR || i != Constants.TS_WAYPT_SPECIAL))
                 {
-                    tbWaypointNumber.Value = i;
-                    break;
+                    return i;
                 }
             }
 
-            Show();
+            return -1;
         }
     }
 }
