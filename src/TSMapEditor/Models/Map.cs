@@ -200,6 +200,8 @@ namespace TSMapEditor.Models
         public string LoadedTheaterName => TheaterInstance.Theater.UIName;
 
         public StringTable StringTable { get; private set; }
+        public string[] TeamDelays { get; set; }
+        public bool WriteTeamDelays { get; set; }
 
         private readonly Initializer initializer;
 
@@ -261,6 +263,7 @@ namespace TSMapEditor.Models
 
             MapLoader.ReadBasicSection(this, mapIni);
             MapLoader.ReadMapSection(this, mapIni);
+            MapLoader.ReadGeneralSection(this, mapIni);
             MapLoader.ReadIsoMapPack(this, mapIni);
 
             MapLoader.ReadHouseTypes(this, mapIni);
@@ -381,6 +384,7 @@ namespace TSMapEditor.Models
             LoadedINI.Comment = "Written by the World-Altering Editor (WAE)\r\n; all comments have been truncated\r\n; github.com/CnCNet/WorldAlteringEditor\r\n; if you wish to support the editor, you can subscribe at patreon.com/rampastring\r\n; or buy me a coffee at ko-fi.com/rampastring";
 
             MapWriter.WriteMapSection(this, LoadedINI);
+            MapWriter.WriteGeneralSection(this, LoadedINI);
             MapWriter.WriteBasicSection(this, LoadedINI);
             MapWriter.WriteAITriggerTypes(this, LoadedINI);
             MapWriter.WriteIsoMapPack5(this, LoadedINI);

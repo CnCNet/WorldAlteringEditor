@@ -154,6 +154,32 @@ namespace TSMapEditor.Initialization
             Logger.Log("[Map] section read successfully.");
         }
 
+        public static void ReadGeneralSection(IMap map, IniFile mapIni)
+        {
+            Logger.Log("Reading [General] section.");
+
+            var section = mapIni.GetSection("General");
+            if (section == null)
+                return;
+
+            string[] teamDelays = section.GetListValue("TeamDelays", ',', s => s).ToArray();
+            if (teamDelays.Length > 0) // value exists in map file
+            {
+                if (teamDelays.Length != 3)
+                    throw new MapLoadException($"Invalid [General] TeamDelays=, has {teamDelays.Length} values, expected 3");
+
+                map.WriteTeamDelays = true;
+                map.TeamDelays = teamDelays;
+            } 
+            else
+            {
+                map.WriteTeamDelays = false;
+                map.TeamDelays = null;
+            }
+
+            Logger.Log("[General] section read successfully.");
+        }
+
         public static void ReadIsoMapPack(IMap map, IniFile mapIni)
         {
             Logger.Log("Reading IsoMapPack5.");

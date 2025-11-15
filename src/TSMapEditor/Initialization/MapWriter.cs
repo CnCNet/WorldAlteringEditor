@@ -39,6 +39,20 @@ namespace TSMapEditor.Initialization
             section.SetStringValue("LocalSize", $"{map.LocalSize.X},{map.LocalSize.Y},{map.LocalSize.Width},{map.LocalSize.Height}");
         }
 
+        public static void WriteGeneralSection(IMap map, IniFile mapIni)
+        {
+            const string sectionName = "General";
+
+            var section = FindOrMakeSection(sectionName, mapIni);
+            if (map.WriteTeamDelays)
+                section.SetListValue("TeamDelays", map.TeamDelays.ToList(), ',');
+            else
+                section.RemoveKey("TeamDelays");
+
+            if (section.Keys.Count == 0)
+                mapIni.RemoveSection(sectionName);
+        }
+
         public static void WriteBasicSection(IMap map, IniFile mapIni)
         {
             const string sectionName = "Basic";

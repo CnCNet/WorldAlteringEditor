@@ -61,6 +61,7 @@ namespace TSMapEditor.UI.Windows
         public RunScriptWindow RunScriptWindow { get; private set; }
         public HotkeyConfigurationWindow HotkeyConfigurationWindow { get; private set; }
         public MapSizeWindow MapSizeWindow { get; private set; }
+        public TweakDifficultyWindow TweakDifficultyWindow { get; private set; }
         public ExpandMapWindow ExpandMapWindow { get; private set; }
         public ChangeHeightWindow ChangeHeightWindow { get; private set; }
         public FindWaypointWindow FindWaypointWindow { get; private set; }
@@ -182,6 +183,9 @@ namespace TSMapEditor.UI.Windows
             MapSizeWindow = new MapSizeWindow(windowParentControl.WindowManager, map);
             Windows.Add(MapSizeWindow);
             MapSizeWindow.OnResizeMapButtonClicked += MapSizeWindow_OnResizeMapButtonClicked;
+
+            TweakDifficultyWindow = new TweakDifficultyWindow(windowParentControl.WindowManager, map);
+            Windows.Add(TweakDifficultyWindow);
 
             ExpandMapWindow = new ExpandMapWindow(windowParentControl.WindowManager, map);
             Windows.Add(ExpandMapWindow);

@@ -43,6 +43,9 @@ namespace TSMapEditor.Initialization
         Rectangle LocalSize { get; set; }
         string TheaterName { get; set; }
 
+        string[] TeamDelays { get; set; }
+        bool WriteTeamDelays { get; set; }
+
         void SetTileData(List<MapTile> tiles, byte defaultLevel = 0, bool overrideExisting = false);
         void PlaceTerrainTileAt(ITileImage tile, Point2D cellCoords);
         List<HouseType> GetHouseTypes();
