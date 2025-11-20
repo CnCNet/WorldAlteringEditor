@@ -243,6 +243,7 @@ namespace TSMapEditor.UI.TopBar
             scriptingContextMenu.AddItem(Translate(this, "Scripting.TeamTypes", "TeamTypes"), () => windowController.TeamTypesWindow.Open(), null, null, null);
             scriptingContextMenu.AddItem(Translate(this, "Scripting.LocalVariables", "Local Variables"), () => windowController.LocalVariablesWindow.Open(), null, null, null);
             scriptingContextMenu.AddItem(Translate(this, "Scripting.AITriggers", "AITriggers"), () => windowController.AITriggersWindow.Open(), null, null, null, null);
+            scriptingContextMenu.AddItem(Translate(this, "Scripting.AITargetTypes", "AITargetTypes"), () => windowController.AITargetTypesWindow.Open(), null, null, null);
 
             var scriptingButton = new MenuButton(WindowManager, scriptingContextMenu);
             scriptingButton.Name = nameof(scriptingButton);
