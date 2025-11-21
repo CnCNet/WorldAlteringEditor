@@ -91,6 +91,7 @@ namespace TSMapEditor.Models
         public bool Easy { get; set; } = true;
         public bool Medium { get; set; } = true;
         public bool Hard { get; set; } = true;
+        public bool Enabled { get; set; } = true;
 
         public AITriggerType Clone(string newUniqueId)
         {
