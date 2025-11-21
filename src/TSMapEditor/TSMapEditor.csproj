@@ -35,6 +35,7 @@
     <Compile Remove="Config\Scripts\Replace Autumn Jungle Grass With Summer Grass.cs" />
     <Compile Remove="Config\Scripts\Replace Autumn Trees With Summer Trees.cs" />
     <Compile Remove="Config\Scripts\Replace Frost With Clear.cs" />
+    <Compile Remove="Config\Scripts\Set Map Difficulty Settings.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Config\DefaultSettings.ini">
@@ -528,6 +529,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Config\Scripts\Replace Frost With Clear.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Config\Scripts\Set Map Difficulty Settings.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
