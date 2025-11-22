@@ -634,6 +634,8 @@ namespace TSMapEditor.UI.Windows
                 return;
             }
 
+            lbActions.SelectedItem.Text = GetActionEntryText(scriptActionEntry.Action, scriptActionEntry);
+
             if (action.ParamType == TriggerParamType.BuildingWithProperty)
             {
                 tbParameterValue.Text = GetBuildingWithPropertyText(scriptActionEntry.Argument);
@@ -860,11 +862,72 @@ namespace TSMapEditor.UI.Windows
 
         private string GetActionEntryText(int index, ScriptActionEntry entry)
         {
-            ScriptAction action = GetScriptAction(entry.Action);
-            if (action == null)
-                return "#" + index + " - Unknown (" + entry.Argument.ToString(CultureInfo.InvariantCulture) + ")";
+            string actionEntryText;
+            string textDetails = null;
 
-            return "#" + index + " - " + action.Name + " (" + entry.Argument.ToString(CultureInfo.InvariantCulture) + ")";
+                ScriptAction action = GetScriptAction(entry.Action);
+            if (action == null)
+            {                
+                actionEntryText = $"#{index} - Unknown";
+                textDetails = $"({ entry.Argument.ToString(CultureInfo.InvariantCulture)})";
+            }
+            else
+            {
+                actionEntryText = $"#{index} - {action.Name}";
+                int presetOptionIndex = action.PresetOptions.FindIndex(presetOption => presetOption.Value == entry.Argument);
+                bool hasValidPresetOption = presetOptionIndex > -1;
+
+                switch (action.ParamType)
+                {
+                    case TriggerParamType.BuildingWithProperty:
+                        var (buildingTypeIndex, property) = SplitBuildingWithProperty(entry.Argument);
+                        string propertyDescription = property.ToDescription();
+                        BuildingType buildingType = map.Rules.BuildingTypes.GetElementIfInRange(buildingTypeIndex);
+
+                        if (buildingType != null)
+                            textDetails = $"({buildingType.GetEditorDisplayName()} - {propertyDescription})";
+                        break;
+
+                    case TriggerParamType.LocalVariable:
+                        var localVar = map.LocalVariables.GetElementIfInRange(entry.Argument);
+                        if (localVar != null)
+                            textDetails = $"({localVar.Name})";
+                        break;
+
+                    case TriggerParamType.HouseType:
+                        var houseType = map.Houses.GetElementIfInRange(entry.Argument);
+                        if (houseType != null)
+                            textDetails = $"({houseType.ININame})";
+                        break;
+
+                    case TriggerParamType.Animation:
+                        var animation = map.Rules.AnimTypes.GetElementIfInRange(entry.Argument);
+                        if (animation != null)
+                            textDetails = $"({animation.ININame})";
+                        break;
+
+                    case TriggerParamType.Unknown:
+                        // special handling: script actions that have no type but still have presets should be handled by showing the preset value
+                        // otherwise we'll show no text after the name of the action
+                        if (hasValidPresetOption) 
+                            goto default;
+
+                        textDetails = null;
+                        break;
+
+                    default:
+                        if (hasValidPresetOption)
+                            textDetails = $"({action.PresetOptions[presetOptionIndex].Text})";
+                        else
+                            textDetails = $"({entry.Argument.ToString(CultureInfo.InvariantCulture)})";
+                        break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(textDetails))
+                return actionEntryText;
+
+            return $"{actionEntryText} {textDetails}";
         }
 
         private string GetActionNameFromIndex(int index)
