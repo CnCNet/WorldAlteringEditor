@@ -2092,6 +2092,18 @@ namespace TSMapEditor.Models
                         Constants.TS_WAYPT_SPECIAL));
             }
 
+            // Check for scripts that have more than 50 Script Actions. This is unsupported by the game.
+            const int maxScriptActionCount = 50;
+            foreach (var script in Scripts)
+            {
+                if (script.Actions.Count > maxScriptActionCount)
+                {
+                    issueList.Add(string.Format(Translate(this, "CheckForIssues.ScriptTooManyActions",
+                            "Script '{0}' has more than {1} actions, which is not supported by the game. Consider organizing your script actions or splitting it to multiple scripts."),
+                                script.Name, maxScriptActionCount));
+                }
+            }
+
             return issueList;
         }
 
