@@ -46,6 +46,7 @@ namespace TSMapEditor.Settings
                 Theme,
                 UseBoldFont,
                 SmartScriptActionCloning,
+                SmartScriptActionDefaultValues,
                 AutoSaveInterval,
                 SidebarWidth,
 
@@ -104,6 +105,7 @@ namespace TSMapEditor.Settings
         public StringSetting Theme = new StringSetting(General, nameof(Theme), "Default");
         public BoolSetting UseBoldFont = new BoolSetting(General, nameof(UseBoldFont), false);
         public BoolSetting SmartScriptActionCloning = new BoolSetting(General, nameof(SmartScriptActionCloning), true);
+        public BoolSetting SmartScriptActionDefaultValues = new BoolSetting(General, nameof(SmartScriptActionDefaultValues), true);
         public IntSetting AutoSaveInterval = new IntSetting(General, nameof(AutoSaveInterval), 300);
         public IntSetting SidebarWidth = new IntSetting(General, nameof(SidebarWidth), 250);
 

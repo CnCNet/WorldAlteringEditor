@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
+using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -2122,6 +2123,134 @@ namespace TSMapEditor.Models
                         team.Name, aiTrigger.Name));
                 reportedTeams.Add(team);
             }
+        }
+
+        public bool IsLikelyMultiplayer()
+        {
+            if (Basic.MultiplayerOnly)
+                return true;
+
+            const int MaxUniqueHouses = 32;
+            const int FirstSpawnHouseIndex = 50;
+
+            if (Houses.Count > 0 && Houses.Count < MaxUniqueHouses)
+            {
+                // Most likely singleplayer - SP maps always have houses,
+                // while regular MP maps don't have houses
+                // and scripted TS MP maps need more than 50 houses
+                return false;
+            }
+
+            if (Houses.Count > FirstSpawnHouseIndex)
+            {
+                // Most likely a scripted multiplayer scenario
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool IsWaypointInUse(Waypoint waypoint)
+        {
+            foreach (Trigger trigger in Triggers)
+            {
+                foreach (var action in trigger.Actions)
+                {
+                    var triggerActionType = EditorConfig.TriggerActionTypes.GetValueOrDefault(action.ActionIndex);
+
+                    if (triggerActionType == null)
+                        continue;
+
+                    for (int i = 0; i < triggerActionType.Parameters.Length; i++)
+                    {
+                        if (triggerActionType.Parameters[i] == null)
+                            continue;
+
+                        var param = triggerActionType.Parameters[i];
+
+                        if (param.TriggerParamType == TriggerParamType.Waypoint && action.Parameters[i] == waypoint.Identifier.ToString())
+                        {
+                            return true;
+                        }
+
+                        if (param.TriggerParamType == TriggerParamType.WaypointZZ && action.Parameters[i] == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                foreach (var condition in trigger.Conditions)
+                {
+                    var triggerEventType = EditorConfig.TriggerEventTypes.GetValueOrDefault(condition.ConditionIndex);
+
+                    if (triggerEventType == null)
+                        continue;
+
+                    for (int i = 0; i < triggerEventType.Parameters.Length; i++)
+                    {
+                        if (triggerEventType.Parameters[i] == null)
+                            continue;
+
+                        var param = triggerEventType.Parameters[i];
+
+                        if (param.TriggerParamType == TriggerParamType.Waypoint && condition.Parameters[i] == waypoint.Identifier.ToString())
+                        {
+                            return true;
+                        }
+
+                        if (param.TriggerParamType == TriggerParamType.WaypointZZ && condition.Parameters[i] == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            foreach (Script script in Scripts)
+            {
+                foreach (var actionEntry in script.Actions)
+                {
+                    var scriptAction = EditorConfig.ScriptActions.GetValueOrDefault(actionEntry.Action);
+
+                    if (scriptAction == null)
+                    {
+                        continue;
+                    }
+
+                    if (scriptAction.ParamType == TriggerParamType.Waypoint && actionEntry.Argument == waypoint.Identifier)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            foreach (TeamType team in TeamTypes)
+            {
+                if (team.Waypoint == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public Waypoint GetFirstUnusedWaypoint()
+        {
+            int firstValidIdentifier = IsLikelyMultiplayer() ? 8 : 0;
+
+            for (int i = 0; i < Waypoints.Count; i++)
+            {
+                Waypoint wp = Waypoints[i];
+                if (wp.Identifier < firstValidIdentifier)
+                    continue;
+
+                if (!IsWaypointInUse(wp))
+                    return wp;
+            }
+
+            return null;
         }
 
         public void Clear()

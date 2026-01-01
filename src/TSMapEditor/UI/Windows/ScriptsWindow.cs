@@ -507,6 +507,27 @@ namespace TSMapEditor.UI.Windows
             selectScriptActionWindow.Open(scriptAction);
         }
 
+        private ScriptActionEntry CreateNewScriptActionEntry(int actionId)
+        {
+            var entry = new ScriptActionEntry(actionId, 0);
+
+            if (UserSettings.Instance.SmartScriptActionDefaultValues)
+            {
+                var scriptActionType = map.EditorConfig.ScriptActions[actionId];
+
+                switch (scriptActionType.ParamType)
+                {
+                    case TriggerParamType.Waypoint:
+                        Waypoint wp = map.GetFirstUnusedWaypoint();
+                        if (wp != null)
+                            entry.Argument = wp.Identifier;
+                        break;
+                }
+            }
+
+            return entry;
+        }
+
         private void SelectScriptActionDarkeningPanel_Hidden(object sender, EventArgs e)
         {
             if (editedScript == null)
@@ -527,7 +548,7 @@ namespace TSMapEditor.UI.Windows
                     {
                         int viewTop = lbActions.ViewTop;
                         int index = lbActions.SelectedIndex;
-                        editedScript.Actions.Insert(index, new ScriptActionEntry(selectScriptActionWindow.SelectedObject.ID, 0));
+                        editedScript.Actions.Insert(index, CreateNewScriptActionEntry(selectScriptActionWindow.SelectedObject.ID));
                         EditScript(editedScript);
                         lbActions.SelectedIndex = index;
                         lbActions.ViewTop = viewTop;
@@ -535,7 +556,7 @@ namespace TSMapEditor.UI.Windows
                     }
                     else
                     {
-                        editedScript.Actions.Add(new ScriptActionEntry(selectScriptActionWindow.SelectedObject.ID, 0));
+                        editedScript.Actions.Add(CreateNewScriptActionEntry(selectScriptActionWindow.SelectedObject.ID));
                         EditScript(editedScript);
                         lbActions.SelectedIndex = lbActions.Items.Count - 1;
                         lbActions.ScrollToBottom();
