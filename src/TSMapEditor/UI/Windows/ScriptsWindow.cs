@@ -517,6 +517,36 @@ namespace TSMapEditor.UI.Windows
 
                 switch (scriptActionType.ParamType)
                 {
+                    case TriggerParamType.Quarry:
+                        if (editedScript != null)
+                        {
+                            // Check if the script action already has an attack quarry action. If yes, default to "attack anything".
+                            if (editedScript.Actions.Exists(ae =>
+                            {
+                                var otherScriptActionType = map.EditorConfig.ScriptActions.GetValueOrDefault(actionId);
+                                if (otherScriptActionType != null && otherScriptActionType.ParamType == TriggerParamType.Quarry)
+                                {
+                                    return true;
+                                }
+
+                                return false;
+                            }))
+                            {
+                                entry.Argument = 1; // QUARRY_ANY (attack anything)
+                                break;
+                            }
+
+                            // Default to a quarry type existing in the name of the action.
+                            for (int i = 0; i < scriptActionType.PresetOptions.Count; i++)
+                            {
+                                if (editedScript.Name.Contains(scriptActionType.PresetOptions[i].Text, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    entry.Argument = i;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
                     case TriggerParamType.Waypoint:
                         Waypoint wp = map.GetFirstUnusedWaypoint();
                         if (wp != null)
