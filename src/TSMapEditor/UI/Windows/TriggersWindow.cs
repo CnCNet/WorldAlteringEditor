@@ -167,7 +167,7 @@ namespace TSMapEditor.UI.Windows
             panelEventDescription = FindChild<EditorDescriptionPanel>(nameof(panelEventDescription));
             lbEventParameters = FindChild<EditorListBox>(nameof(lbEventParameters));
             tbEventParameterValue = FindChild<EditorTextBox>(nameof(tbEventParameterValue));
-            btnActionGoToTarget = FindChild<EditorButton>(nameof(btnActionGoToTarget));
+            tbEventParameterValue.MouseScrolled += TbEventParameterValue_MouseScrolled;
 
             ctxEventParameterPresetValues = new XNAContextMenu(WindowManager);
             ctxEventParameterPresetValues.Name = nameof(ctxEventParameterPresetValues);
@@ -180,6 +180,8 @@ namespace TSMapEditor.UI.Windows
             panelActionDescription = FindChild<EditorDescriptionPanel>(nameof(panelActionDescription));
             lbActionParameters = FindChild<EditorListBox>(nameof(lbActionParameters));
             tbActionParameterValue = FindChild<EditorTextBox>(nameof(tbActionParameterValue));
+            tbActionParameterValue.MouseScrolled += TbActionParameterValue_MouseScrolled;
+            btnActionGoToTarget = FindChild<EditorButton>(nameof(btnActionGoToTarget));
 
             ctxActionParameterPresetValues = new XNAContextMenu(WindowManager);
             ctxActionParameterPresetValues.Name = nameof(ctxActionParameterPresetValues);
@@ -370,6 +372,186 @@ namespace TSMapEditor.UI.Windows
 
             WindowManager.WindowSizeChangedByUser += WindowManager_WindowSizeChangedByUser;            
         }
+
+#region Support for handling scroll wheel input on event and action parameter text boxes
+        private void HandleScrollWheelOnTextBoxAndList<T>(List<T> list, Func<T, string> idGetter, string currentParameterValue, EditorTextBox textBox)
+        {
+            int existingIndex = list.FindIndex(item => idGetter(item) == currentParameterValue);
+            if (existingIndex > -1)
+            {
+                if (Cursor.ScrollWheelValue < 0 && existingIndex < list.Count - 1)
+                {
+                    textBox.Text = idGetter(list[existingIndex + 1]);
+                    EditTrigger(editedTrigger);
+                }
+                else if (Cursor.ScrollWheelValue > 0 && existingIndex > 0)
+                {
+                    textBox.Text = idGetter(list[existingIndex - 1]);
+                    EditTrigger(editedTrigger);
+                }
+            }
+        }
+
+        private void HandleScrollOnEventOrActionParameterTextBox(string currentParameterValue, List<string> presetOptions, TriggerParamType paramType, EditorTextBox textBox)
+        {
+            // If the parameter has preset options defined, allow scrolling them
+            if (presetOptions != null && presetOptions.Count > 0)
+            {
+                int currentPresetOptionIndex = presetOptions.FindIndex(po => po.StartsWith(currentParameterValue + " "));
+
+                if (currentPresetOptionIndex > 0 && Cursor.ScrollWheelValue > 0)
+                {
+                    textBox.Text = presetOptions[currentPresetOptionIndex - 1];
+                }
+                else if (currentPresetOptionIndex > -1 && currentPresetOptionIndex < presetOptions.Count - 1 && Cursor.ScrollWheelValue < 0)
+                {
+                    textBox.Text = presetOptions[currentPresetOptionIndex + 1];
+                }
+
+                EditTrigger(editedTrigger);
+                return;
+            }
+
+            switch (paramType)
+            {
+                case TriggerParamType.TeamType:
+                    HandleScrollWheelOnTextBoxAndList(map.TeamTypes, tt => tt.ININame, currentParameterValue, textBox);
+                    break;
+                case TriggerParamType.Trigger:
+                    HandleScrollWheelOnTextBoxAndList(map.Triggers, trigger => trigger.ID, currentParameterValue, textBox);
+                    break;
+                case TriggerParamType.GlobalVariable:
+                    HandleScrollWheelOnTextBoxAndList(map.Rules.GlobalVariables, gv => gv.Index.ToString(CultureInfo.InvariantCulture), currentParameterValue, textBox);
+                    break;
+                case TriggerParamType.LocalVariable:
+                    HandleScrollWheelOnTextBoxAndList(map.LocalVariables, lv => lv.Index.ToString(CultureInfo.InvariantCulture), currentParameterValue, textBox);
+                    break;
+                case TriggerParamType.HouseType:
+                    HandleScrollWheelOnTextBoxAndList(map.GetHouseTypes(), housetype => housetype.Index.ToString(CultureInfo.InvariantCulture), currentParameterValue, textBox);
+                    break;
+                case TriggerParamType.House:
+                    HandleScrollWheelOnTextBoxAndList(map.GetHouses(), house => house.ID.ToString(CultureInfo.InvariantCulture), currentParameterValue, textBox);
+                    break;
+                case TriggerParamType.Text:
+                    if (int.TryParse(currentParameterValue, CultureInfo.InvariantCulture, out int textLineIndex))
+                    {
+                        if (Cursor.ScrollWheelValue < 0 && !string.IsNullOrEmpty(map.Rules.TutorialLines.GetStringByIdOrEmptyString(textLineIndex + 1)))
+                        {
+                            textBox.Text = (textLineIndex + 1).ToString(CultureInfo.InvariantCulture);
+                            EditTrigger(editedTrigger);
+                        }
+                        else if (Cursor.ScrollWheelValue > 0 && !string.IsNullOrEmpty(map.Rules.TutorialLines.GetStringByIdOrEmptyString(textLineIndex - 1)))
+                        {
+                            textBox.Text = (textLineIndex - 1).ToString(CultureInfo.InvariantCulture);
+                            EditTrigger(editedTrigger);
+                        }
+                    }
+                    break;
+                case TriggerParamType.Tag:
+                    HandleScrollWheelOnTextBoxAndList(map.Tags, tag => tag.ID, currentParameterValue, textBox);
+                    break;
+                case TriggerParamType.WaypointZZ:
+                    int waypointIdentifier = Helpers.GetWaypointNumberFromAlphabeticalString(currentParameterValue);
+                    if (Cursor.ScrollWheelValue < 0 && map.Waypoints.Exists(wp => wp.Identifier == waypointIdentifier + 1))
+                    {
+                        textBox.Text = Helpers.WaypointNumberToAlphabeticalString(waypointIdentifier + 1);
+                        EditTrigger(editedTrigger);
+                    }
+                    else if (Cursor.ScrollWheelValue > 0 && map.Waypoints.Exists(wp => wp.Identifier == waypointIdentifier - 1))
+                    {
+                        textBox.Text = Helpers.WaypointNumberToAlphabeticalString(waypointIdentifier - 1);
+                        EditTrigger(editedTrigger);
+                    }
+                    break;
+                case TriggerParamType.Waypoint:
+                    HandleScrollWheelOnTextBoxAndList(map.Waypoints, wp => wp.Identifier.ToString(CultureInfo.InvariantCulture), currentParameterValue, textBox);
+                    break;
+                case TriggerParamType.SuperWeapon:
+                    HandleScrollWheelOnTextBoxAndList(map.Rules.SuperWeaponTypes, sw => sw.Index.ToString(CultureInfo.InvariantCulture), currentParameterValue, textBox);
+                    break;
+                case TriggerParamType.ParticleSystem:
+                    HandleScrollWheelOnTextBoxAndList(map.Rules.ParticleSystemTypes, pst => pst.ININame, currentParameterValue, textBox);
+                    break;
+                case TriggerParamType.Speech:
+                    if (!Constants.IsRA2YR && int.TryParse(currentParameterValue, CultureInfo.InvariantCulture, out int speechIndex))
+                    {
+                        if (Cursor.ScrollWheelValue < 0 && map.EditorConfig.Speeches.List.Exists(speech => speech.Index == speechIndex + 1))
+                        {
+                            textBox.Text = (speechIndex + 1).ToString(CultureInfo.InvariantCulture);
+                            EditTrigger(editedTrigger);
+                        }
+                        else if (Cursor.ScrollWheelValue > 0 && map.EditorConfig.Speeches.List.Exists(speech => speech.Index == speechIndex - 1))
+                        {
+                            textBox.Text = (speechIndex - 1).ToString(CultureInfo.InvariantCulture);
+                            EditTrigger(editedTrigger);
+                        }
+                    }
+                    break;
+                case TriggerParamType.Sound:
+                    if (!Constants.IsRA2YR && int.TryParse(currentParameterValue, CultureInfo.InvariantCulture, out int soundIndex))
+                    {
+                        if (Cursor.ScrollWheelValue < 0 && map.Rules.Sounds.List.Exists(sound => sound.Index == soundIndex + 1))
+                        {
+                            textBox.Text = (soundIndex + 1).ToString(CultureInfo.InvariantCulture);
+                            EditTrigger(editedTrigger);
+                        }
+                        else if (Cursor.ScrollWheelValue > 0 && map.Rules.Sounds.List.Exists(sound => sound.Index == soundIndex - 1))
+                        {
+                            textBox.Text = (soundIndex - 1).ToString(CultureInfo.InvariantCulture);
+                            EditTrigger(editedTrigger);
+                        }
+                    }
+                    break;
+                case TriggerParamType.Color:
+                    HandleScrollWheelOnTextBoxAndList(map.Rules.Colors, c => c.Index.ToString(CultureInfo.InvariantCulture), currentParameterValue, textBox);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void TbEventParameterValue_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (editedTrigger == null || lbEvents.SelectedItem == null || lbEventParameters.SelectedItem == null)
+                return;
+
+            var triggerEvent = (TriggerCondition)lbEvents.SelectedItem.Tag;
+            var triggerEventType = GetTriggerEventType(triggerEvent.ConditionIndex);
+            int paramIndex = (int)lbEventParameters.SelectedItem.Tag;
+
+            if (triggerEventType == null)
+                return;
+
+            TriggerEventParam parameter = triggerEventType.Parameters[paramIndex];
+
+            string currentParameterValue = triggerEvent.Parameters[paramIndex];
+
+            HandleScrollOnEventOrActionParameterTextBox(currentParameterValue, parameter.PresetOptions, parameter.TriggerParamType, tbEventParameterValue);
+        }
+
+        private void TbActionParameterValue_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (editedTrigger == null || lbActions.SelectedItem == null || lbActionParameters.SelectedItem == null)
+                return;
+
+            var triggerAction = (TriggerAction)lbActions.SelectedItem.Tag;
+            var triggerActionType = GetTriggerActionType(triggerAction.ActionIndex);
+            int paramIndex = (int)lbActionParameters.SelectedItem.Tag;
+
+            if (triggerActionType == null)
+                return;
+
+            TriggerActionParam parameter = triggerActionType.Parameters[paramIndex];
+
+            string currentParameterValue = triggerAction.Parameters[paramIndex];
+
+            HandleScrollOnEventOrActionParameterTextBox(currentParameterValue, parameter.PresetOptions, parameter.TriggerParamType, tbActionParameterValue);
+        }
+        #endregion
 
         private void CreateRandomTriggerSetWindow_RandomTriggersSetCreated(object sender, RandomTriggerSetTriggersCreatedEventArgs e)
         {
