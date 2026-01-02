@@ -164,6 +164,7 @@ namespace TSMapEditor.UI.Windows
 
             lbEvents = FindChild<EditorListBox>(nameof(lbEvents));
             selEventType = FindChild<EditorPopUpSelector>(nameof(selEventType));
+            selEventType.MouseScrolled += SelEventType_MouseScrolled;
             panelEventDescription = FindChild<EditorDescriptionPanel>(nameof(panelEventDescription));
             lbEventParameters = FindChild<EditorListBox>(nameof(lbEventParameters));
             tbEventParameterValue = FindChild<EditorTextBox>(nameof(tbEventParameterValue));
@@ -177,6 +178,7 @@ namespace TSMapEditor.UI.Windows
 
             lbActions = FindChild<EditorListBox>(nameof(lbActions));
             selActionType = FindChild<EditorPopUpSelector>(nameof(selActionType));
+            selActionType.MouseScrolled += SelActionType_MouseScrolled;
             panelActionDescription = FindChild<EditorDescriptionPanel>(nameof(panelActionDescription));
             lbActionParameters = FindChild<EditorListBox>(nameof(lbActionParameters));
             tbActionParameterValue = FindChild<EditorTextBox>(nameof(tbActionParameterValue));
@@ -371,6 +373,64 @@ namespace TSMapEditor.UI.Windows
             lbTriggers.SelectedIndexChanged += LbTriggers_SelectedIndexChanged;
 
             WindowManager.WindowSizeChangedByUser += WindowManager_WindowSizeChangedByUser;            
+        }
+
+        private void SelEventType_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (editedTrigger == null || lbEvents.SelectedItem == null)
+                return;
+
+            TriggerCondition existingCondition = editedTrigger.Conditions[lbEvents.SelectedIndex];
+
+            if (Cursor.ScrollWheelValue < 0)
+            {
+                if (map.EditorConfig.TriggerEventTypes.ContainsKey(existingCondition.ConditionIndex + 1))
+                {
+                    existingCondition.ConditionIndex = existingCondition.ConditionIndex + 1;
+                    SetTriggerEventHardcodedParameters(existingCondition);
+                    EditTrigger(editedTrigger);
+                }
+            }
+            else if (Cursor.ScrollWheelValue > 0)
+            {
+                if (map.EditorConfig.TriggerActionTypes.ContainsKey(existingCondition.ConditionIndex - 1))
+                {
+                    existingCondition.ConditionIndex = existingCondition.ConditionIndex - 1;
+                    SetTriggerEventHardcodedParameters(existingCondition);
+                    EditTrigger(editedTrigger);
+                }
+            }
+        }
+
+        private void SelActionType_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (editedTrigger == null || lbActions.SelectedItem == null)
+                return;
+
+            TriggerAction existingAction = editedTrigger.Actions[lbActions.SelectedIndex];
+
+            if (Cursor.ScrollWheelValue < 0)
+            {
+                if (map.EditorConfig.TriggerActionTypes.ContainsKey(existingAction.ActionIndex + 1))
+                {
+                    existingAction.ActionIndex = existingAction.ActionIndex + 1;
+                    SetTriggerActionHardcodedParameters(existingAction);
+                    EditTrigger(editedTrigger);
+                }
+            }
+            else if (Cursor.ScrollWheelValue > 0)
+            {
+                if (map.EditorConfig.TriggerActionTypes.ContainsKey(existingAction.ActionIndex - 1))
+                {
+                    existingAction.ActionIndex = existingAction.ActionIndex - 1;
+                    SetTriggerActionHardcodedParameters(existingAction);
+                    EditTrigger(editedTrigger);
+                }
+            }
         }
 
 #region Support for handling scroll wheel input on event and action parameter text boxes
@@ -1805,24 +1865,7 @@ namespace TSMapEditor.UI.Windows
 
             TriggerCondition condition = editedTrigger.Conditions[lbEvents.SelectedIndex];
             condition.ConditionIndex = selectEventWindow.SelectedObject.ID;
-
-            for (int i = 0; i < TriggerEventType.MAX_PARAM_COUNT; i++)
-            {
-                if ((int)triggerEventType.Parameters[i].TriggerParamType < 0)
-                {
-                    condition.Parameters[i] = Math.Abs((int)triggerEventType.Parameters[i].TriggerParamType).ToString(CultureInfo.InvariantCulture);
-                    continue;
-                }
-
-                if (triggerEventType.Parameters[i].TriggerParamType == TriggerParamType.Unused)
-                {
-                    // additional params need to be empty instead of 0 if they're unused
-                    if (i >= TriggerCondition.DEF_PARAM_COUNT)
-                        condition.Parameters[i] = string.Empty;
-                    else
-                        condition.Parameters[i] = "0";
-                }
-            }
+            SetTriggerEventHardcodedParameters(condition);
 
             EditTrigger(editedTrigger);
         }
@@ -1863,6 +1906,33 @@ namespace TSMapEditor.UI.Windows
             SetTriggerActionHardcodedParameters(triggerAction);
 
             return triggerAction;
+        }
+
+        private void SetTriggerEventHardcodedParameters(TriggerCondition triggerCondition)
+        {
+            if (!map.EditorConfig.TriggerEventTypes.TryGetValue(triggerCondition.ConditionIndex, out var triggerEventType))
+            {
+                Logger.Log($"{nameof(TriggersWindow)}.{nameof(SetTriggerEventHardcodedParameters)}: Unknown event type {triggerCondition.ConditionIndex}");
+                return;
+            }
+
+            for (int i = 0; i < TriggerEventType.MAX_PARAM_COUNT; i++)
+            {
+                if ((int)triggerEventType.Parameters[i].TriggerParamType < 0)
+                {
+                    triggerCondition.Parameters[i] = Math.Abs((int)triggerEventType.Parameters[i].TriggerParamType).ToString(CultureInfo.InvariantCulture);
+                    continue;
+                }
+
+                if (triggerEventType.Parameters[i].TriggerParamType == TriggerParamType.Unused)
+                {
+                    // additional params need to be empty instead of 0 if they're unused
+                    if (i >= TriggerCondition.DEF_PARAM_COUNT)
+                        triggerCondition.Parameters[i] = string.Empty;
+                    else
+                        triggerCondition.Parameters[i] = "0";
+                }
+            }
         }
 
         private void SetTriggerActionHardcodedParameters(TriggerAction triggerAction)
