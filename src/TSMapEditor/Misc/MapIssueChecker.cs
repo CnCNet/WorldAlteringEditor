@@ -11,6 +11,7 @@ namespace TSMapEditor.Misc
     public static class MapIssueChecker
     {
         private const int EnableTriggerActionIndex = 53;
+        private const int DisableTriggerActionIndex = 54;
         private const int TriggerParamIndex = 1;
 
         /// <summary>
@@ -70,8 +71,6 @@ namespace TSMapEditor.Misc
                     issueList.Add(string.Format(Translate(map, "CheckForIssues.TeamTypeWithoutScript",
                         "TeamType \"{0}\" has no Script set!"), tt.Name));
             });
-
-            const int DisableTriggerActionIndex = 54;
 
             // Check for triggers that are disabled and are never enabled by any other triggers
             map.Triggers.ForEach(trigger =>
@@ -427,6 +426,7 @@ namespace TSMapEditor.Misc
             }
 
             CheckForMismatchedDifficultyEnableIssue(map, issueList);
+            CheckForMismatchedDifficultyDisableIssue(map, issueList);
 
             return issueList;
         }
@@ -515,6 +515,39 @@ namespace TSMapEditor.Misc
                             {
                                 issueList.Add(string.Format(Translate(map, "CheckForIssues.MismatchedDifficultyForEnableTrigger",
                                     "The trigger \"{0}\" has \"{1}\" as its difficulty level, but it enables a trigger \"{2}\" which has \"{3}\" as its difficulty."),
+                                    trigger.Name, Helpers.DifficultyToTranslatedString(difficulty), otherTrigger.Name, Helpers.DifficultyToTranslatedString(otherTriggerDifficulty)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static void CheckForMismatchedDifficultyDisableIssue(Map map, List<string> issueList)
+        {
+            foreach (var trigger in map.Triggers)
+            {
+                Difficulty difficulty = GetTriggerDifficulty(map, trigger);
+
+                if (difficulty == Difficulty.None)
+                    continue;
+
+                // Check if this trigger disables a trigger that does not match its difficulty level.
+                // If yes, report that as a bug.
+                for (int i = 0; i < trigger.Actions.Count; i++)
+                {
+                    TriggerAction action = trigger.Actions[i];
+
+                    if (action.ActionIndex == DisableTriggerActionIndex)
+                    {
+                        var otherTrigger = map.Triggers.Find(t => t.ID == action.Parameters[TriggerParamIndex]);
+                        if (otherTrigger != null)
+                        {
+                            Difficulty otherTriggerDifficulty = GetTriggerDifficulty(map, otherTrigger);
+                            if (otherTriggerDifficulty != Difficulty.None && difficulty != otherTriggerDifficulty)
+                            {
+                                issueList.Add(string.Format(Translate(map, "CheckForIssues.MismatchedDifficultyForDisableTrigger",
+                                    "The trigger \"{0}\" has \"{1}\" as its difficulty level, but it disables a trigger \"{2}\" which has \"{3}\" as its difficulty."),
                                     trigger.Name, Helpers.DifficultyToTranslatedString(difficulty), otherTrigger.Name, Helpers.DifficultyToTranslatedString(otherTriggerDifficulty)));
                             }
                         }
