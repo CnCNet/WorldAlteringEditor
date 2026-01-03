@@ -321,6 +321,8 @@ namespace TSMapEditor.UI.Windows
             map.AddTaskForce(taskForce);
             ListTaskForces();
             SelectTaskForce(taskForce);
+            WindowManager.SelectedControl = tbTaskForceName;
+            tbTaskForceName.SetSelection(0, tbTaskForceName.Text.Length);
 
             map.TaskForcesChanged += Map_TaskForcesChanged;
         }

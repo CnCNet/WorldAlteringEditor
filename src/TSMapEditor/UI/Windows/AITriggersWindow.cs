@@ -314,6 +314,8 @@ namespace TSMapEditor.UI.Windows
             map.AITriggerTypes.Add(aiTrigger);
             ListAITriggers();
             SelectAITrigger(aiTrigger);
+            WindowManager.SelectedControl = tbName;
+            tbName.SetSelection(0, tbName.Text.Length);
         }
 
         private void BtnDelete_LeftClick(object sender, EventArgs e)

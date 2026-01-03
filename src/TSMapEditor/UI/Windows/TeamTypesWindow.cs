@@ -401,6 +401,8 @@ namespace TSMapEditor.UI.Windows
             map.AddTeamType(teamType);
             ListTeamTypes();
             SelectTeamType(teamType);
+            WindowManager.SelectedControl = tbName;
+            tbName.SetSelection(0, tbName.Text.Length);
 
             map.TeamTypesChanged += Map_TeamTypesChanged;
         }

@@ -379,6 +379,8 @@ namespace TSMapEditor.UI.Windows
             map.Scripts.Add(newScript);
             ListScripts();
             SelectScript(newScript);
+            WindowManager.SelectedControl = tbName;
+            tbName.SetSelection(0, tbName.Text.Length);
         }
 
         private void BtnDeleteScript_LeftClick(object sender, EventArgs e)
