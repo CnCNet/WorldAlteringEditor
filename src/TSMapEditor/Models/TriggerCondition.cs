@@ -26,6 +26,8 @@ namespace TSMapEditor.Models
 
         public TriggerCondition(TriggerEventType triggerEventType)
         {
+            ConditionIndex = triggerEventType.ID;
+
             for (int i = 0; i < Parameters.Length; i++)
             {
                 if (i < DEF_PARAM_COUNT)

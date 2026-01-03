@@ -1285,18 +1285,14 @@ namespace TSMapEditor.UI.Windows
                 case TriggerParamType.HouseType:
                     selectHouseTypeWindow.IsForEvent = true;
                     paramValue = Conversions.IntFromString(triggerEvent.Parameters[paramIndex], -1);
-                    if (paramValue > -1 && paramValue < map.GetHouseTypes().Count)
-                        selectHouseTypeWindow.Open(map.GetHouseTypes()[paramValue]);
-                    else
-                        selectHouseTypeWindow.Open(null);
+                    HouseType houseType = map.GetHouseTypes().Find(ht => ht.Index == paramValue);
+                    selectHouseTypeWindow.Open(houseType);
                     break;
                 case TriggerParamType.House:
                     selectHouseWindow.IsForEvent = true;
                     paramValue = Conversions.IntFromString(triggerEvent.Parameters[paramIndex], -1);
-                    if (paramValue > -1 && paramValue < map.GetHouses().Count)
-                        selectHouseWindow.Open(map.GetHouses()[paramValue]);
-                    else
-                        selectHouseWindow.Open(null);
+                    House house = map.GetHouses().Find(h => h.ID == paramValue);
+                    selectHouseWindow.Open(house);
                     break;
                 case TriggerParamType.Building:
                     paramValue = Conversions.IntFromString(triggerEvent.Parameters[paramIndex], -1);
@@ -1845,6 +1841,41 @@ namespace TSMapEditor.UI.Windows
                 lbTriggers.ScrollToSelectedElement();
         }
 
+        private void SetDefaultParametersForNewTriggerEvent(TriggerCondition condition)
+        {
+            TriggerEventType triggerEventType = map.EditorConfig.TriggerEventTypes[condition.ConditionIndex];
+
+            for (int i = 0; i < lbEventParameters.Items.Count; i++)
+            {
+                int parameterIndex = (int)lbEventParameters.Items[i].Tag;
+
+                if (UserSettings.Instance.SmartScriptActionDefaultValues)
+                {
+                    TriggerParamType triggerParamType = triggerEventType.Parameters[parameterIndex].TriggerParamType;
+
+                    // Set default value if we can infer one from the trigger's name or from other information
+                    switch (triggerParamType)
+                    {
+                        case TriggerParamType.HouseType:
+                            HouseType houseType = map.GetHouseTypes().Find(ht => editedTrigger.Name.Contains(ht.ININame, StringComparison.OrdinalIgnoreCase));
+                            if (houseType != null)
+                                condition.Parameters[parameterIndex] = houseType.Index.ToString(CultureInfo.InvariantCulture);
+                            break;
+                        case TriggerParamType.House:
+                            House house = map.GetHouses().Find(ht => editedTrigger.Name.Contains(ht.ININame, StringComparison.OrdinalIgnoreCase));
+                            if (house != null)
+                                condition.Parameters[parameterIndex] = house.ID.ToString(CultureInfo.InvariantCulture);
+                            break;
+                        case TriggerParamType.LocalVariable:
+                            LocalVariable localVariable = map.LocalVariables.Find(lv => editedTrigger.Name.Contains(lv.Name, StringComparison.OrdinalIgnoreCase));
+                            if (localVariable != null)
+                                condition.Parameters[parameterIndex] = localVariable.Index.ToString(CultureInfo.InvariantCulture);
+                            break;
+                    }
+                }
+            }
+        }
+
         private void EventWindowDarkeningPanel_Hidden(object sender, EventArgs e)
         {
             if (editedTrigger == null || selectEventWindow.SelectedObject == null)
@@ -1854,26 +1885,96 @@ namespace TSMapEditor.UI.Windows
 
             if (selectEventWindow.IsAddingNew)
             {
-                editedTrigger.Conditions.Add(new TriggerCondition(triggerEventType));
+                var condition = new TriggerCondition(triggerEventType);
+                editedTrigger.Conditions.Add(condition);
                 EditTrigger(editedTrigger);
                 lbEvents.SelectedIndex = lbEvents.Items.Count - 1;
+
+                if (lbEventParameters.Items.Count > 0)
+                {
+                    if (UserSettings.Instance.SmartScriptActionDefaultValues)
+                    {
+                        SetDefaultParametersForNewTriggerEvent(condition);
+                        EditTrigger(editedTrigger);
+                    }
+
+                    lbEventParameters.SelectedIndex = 0;
+
+                    if (UserSettings.Instance.QuickTriggerParameterSelection)
+                    {
+                        BtnEventParameterValuePreset_LeftClick(this, EventArgs.Empty);
+                    }
+                }
             }
             else
             {
                 if (lbEvents.SelectedItem == null)
                     return;
+
+                TriggerCondition condition = editedTrigger.Conditions[lbEvents.SelectedIndex];
+                condition.ConditionIndex = selectEventWindow.SelectedObject.ID;
+                SetTriggerEventHardcodedParameters(condition);
+                EditTrigger(editedTrigger);
             }
+        }
 
-            TriggerCondition condition = editedTrigger.Conditions[lbEvents.SelectedIndex];
-            condition.ConditionIndex = selectEventWindow.SelectedObject.ID;
-            SetTriggerEventHardcodedParameters(condition);
+        private void SetDefaultParametersForNewTriggerAction(TriggerAction action)
+        {
+            TriggerActionType triggerActionType = map.EditorConfig.TriggerActionTypes[action.ActionIndex];
 
-            EditTrigger(editedTrigger);
-
-            if (UserSettings.Instance.QuickTriggerParameterSelection && selectEventWindow.IsAddingNew && lbEventParameters.Items.Count > 0)
+            for (int i = 0; i < lbActionParameters.Items.Count; i++)
             {
-                lbEventParameters.SelectedIndex = 0;
-                BtnEventParameterValuePreset_LeftClick(this, EventArgs.Empty);
+                int parameterIndex = (int)lbActionParameters.Items[i].Tag;
+
+                TriggerParamType triggerParamType = triggerActionType.Parameters[parameterIndex].TriggerParamType;
+
+                // Set default values if we can infer ones from the trigger's name or from other information
+                switch (triggerParamType)
+                {
+                    case TriggerParamType.HouseType:
+                        HouseType houseType = map.GetHouseTypes().Find(ht => editedTrigger.Name.Contains(ht.ININame, StringComparison.OrdinalIgnoreCase));
+                        if (houseType != null)
+                            action.Parameters[parameterIndex] = houseType.Index.ToString(CultureInfo.InvariantCulture);
+                        break;
+                    case TriggerParamType.House:
+                        House house = map.GetHouses().Find(ht => editedTrigger.Name.Contains(ht.ININame, StringComparison.OrdinalIgnoreCase));
+                        if (house != null)
+                            action.Parameters[parameterIndex] = house.ID.ToString(CultureInfo.InvariantCulture);
+                        break;
+                    case TriggerParamType.LocalVariable:
+                        LocalVariable localVariable = map.LocalVariables.Find(lv => editedTrigger.Name.Contains(lv.Name, StringComparison.OrdinalIgnoreCase));
+                        if (localVariable != null)
+                            action.Parameters[parameterIndex] = localVariable.Index.ToString(CultureInfo.InvariantCulture);
+                        break;
+                    case TriggerParamType.TeamType:
+                        TeamType teamType = map.TeamTypes.Count > 0 ? map.TeamTypes[0] : null;
+                        if (teamType != null)
+                            action.Parameters[parameterIndex] = teamType.ININame;
+
+                        // Special case for action "Reinforcement at Waypoint" - assign the team's waypoint
+                        if (!string.IsNullOrWhiteSpace(teamType.Waypoint) && triggerActionType.Parameters[TriggerActionType.MAX_PARAM_COUNT - 1].TriggerParamType == TriggerParamType.WaypointZZ)
+                        {
+                            action.Parameters[TriggerActionType.MAX_PARAM_COUNT - 1] = teamType.Waypoint;
+                            return;
+                        }
+
+                        break;
+                    case TriggerParamType.WaypointZZ:
+                        if (map.Waypoints.Count > 0)
+                            action.Parameters[parameterIndex] = Helpers.WaypointNumberToAlphabeticalString(map.Waypoints[map.Waypoints.Count - 1].Identifier);
+                        break;
+                    case TriggerParamType.Waypoint:
+                        if (map.Waypoints.Count > 0)
+                            action.Parameters[parameterIndex] = map.Waypoints[map.Waypoints.Count - 1].Identifier.ToString(CultureInfo.InvariantCulture);
+                        break;
+                    case TriggerParamType.Text:
+                        if (selectTutorialLineWindow.SelectedObject.ID > -1 && 
+                            !string.IsNullOrEmpty(map.Rules.TutorialLines.GetStringByIdOrEmptyString(selectTutorialLineWindow.SelectedObject.ID + 1)))
+                        {
+                            action.Parameters[parameterIndex] = (selectTutorialLineWindow.SelectedObject.ID + 1).ToString(CultureInfo.InvariantCulture);
+                        }
+                        break;
+                }
             }
         }
 
@@ -1889,9 +1990,26 @@ namespace TSMapEditor.UI.Windows
                 if (triggerActionType == null)
                     return;
 
-                editedTrigger.Actions.Add(CreateTriggerAction(triggerActionType));
+                TriggerAction action = CreateTriggerAction(triggerActionType);
+                editedTrigger.Actions.Add(action);
                 EditTrigger(editedTrigger);
                 lbActions.SelectedIndex = lbActions.Items.Count - 1;
+
+                if (lbActionParameters.Items.Count > 0)
+                {
+                    if (UserSettings.Instance.SmartScriptActionDefaultValues)
+                    {
+                        SetDefaultParametersForNewTriggerAction(action);
+                        EditTrigger(editedTrigger);
+                    }
+
+                    lbActionParameters.SelectedIndex = 0;
+
+                    if (UserSettings.Instance.QuickTriggerParameterSelection)
+                    {
+                        BtnActionParameterValuePreset_LeftClick(this, EventArgs.Empty);
+                    }
+                }
             }
             else
             {
@@ -1901,14 +2019,7 @@ namespace TSMapEditor.UI.Windows
                 TriggerAction existingAction = editedTrigger.Actions[lbActions.SelectedIndex];
                 existingAction.ActionIndex = selectActionWindow.SelectedObject.ID;
                 SetTriggerActionHardcodedParameters(existingAction);
-            }
-
-            EditTrigger(editedTrigger);
-
-            if (UserSettings.Instance.QuickTriggerParameterSelection && selectActionWindow.IsAddingNew && lbActionParameters.Items.Count > 0)
-            {
-                lbActionParameters.SelectedIndex = 0;
-                BtnActionParameterValuePreset_LeftClick(this, EventArgs.Empty);
+                EditTrigger(editedTrigger);
             }
         }
 
