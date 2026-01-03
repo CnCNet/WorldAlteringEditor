@@ -1776,6 +1776,8 @@ namespace TSMapEditor.UI.Windows
             map.AddTag(new Tag() { ID = map.GetNewUniqueInternalId(), Name = "New tag", Trigger = newTrigger });
             ListTriggers();
             SelectTrigger(newTrigger);
+            WindowManager.SelectedControl = tbName;
+            tbName.SetSelection(0, tbName.Text.Length);
 
             map.TriggersChanged += Map_TriggersChanged;
         }
