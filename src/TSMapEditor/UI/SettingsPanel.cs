@@ -85,6 +85,7 @@ namespace TSMapEditor.UI
         private XNACheckBox chkUseBoldFont;
         private XNACheckBox chkGraphicsLevel;
         private XNACheckBox chkSmartScriptActionCloning;
+        private XNACheckBox chkQuickTriggerParameterSelection;
         private EditorTextBox tbTextEditorPath;
 
         public override void Kill()
@@ -152,6 +153,8 @@ namespace TSMapEditor.UI
 
             chkSmartScriptActionCloning = FindChild<XNACheckBox>(nameof(chkSmartScriptActionCloning));
 
+            chkQuickTriggerParameterSelection = FindChild<XNACheckBox>(nameof(chkQuickTriggerParameterSelection));
+
             tbTextEditorPath = FindChild<EditorTextBox>(nameof(tbTextEditorPath));
 
             LoadSettings();
@@ -187,6 +190,7 @@ namespace TSMapEditor.UI
             chkUseBoldFont.Checked = userSettings.UseBoldFont;
             chkGraphicsLevel.Checked = userSettings.GraphicsLevel > 0;
             chkSmartScriptActionCloning.Checked = userSettings.SmartScriptActionCloning;
+            chkQuickTriggerParameterSelection.Checked = userSettings.QuickTriggerParameterSelection;
 
             tbTextEditorPath.Text = userSettings.TextEditorPath;
         }
@@ -199,6 +203,7 @@ namespace TSMapEditor.UI
             userSettings.UseBoldFont.UserDefinedValue = chkUseBoldFont.Checked;
             userSettings.GraphicsLevel.UserDefinedValue = chkGraphicsLevel.Checked ? 1 : 0;
             userSettings.SmartScriptActionCloning.UserDefinedValue = chkSmartScriptActionCloning.Checked;
+            userSettings.QuickTriggerParameterSelection.UserDefinedValue = chkQuickTriggerParameterSelection.Checked;
 
             userSettings.Theme.UserDefinedValue = ddTheme.SelectedItem.Text;
             if (ddScrollRate.SelectedItem != null)

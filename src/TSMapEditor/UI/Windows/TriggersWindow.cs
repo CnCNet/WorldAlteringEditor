@@ -11,6 +11,7 @@ using TSMapEditor.CCEngine;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
 using TSMapEditor.Rendering;
+using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
 using TSMapEditor.UI.CursorActions;
 
@@ -1868,6 +1869,12 @@ namespace TSMapEditor.UI.Windows
             SetTriggerEventHardcodedParameters(condition);
 
             EditTrigger(editedTrigger);
+
+            if (UserSettings.Instance.QuickTriggerParameterSelection && selectEventWindow.IsAddingNew && lbEventParameters.Items.Count > 0)
+            {
+                lbEventParameters.SelectedIndex = 0;
+                BtnEventParameterValuePreset_LeftClick(this, EventArgs.Empty);
+            }
         }
 
         private void ActionWindowDarkeningPanel_Hidden(object sender, EventArgs e)
@@ -1897,6 +1904,12 @@ namespace TSMapEditor.UI.Windows
             }
 
             EditTrigger(editedTrigger);
+
+            if (UserSettings.Instance.QuickTriggerParameterSelection && selectActionWindow.IsAddingNew && lbActionParameters.Items.Count > 0)
+            {
+                lbActionParameters.SelectedIndex = 0;
+                BtnActionParameterValuePreset_LeftClick(this, EventArgs.Empty);
+            }
         }
 
         private TriggerAction CreateTriggerAction(TriggerActionType triggerActionType)
