@@ -118,6 +118,7 @@ namespace TSMapEditor.UI.Windows
 
             tbName.TextChanged += TbName_TextChanged;
             tbParameterValue.TextChanged += TbParameterValue_TextChanged;
+            tbParameterValue.MouseScrolled += TbParameterValue_MouseScrolled;
             lbScriptTypes.SelectedIndexChanged += LbScriptTypes_SelectedIndexChanged;
             lbActions.SelectedIndexChanged += LbActions_SelectedIndexChanged;
 
@@ -484,6 +485,23 @@ namespace TSMapEditor.UI.Windows
             lbActions.SelectedItem.Text = GetActionEntryText(lbActions.SelectedIndex, entry);
         }
 
+        private void TbParameterValue_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (lbActions.SelectedItem == null || editedScript == null)
+                return;
+
+            ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
+            entry.Argument = Cursor.ScrollWheelValue > 0 ? entry.Argument - 1 : entry.Argument + 1;
+            lbActions.SelectedItem.Text = GetActionEntryText(lbActions.SelectedIndex, entry);
+
+            tbParameterValue.TextChanged -= TbParameterValue_TextChanged;
+            ScriptAction action = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
+            SetParameterEntryText(entry, action);
+            tbParameterValue.TextChanged += TbParameterValue_TextChanged;
+        }
+
         private void ContextMenu_OptionSelected(object sender, ContextMenuItemSelectedEventArgs e)
         {
             if (lbActions.SelectedItem == null || editedScript == null)
@@ -705,6 +723,12 @@ namespace TSMapEditor.UI.Windows
                     tbParameterValue.Text = scriptActionEntry.Argument.ToString(CultureInfo.InvariantCulture) + Translate(this, "UnknownAnimation", " - unknown animation");
 
                 return;
+            }
+            else if (action.ParamType == TriggerParamType.LocalVariable)
+            {
+                LocalVariable localVariable = map.LocalVariables.Find(lv => lv.Index == scriptActionEntry.Argument);
+                if (localVariable != null)
+                    tbParameterValue.Text = localVariable.Index + " - " + localVariable.Name;
             }
 
             int presetIndex = action.PresetOptions.FindIndex(p => p.Value == scriptActionEntry.Argument);
