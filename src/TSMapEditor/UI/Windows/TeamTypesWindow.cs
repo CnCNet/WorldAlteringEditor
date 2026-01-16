@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
+using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
 
 namespace TSMapEditor.UI.Windows
@@ -392,11 +393,31 @@ namespace TSMapEditor.UI.Windows
             }
         }
 
+        private TaskForce GetFirstUnusedTaskForce()
+        {
+            for (int i = 0; i < map.TaskForces.Count; i++)
+            {
+                TaskForce taskForce = map.TaskForces[i];
+                if (!map.TeamTypes.Exists(tt => tt.TaskForce == taskForce))
+                    return taskForce;
+            }
+
+            return null;
+        }
+
         private void BtnNewTeamType_LeftClick(object sender, EventArgs e)
         {
             map.TeamTypesChanged -= Map_TeamTypesChanged;
 
             var teamType = new TeamType(map.GetNewUniqueInternalId()) { Name = "New TeamType" };
+
+            if (UserSettings.Instance.SmartScriptActionDefaultValues)
+            {
+                teamType.TaskForce = GetFirstUnusedTaskForce();
+                if (teamType.TaskForce == null && map.TaskForces.Count > 0)
+                    teamType.TaskForce = map.TaskForces[map.TaskForces.Count - 1];
+            }
+
             map.EditorConfig.TeamTypeFlags.ForEach(flag => { if (flag.DefaultValue) teamType.EnableFlag(flag.Name); });
             map.AddTeamType(teamType);
             ListTeamTypes();
