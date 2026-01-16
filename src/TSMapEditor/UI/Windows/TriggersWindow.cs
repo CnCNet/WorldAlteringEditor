@@ -1878,6 +1878,40 @@ namespace TSMapEditor.UI.Windows
             }
         }
 
+        private bool IsEventParameterEliqibleForQuickSelection()
+        {
+            if (editedTrigger == null || lbEvents.SelectedItem == null || lbEventParameters.SelectedItem == null)
+                return false;
+
+            var triggerEvent = (TriggerCondition)lbEvents.SelectedItem.Tag;
+            var triggerEventType = GetTriggerEventType(triggerEvent.ConditionIndex);
+            int paramIndex = (int)lbEventParameters.SelectedItem.Tag;
+
+            if (triggerEventType == null)
+                return false;
+
+            TriggerEventParam parameter = triggerEventType.Parameters[paramIndex];
+
+            if (parameter.PresetOptions != null && parameter.PresetOptions.Count > 0)
+            {
+                return false;
+            }
+
+            switch (triggerEventType.Parameters[paramIndex].TriggerParamType)
+            {
+                case TriggerParamType.HouseType:
+                case TriggerParamType.House:
+                case TriggerParamType.Building:
+                case TriggerParamType.Techno:
+                case TriggerParamType.SuperWeapon:
+                case TriggerParamType.SuperWeaponName:
+                case TriggerParamType.TeamType:
+                    return true;
+            }
+
+            return false;
+        }
+
         private void EventWindowDarkeningPanel_Hidden(object sender, EventArgs e)
         {
             if (editedTrigger == null || selectEventWindow.SelectedObject == null)
@@ -1902,7 +1936,8 @@ namespace TSMapEditor.UI.Windows
 
                     lbEventParameters.SelectedIndex = 0;
 
-                    if (UserSettings.Instance.QuickTriggerParameterSelection)
+                    if (UserSettings.Instance.QuickTriggerParameterSelection &&
+                        IsEventParameterEliqibleForQuickSelection())
                     {
                         BtnEventParameterValuePreset_LeftClick(this, EventArgs.Empty);
                     }
@@ -1980,6 +2015,50 @@ namespace TSMapEditor.UI.Windows
             }
         }
 
+        private bool IsActionParameterEligibleForQuickSelection()
+        {
+            if (editedTrigger == null || lbActions.SelectedItem == null || lbActionParameters.SelectedItem == null)
+                return false;
+
+            var triggerAction = (TriggerAction)lbActions.SelectedItem.Tag;
+            var triggerActionType = GetTriggerActionType(triggerAction.ActionIndex);
+            int paramIndex = (int)lbActionParameters.SelectedItem.Tag;
+
+            if (triggerActionType == null)
+                return false;
+
+            TriggerActionParam parameter = triggerActionType.Parameters[paramIndex];
+
+            // If the parameter has preset options defined, then disallow due to context menu showing in an unexpected position
+            if (parameter.PresetOptions != null && parameter.PresetOptions.Count > 0)
+            {
+                return false;
+            }
+
+            switch (parameter.TriggerParamType)
+            {
+                case TriggerParamType.Animation:
+                case TriggerParamType.TeamType:
+                case TriggerParamType.Trigger:
+                case TriggerParamType.HouseType:
+                case TriggerParamType.House:
+                case TriggerParamType.Text:
+                case TriggerParamType.Theme:
+                case TriggerParamType.Tag:
+                case TriggerParamType.StringTableEntry:
+                case TriggerParamType.SuperWeapon:
+                case TriggerParamType.SuperWeaponName:
+                case TriggerParamType.ParticleSystem:
+                case TriggerParamType.Speech:
+                case TriggerParamType.Sound:
+                case TriggerParamType.BuildingName:
+                case TriggerParamType.Color:
+                    return true;
+            }
+
+            return false;
+        }
+
         private void ActionWindowDarkeningPanel_Hidden(object sender, EventArgs e)
         {
             if (editedTrigger == null || selectActionWindow.SelectedObject == null)
@@ -2007,7 +2086,8 @@ namespace TSMapEditor.UI.Windows
 
                     lbActionParameters.SelectedIndex = 0;
 
-                    if (UserSettings.Instance.QuickTriggerParameterSelection)
+                    if (UserSettings.Instance.QuickTriggerParameterSelection &&
+                        IsActionParameterEligibleForQuickSelection())
                     {
                         BtnActionParameterValuePreset_LeftClick(this, EventArgs.Empty);
                     }

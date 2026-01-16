@@ -729,6 +729,8 @@ namespace TSMapEditor.UI.Windows
                 LocalVariable localVariable = map.LocalVariables.Find(lv => lv.Index == scriptActionEntry.Argument);
                 if (localVariable != null)
                     tbParameterValue.Text = localVariable.Index + " - " + localVariable.Name;
+
+                return;
             }
 
             int presetIndex = action.PresetOptions.FindIndex(p => p.Value == scriptActionEntry.Argument);
