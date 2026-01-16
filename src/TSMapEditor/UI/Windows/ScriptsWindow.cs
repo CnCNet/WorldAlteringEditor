@@ -554,6 +554,11 @@ namespace TSMapEditor.UI.Windows
                         if (wp != null)
                             entry.Argument = wp.Identifier;
                         break;
+                    default:
+                        ScriptActionPresetOption preset = scriptActionType.PresetOptions.Find(p => editedScript.Name.Contains(p.Text, StringComparison.OrdinalIgnoreCase));
+                        if (preset != null)
+                            entry.Argument = preset.Value;
+                        break;
                 }
             }
 
