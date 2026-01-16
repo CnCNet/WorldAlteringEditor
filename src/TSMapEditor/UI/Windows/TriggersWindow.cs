@@ -1949,7 +1949,7 @@ namespace TSMapEditor.UI.Windows
                             action.Parameters[parameterIndex] = localVariable.Index.ToString(CultureInfo.InvariantCulture);
                         break;
                     case TriggerParamType.TeamType:
-                        TeamType teamType = map.TeamTypes.Count > 0 ? map.TeamTypes[0] : null;
+                        TeamType teamType = map.TeamTypes.Count > 0 ? map.TeamTypes[map.TeamTypes.Count - 1] : null;
                         if (teamType != null)
                             action.Parameters[parameterIndex] = teamType.ININame;
 
