@@ -104,6 +104,9 @@ namespace TSMapEditor.UI.Windows
             tbFilter = FindChild<EditorSuggestionTextBox>(nameof(tbFilter));
             tbFilter.TextChanged += TbFilter_TextChanged;
 
+            selPrimaryTeam.MouseScrolled += SelPrimaryTeam_MouseScrolled;
+            selSecondaryTeam.MouseScrolled += SelSecondaryTeam_MouseScrolled;
+
             FindChild<EditorButton>("btnNew").LeftClick += BtnNew_LeftClick;
             FindChild<EditorButton>("btnDelete").LeftClick += BtnDelete_LeftClick;
             FindChild<EditorButton>("btnClone").LeftClick += BtnClone_LeftClick;
@@ -138,6 +141,28 @@ namespace TSMapEditor.UI.Windows
             FindChild<EditorButton>("btnSortOptions").LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
 
             lbAITriggers.SelectedIndexChanged += LbAITriggers_SelectedIndexChanged;
+        }
+
+        private void SelSecondaryTeam_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (editedAITrigger == null)
+                return;
+
+            editedAITrigger.SecondaryTeam = UIHelpers.GetScrollItem(map.TeamTypes, editedAITrigger.SecondaryTeam, Cursor, false);
+            EditAITrigger(editedAITrigger);
+        }
+
+        private void SelPrimaryTeam_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (editedAITrigger == null)
+                return;
+
+            editedAITrigger.PrimaryTeam = UIHelpers.GetScrollItem(map.TeamTypes, editedAITrigger.PrimaryTeam, Cursor, false);
+            EditAITrigger(editedAITrigger);
         }
 
         private void CloneForEasierDifficulties()
@@ -289,6 +314,8 @@ namespace TSMapEditor.UI.Windows
             map.AITriggerTypes.Add(aiTrigger);
             ListAITriggers();
             SelectAITrigger(aiTrigger);
+            WindowManager.SelectedControl = tbName;
+            tbName.SetSelection(0, tbName.Text.Length);
         }
 
         private void BtnDelete_LeftClick(object sender, EventArgs e)

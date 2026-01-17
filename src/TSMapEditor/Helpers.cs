@@ -782,5 +782,22 @@ namespace TSMapEditor
 
             return new IniFileEx(defaultPath, fileManager);
         }
+
+        public static string DifficultyToTranslatedString(Difficulty difficulty)
+        {
+            switch (difficulty)
+            {
+                case Difficulty.None:
+                    return Translate("Difficulty.None", "None");
+                case Difficulty.Easy:
+                    return Translate("Difficulty.Easy", "Easy");
+                case Difficulty.Medium:
+                    return Translate("Difficulty.Medium", "Medium");
+                case Difficulty.Hard:
+                    return Translate("Difficulty.Hard", "Hard");
+                default:
+                    throw new NotImplementedException(nameof(DifficultyToTranslatedString) + ": Unknown difficulty level " + difficulty);
+            }
+        }
     }
 }

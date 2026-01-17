@@ -1,4 +1,6 @@
-﻿using Rampastring.XNAUI.XNAControls;
+﻿using Rampastring.XNAUI.Input;
+using Rampastring.XNAUI.XNAControls;
+using System.Collections.Generic;
 using TSMapEditor.UI.Controls;
 
 namespace TSMapEditor.UI
@@ -15,6 +17,39 @@ namespace TSMapEditor.UI
             control.AddChild(lblSearchTips);
             var tooltip = new ToolTip(control.WindowManager, lblSearchTips);
             tooltip.Text = Translate("UIHelpers.AddSearchTipsBoxToControl.SearchTip", "Search Tips\r\n\r\nWith the text box activated:\r\n- Press ENTER to move to next match in list\r\n- Press ESC to clear search query");
+        }
+
+        public static T GetScrollItem<T>(List<T> list, T current, Cursor cursor, bool allowSelectionIfNull)
+        {
+            if (current == null)
+            {
+                if (list.Count > 0 && allowSelectionIfNull)
+                {
+                    return current;
+                }
+
+                return default(T);
+            }
+
+            int index = list.IndexOf(current);
+
+            // Check for possible error condition
+            if (index < 0)
+            {
+                return default(T);
+            }
+
+            if (index > 0 && cursor.ScrollWheelValue > 0)
+            {
+                return list[index - 1];
+            }
+
+            if (index < list.Count - 1 && cursor.ScrollWheelValue < 0)
+            {
+                return list[index + 1];
+            }
+
+            return current;
         }
     }
 }
