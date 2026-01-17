@@ -309,7 +309,7 @@ namespace TSMapEditor.UI.Windows
 
             var dialog = EditorMessageBox.Show(WindowManager,
                 Translate(this, "EnableAIRepairs.Title", "Are you sure?"),
-                Translate(this, "EnableAIRepairs.Description", "This enables the \"AI Repairable\" flag on all buildings of the house, which makes the AI repair them." + Environment.NewLine +
+                Translate(this, "EnableAIRepairs.Description.v2", "This enables the \"AI Repairable\" flag on all buildings of the house, which makes the AI repair them." + Environment.NewLine +
                     "Additionally, this will cause the \"AI Repairable\" flag to be automatically enabled for all buildings you place for this house." + Environment.NewLine + Environment.NewLine +
                     "No un-do is available. Do you wish to continue?"),
                 MessageBoxButtons.YesNo);
@@ -334,7 +334,7 @@ namespace TSMapEditor.UI.Windows
 
             var dialog = EditorMessageBox.Show(WindowManager,
                 Translate(this, "DisableAIRepairs.Title", "Are you sure?"),
-                Translate(this, "DisableAIRepairs.Description", "This disables the \"AI Repairable\" flag on all buildings of the house, which makes the AI NOT repair them." + Environment.NewLine +
+                Translate(this, "DisableAIRepairs.Description.v2", "This disables the \"AI Repairable\" flag on all buildings of the house, which makes the AI NOT repair them." + Environment.NewLine +
                 "Additionally, this will cause the \"AI Repairable\" flag to be automatically disabled for all buildings you place for this house." + Environment.NewLine + Environment.NewLine +
                     "No un-do is available. Do you wish to continue?"),
                 MessageBoxButtons.YesNo);
