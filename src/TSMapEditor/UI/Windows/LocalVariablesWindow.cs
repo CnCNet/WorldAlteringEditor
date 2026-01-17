@@ -67,6 +67,8 @@ namespace TSMapEditor.UI.Windows
             map.LocalVariables.Insert(newIndex, new LocalVariable(newIndex) { Name = Translate(this, "NewLocalVariable", "New Local Variable") });
             ListLocalVariables();
             lbLocalVariables.SelectedIndex = newIndex;
+            WindowManager.SelectedControl = tbName;
+            tbName.SetSelection(0, tbName.Text.Length);
         }
 
         private void BtnDeleteLocalVariable_LeftClick(object sender, EventArgs e)

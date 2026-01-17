@@ -1,5 +1,4 @@
 ﻿using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
@@ -31,6 +30,8 @@ namespace TSMapEditor.UI.Controls
 
         protected bool CanBeMoved { get; set; } = true;
 
+        public bool CenterByDefault { get; set; } = true;
+
         protected bool IsDragged;
         private Point lastCursorPoint;
 
@@ -48,7 +49,10 @@ namespace TSMapEditor.UI.Controls
 
         private void WindowManager_RenderResolutionChanged(object sender, EventArgs e)
         {
-            ConstrainPosition();
+            if (CenterByDefault)
+                CenterOnParent();
+            else
+                ConstrainPosition();
         }
 
         public override void Kill()
@@ -91,7 +95,7 @@ namespace TSMapEditor.UI.Controls
             InteractedWith?.Invoke(this, EventArgs.Empty);
         }
 
-        private void ConstrainPosition()
+        protected void ConstrainPosition()
         {
             if (ScaledWidth > WindowManager.RenderResolutionX)
                 X = (WindowManager.RenderResolutionX - ScaledWidth) / 2;

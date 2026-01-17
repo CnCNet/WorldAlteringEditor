@@ -371,12 +371,10 @@ namespace TSMapEditor.Initialization
                 iniFile.AddSection(enablesSection);
             }
 
-            // Enable local AI triggers that haven't been enabled or disabled
-            // by the user yet
+            // Enable or disable local AI triggers            
             for (int i = 0; i < aiTriggerTypes.Count; i++)
-            {
-                if (!enablesSection.KeyExists(aiTriggerTypes[i].ININame))
-                    enablesSection.SetStringValue(aiTriggerTypes[i].ININame, "yes");
+            {                
+                enablesSection.SetBooleanValue(aiTriggerTypes[i].ININame, aiTriggerTypes[i].Enabled, BooleanStringStyle.YESNO_LOWERCASE);
             }
         }
 

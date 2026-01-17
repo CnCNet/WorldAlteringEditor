@@ -1,4 +1,5 @@
-﻿using TSMapEditor.GameMath;
+﻿using System.Collections.Generic;
+using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations.Classes;
 
@@ -8,7 +9,6 @@ namespace TSMapEditor.UI.CursorActions
     {
         public PlaceSmudgeCursorAction(ICursorActionTarget cursorActionTarget) : base(cursorActionTarget)
         {
-            previewSmudge = new Smudge();
         }
 
         public override string GetName() => Translate("Name", "Place Smudge");
@@ -22,60 +22,93 @@ namespace TSMapEditor.UI.CursorActions
                 if (value != _smudgeType)
                 {
                     _smudgeType = value;
-                    previewSmudge.SmudgeType = value;
-                } 
+                }
             }
         }
 
-        private Smudge cachedSmudge;
-        private Smudge previewSmudge;
+        private List<Smudge> previewSmudges = new List<Smudge>();
+        private List<Smudge> existingSmudges = new List<Smudge>();
 
         public override void PreMapDraw(Point2D cellCoords)
         {
             base.PreMapDraw(cellCoords);
-        
-            var cell = CursorActionTarget.Map.GetTile(cellCoords);
-            if (cell == null)
-                return;
-        
-            previewSmudge.Position = cellCoords;
-            cachedSmudge = cell.Smudge;
-            if (SmudgeType != null)
-                cell.Smudge = previewSmudge;
-            else
-                cell.Smudge = null;
-        
-            CursorActionTarget.AddRefreshPoint(cellCoords, 1);
+
+            Point2D centeredBrushSizeCellCoords = CursorActionTarget.BrushSize.CenterWithinBrush(cellCoords);
+            existingSmudges.Clear();
+
+            int i = 0;
+            CursorActionTarget.BrushSize.DoForBrushSize(offset =>
+            {
+                var cell = CursorActionTarget.Map.GetTile(centeredBrushSizeCellCoords + offset);
+                if (cell == null)
+                    return;
+
+                if (previewSmudges.Count <= i)
+                {
+                    previewSmudges.Add(new Smudge());
+                }
+
+                previewSmudges[i].Position = centeredBrushSizeCellCoords + offset;
+                previewSmudges[i].SmudgeType = SmudgeType;
+                existingSmudges.Add(cell.Smudge);
+
+                if (SmudgeType != null)
+                    cell.Smudge = previewSmudges[i];
+                else
+                    cell.Smudge = null;
+
+                i++;
+            });
+
+            CursorActionTarget.AddRefreshPoint(centeredBrushSizeCellCoords, CursorActionTarget.BrushSize.Max);
         }
         
         public override void PostMapDraw(Point2D cellCoords)
         {
             base.PostMapDraw(cellCoords);
-        
-            var cell = CursorActionTarget.Map.GetTile(cellCoords);
-            if (cell == null)
-                return;
-        
-            cell.Smudge = cachedSmudge;
-            CursorActionTarget.AddRefreshPoint(cellCoords, 1);
+
+            Point2D centeredBrushSizeCellCoords = CursorActionTarget.BrushSize.CenterWithinBrush(cellCoords);
+
+            int i = 0;
+            CursorActionTarget.BrushSize.DoForBrushSize(offset =>
+            {
+                var cell = CursorActionTarget.Map.GetTile(centeredBrushSizeCellCoords + offset);
+                if (cell == null)
+                    return;
+
+                cell.Smudge = existingSmudges[i];
+                i++;
+            });
+
+            CursorActionTarget.AddRefreshPoint(centeredBrushSizeCellCoords, CursorActionTarget.BrushSize.Max);
         }
 
         public override void LeftClick(Point2D cellCoords)
         {
-            var cell = CursorActionTarget.Map.GetTile(cellCoords);
-            if (cell == null)
-                return;
+            Point2D centeredBrushSizeCellCoords = CursorActionTarget.BrushSize.CenterWithinBrush(cellCoords);
 
-            if (cell.Smudge != null && cell.Smudge.SmudgeType == SmudgeType)
+            if (!CursorActionTarget.BrushSize.CheckForBrushSize(offset =>
             {
-                // it's pointless to replace a smudge with another smudge of the same type
+                var cell = CursorActionTarget.Map.GetTile(centeredBrushSizeCellCoords + offset);
+                if (cell == null)
+                    return false;
+
+                if (cell.Smudge != null && cell.Smudge.SmudgeType == SmudgeType)
+                {
+                    // it's pointless to replace a smudge with another smudge of the same type
+                    return false;
+                }
+
+                if (cell.Smudge == null && SmudgeType == null)
+                    return false; // we're in deletion mode when SmudgeType == null, skip if there's nothing to delete
+
+                return true;
+            }))
+            {
                 return;
             }
 
-            if (cell.Smudge == null && SmudgeType == null)
-                return; // we're in deletion mode when SmudgeType == null, skip if there's nothing to delete
-
-            CursorActionTarget.MutationManager.PerformMutation(new PlaceSmudgeMutation(CursorActionTarget.MutationTarget, SmudgeType, cellCoords));
+            CursorActionTarget.MutationManager.PerformMutation(new PlaceSmudgeMutation(CursorActionTarget.MutationTarget, SmudgeType, centeredBrushSizeCellCoords, CursorActionTarget.BrushSize));
         }
 
         public override void LeftDown(Point2D cellCoords) => LeftClick(cellCoords);

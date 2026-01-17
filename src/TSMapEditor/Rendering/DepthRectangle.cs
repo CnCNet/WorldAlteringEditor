@@ -1,4 +1,6 @@
-﻿namespace TSMapEditor.Rendering
+﻿using System;
+
+namespace TSMapEditor.Rendering
 {
     public struct DepthRectangle
     {
@@ -11,10 +13,10 @@
 
         public DepthRectangle(float topLeft, float topRight, float bottomLeft, float bottomRight)
         {
-            TopLeft = topLeft;
-            TopRight = topRight;
-            BottomLeft = bottomLeft;
-            BottomRight = bottomRight;
+            TopLeft = Math.Min(1.0f, topLeft);
+            TopRight = Math.Min(1.0f, topRight);
+            BottomLeft = Math.Min(1.0f, bottomLeft);
+            BottomRight = Math.Min(1.0f, bottomRight);
         }
 
         public DepthRectangle(float top, float bottom) : this(top, top, bottom, bottom) { }

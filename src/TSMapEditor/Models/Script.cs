@@ -42,8 +42,6 @@ namespace TSMapEditor.Models
 
     public class Script : IIDContainer
     {
-        public const int MaxActionCount = 50;
-
         public Script(string iniName)
         {
             ININame = iniName;
@@ -139,14 +137,17 @@ namespace TSMapEditor.Models
             var script = new Script(id);
             script.Name = scriptSection.GetStringValue("Name", string.Empty);
 
-            for (int i = 0; i < MaxActionCount; i++)
+            int i = 0;
+            while (true)
             {
                 if (!scriptSection.KeyExists(i.ToString()))
-                    continue;
+                    break;
 
                 var scriptActionEntry = ScriptActionEntry.ParseScriptActionEntry(scriptSection.GetStringValue(i.ToString(), "-1,-1"));
                 if (scriptActionEntry != null)
                     script.Actions.Add(scriptActionEntry);
+
+                i++;
             }
 
             return script;

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
+using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
 
 namespace TSMapEditor.UI.Windows
@@ -141,6 +142,7 @@ namespace TSMapEditor.UI.Windows
             var tagDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectTagWindow);
             tagDarkeningPanel.Hidden += (s, e) => SelectionWindow_ApplyEffect(w => editedTeamType.Tag = w.SelectedObject, selectTagWindow);
 
+            selTaskForce.MouseScrolled += SelTaskForce_MouseScrolled;
             selTaskForce.LeftClick += (s, e) => 
             {
                 if (editedTeamType == null)
@@ -156,6 +158,7 @@ namespace TSMapEditor.UI.Windows
                 }
             };
 
+            selScript.MouseScrolled += SelScript_MouseScrolled;
             selScript.LeftClick += (s, e) =>
             {
                 if (editedTeamType == null)
@@ -175,6 +178,7 @@ namespace TSMapEditor.UI.Windows
             FindChild<EditorButton>("btnOpenScript").LeftClick += (s, e) => OpenScript();
             FindChild<EditorButton>("btnOpenTag").LeftClick += (s, e) => OpenTag();
 
+            selTag.MouseScrolled += SelTag_MouseScrolled;
             selTag.LeftClick += (s, e) => { if (editedTeamType != null) selectTagWindow.Open(editedTeamType.Tag); };
 
             var sortContextMenu = new EditorContextMenu(WindowManager);
@@ -205,12 +209,48 @@ namespace TSMapEditor.UI.Windows
             map.TeamTypesChanged += Map_TeamTypesChanged;
         }
 
+        private void SelTag_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (editedTeamType == null)
+                return;
+
+            editedTeamType.Tag = UIHelpers.GetScrollItem(map.Tags, editedTeamType.Tag, Cursor, false);
+            EditTeamType(editedTeamType);
+        }
+
+        private void SelScript_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (editedTeamType == null)
+                return;
+
+            editedTeamType.Script = UIHelpers.GetScrollItem(map.Scripts, editedTeamType.Script, Cursor, true);
+            EditTeamType(editedTeamType);
+        }
+
+        private void SelTaskForce_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (editedTeamType == null)
+                return;
+
+            editedTeamType.TaskForce = UIHelpers.GetScrollItem(map.TaskForces, editedTeamType.TaskForce, Cursor, true);
+            EditTeamType(editedTeamType);
+        }
+
         private void Map_TeamTypesChanged(object sender, EventArgs e)
         {
             if (Visible)
             {
-                ListTeamTypes();
-                SelectTeamType(editedTeamType);
+                AddCallback(() =>
+                {
+                    ListTeamTypes();
+                    SelectTeamType(editedTeamType);
+                });
             }
         }
 
@@ -353,15 +393,37 @@ namespace TSMapEditor.UI.Windows
             }
         }
 
+        private TaskForce GetFirstUnusedTaskForce()
+        {
+            for (int i = 0; i < map.TaskForces.Count; i++)
+            {
+                TaskForce taskForce = map.TaskForces[i];
+                if (!map.TeamTypes.Exists(tt => tt.TaskForce == taskForce))
+                    return taskForce;
+            }
+
+            return null;
+        }
+
         private void BtnNewTeamType_LeftClick(object sender, EventArgs e)
         {
             map.TeamTypesChanged -= Map_TeamTypesChanged;
 
             var teamType = new TeamType(map.GetNewUniqueInternalId()) { Name = "New TeamType" };
+
+            if (UserSettings.Instance.SmartScriptActionDefaultValues)
+            {
+                teamType.TaskForce = GetFirstUnusedTaskForce();
+                if (teamType.TaskForce == null && map.TaskForces.Count > 0)
+                    teamType.TaskForce = map.TaskForces[map.TaskForces.Count - 1];
+            }
+
             map.EditorConfig.TeamTypeFlags.ForEach(flag => { if (flag.DefaultValue) teamType.EnableFlag(flag.Name); });
             map.AddTeamType(teamType);
             ListTeamTypes();
             SelectTeamType(teamType);
+            WindowManager.SelectedControl = tbName;
+            tbName.SetSelection(0, tbName.Text.Length);
 
             map.TeamTypesChanged += Map_TeamTypesChanged;
         }

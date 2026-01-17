@@ -145,6 +145,7 @@ namespace TSMapEditor.UI
 
         private Point lastClickedPoint;
         private Point pressedDownPoint;
+        private MapTile pressedDownTile;
 
         /// <summary>
         /// Records whether the mouse was on the map UI when the left mouse button was pressed down.
@@ -405,14 +406,17 @@ namespace TSMapEditor.UI
             if (Cursor.LeftPressedDown)
             {
                 pressedDownPoint = cursorPoint;
+                pressedDownTile = tileUnderCursor;
             }
             else if (!Cursor.LeftDown)
             {
                 pressedDownPoint = new Point(-1, -1);
+                pressedDownTile = null;
             }
 
-            // Attempt dragging or rotating an object
-            if (CursorAction == null && tileUnderCursor != null && Cursor.LeftDown && !isDraggingObject && !isRotatingObject && cursorPoint != pressedDownPoint)
+            // Attempt dragging or rotating an object.
+            // To avoid accidental dragging, this requires the cursor to move within the cell that the left mouse button was first pressed down on.
+            if (CursorAction == null && tileUnderCursor != null && tileUnderCursor == pressedDownTile && Cursor.LeftDown && !isDraggingObject && !isRotatingObject && cursorPoint != pressedDownPoint)
             {
                 var tilePosition = GetRelativeTilePositionFromCursorPosition(tileUnderCursor);
                 var cellObject = tileUnderCursor.GetObject(tilePosition);

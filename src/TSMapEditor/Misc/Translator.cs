@@ -235,19 +235,24 @@ namespace TSMapEditor.Misc
             if (iniFile != null)
             {
                 var translationsSection = iniFile.GetSectionKeys("Translations");
-                foreach (var key in translationsSection)
+
+                if (translationsSection != null)
                 {
-                    var translationSectionName = iniFile.GetStringValue("Translations", key, string.Empty);
-                    if (string.IsNullOrWhiteSpace(translationSectionName))
-                        continue;
+                    foreach (var key in translationsSection)
+                    {
+                        var translationSectionName = iniFile.GetStringValue("Translations", key, string.Empty);
+                        if (string.IsNullOrWhiteSpace(translationSectionName))
+                            continue;
 
-                    var iniSection = iniFile.GetSection(translationSectionName);
+                        var iniSection = iniFile.GetSection(translationSectionName);
 
-                    var translation = new Translation(iniSection, Translations.Count);
-                    AddTranslation(translation);
+                        var translation = new Translation(iniSection, Translations.Count);
+                        AddTranslation(translation);
+                    }
                 }
             }
-            else
+
+            if (Translations.Count == 0)
             {
                 var englishTranslation = new Translation("English", "en", "English", Translations.Count, true);
                 AddTranslation(englishTranslation);

@@ -44,6 +44,7 @@ namespace TSMapEditor.UI.Windows
         private EditorTextBox tbName;
         private XNADropDown ddSide;
         private XNADropDown ddHouseType;
+        private XNACheckBox chkEnabled;
         private XNADropDown ddConditionType;
         private XNADropDown ddComparator;
         private EditorNumberTextBox tbQuantity;
@@ -86,6 +87,7 @@ namespace TSMapEditor.UI.Windows
             tbName = FindChild<EditorTextBox>(nameof(tbName));
             ddSide = FindChild<XNADropDown>(nameof(ddSide));
             ddHouseType = FindChild<XNADropDown>(nameof(ddHouseType));
+            chkEnabled = FindChild<XNACheckBox>(nameof(chkEnabled));
             ddConditionType = FindChild<XNADropDown>(nameof(ddConditionType));
             ddComparator = FindChild<XNADropDown>(nameof(ddComparator));
             tbQuantity = FindChild<EditorNumberTextBox>(nameof(tbQuantity));
@@ -101,6 +103,9 @@ namespace TSMapEditor.UI.Windows
 
             tbFilter = FindChild<EditorSuggestionTextBox>(nameof(tbFilter));
             tbFilter.TextChanged += TbFilter_TextChanged;
+
+            selPrimaryTeam.MouseScrolled += SelPrimaryTeam_MouseScrolled;
+            selSecondaryTeam.MouseScrolled += SelSecondaryTeam_MouseScrolled;
 
             FindChild<EditorButton>("btnNew").LeftClick += BtnNew_LeftClick;
             FindChild<EditorButton>("btnDelete").LeftClick += BtnDelete_LeftClick;
@@ -136,6 +141,28 @@ namespace TSMapEditor.UI.Windows
             FindChild<EditorButton>("btnSortOptions").LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
 
             lbAITriggers.SelectedIndexChanged += LbAITriggers_SelectedIndexChanged;
+        }
+
+        private void SelSecondaryTeam_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (editedAITrigger == null)
+                return;
+
+            editedAITrigger.SecondaryTeam = UIHelpers.GetScrollItem(map.TeamTypes, editedAITrigger.SecondaryTeam, Cursor, false);
+            EditAITrigger(editedAITrigger);
+        }
+
+        private void SelPrimaryTeam_MouseScrolled(object sender, InputEventArgs e)
+        {
+            e.Handled = true;
+
+            if (editedAITrigger == null)
+                return;
+
+            editedAITrigger.PrimaryTeam = UIHelpers.GetScrollItem(map.TeamTypes, editedAITrigger.PrimaryTeam, Cursor, false);
+            EditAITrigger(editedAITrigger);
         }
 
         private void CloneForEasierDifficulties()
@@ -287,6 +314,8 @@ namespace TSMapEditor.UI.Windows
             map.AITriggerTypes.Add(aiTrigger);
             ListAITriggers();
             SelectAITrigger(aiTrigger);
+            WindowManager.SelectedControl = tbName;
+            tbName.SetSelection(0, tbName.Text.Length);
         }
 
         private void BtnDelete_LeftClick(object sender, EventArgs e)
@@ -358,6 +387,7 @@ namespace TSMapEditor.UI.Windows
             tbName.TextChanged -= TbName_TextChanged;
             ddSide.SelectedIndexChanged -= DdSide_SelectedIndexChanged;
             ddHouseType.SelectedIndexChanged -= DdHouse_SelectedIndexChanged;
+            chkEnabled.CheckedChanged -= chkEnabled_CheckedChanged;
             ddConditionType.SelectedIndexChanged -= DdConditionType_SelectedIndexChanged;
             ddComparator.SelectedIndexChanged -= DdComparator_SelectedIndexChanged;
             tbQuantity.TextChanged -= TbQuantity_TextChanged;
@@ -378,6 +408,7 @@ namespace TSMapEditor.UI.Windows
                 tbName.Text = string.Empty;
                 ddSide.SelectedIndex = -1;
                 ddHouseType.SelectedIndex = -1;
+                chkEnabled.Checked = false;
                 ddConditionType.SelectedIndex = -1;
                 ddComparator.SelectedIndex = -1;
                 tbQuantity.Text = string.Empty;
@@ -399,6 +430,7 @@ namespace TSMapEditor.UI.Windows
             tbName.Text = editedAITrigger.Name;
             ddSide.SelectedIndex = editedAITrigger.Side < ddSide.Items.Count ? editedAITrigger.Side : 0;
             ddHouseType.SelectedIndex = ddHouseType.Items.FindIndex(ddi => ddi.Text == editedAITrigger.OwnerName);
+            chkEnabled.Checked = editedAITrigger.Enabled;
             ddConditionType.SelectedIndex = ((int)aiTriggerType.ConditionType + 1);
             ddComparator.SelectedIndex = (int)aiTriggerType.Comparator.ComparatorOperator;
             tbQuantity.Value = aiTriggerType.Comparator.Quantity;
@@ -418,6 +450,7 @@ namespace TSMapEditor.UI.Windows
             tbName.TextChanged += TbName_TextChanged;
             ddSide.SelectedIndexChanged += DdSide_SelectedIndexChanged;
             ddHouseType.SelectedIndexChanged += DdHouse_SelectedIndexChanged;
+            chkEnabled.CheckedChanged += chkEnabled_CheckedChanged;
             ddConditionType.SelectedIndexChanged += DdConditionType_SelectedIndexChanged;
             ddComparator.SelectedIndexChanged += DdComparator_SelectedIndexChanged;
             tbQuantity.TextChanged += TbQuantity_TextChanged;
@@ -512,6 +545,11 @@ namespace TSMapEditor.UI.Windows
         private void ChkEnabledOnHard_CheckedChanged(object sender, EventArgs e)
         {
             editedAITrigger.Hard = chkEnabledOnHard.Checked;
+        }
+
+        private void chkEnabled_CheckedChanged(object sender, EventArgs e)
+        {
+            editedAITrigger.Enabled = chkEnabled.Checked;
         }
 
         public void Open()

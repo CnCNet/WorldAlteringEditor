@@ -67,7 +67,6 @@ namespace TSMapEditor.UI.Windows
             AddChild(infoPanel);
 
             EnabledChanged += SelectObjectWindow_EnabledChanged;
-            WindowManager.WindowSizeChangedByUser += WindowManager_WindowSizeChangedByUser;
         }
 
         private void ConfirmSelection()
@@ -79,15 +78,9 @@ namespace TSMapEditor.UI.Windows
             }
         }
 
-        private void WindowManager_WindowSizeChangedByUser(object sender, EventArgs e)
-        {
-            RefreshLayout();
-        }
-
         public override void Kill()
         {
             Keyboard.OnKeyDown -= Keyboard_OnKeyDown;
-            WindowManager.WindowSizeChangedByUser -= WindowManager_WindowSizeChangedByUser;
             base.Kill();
         }
 

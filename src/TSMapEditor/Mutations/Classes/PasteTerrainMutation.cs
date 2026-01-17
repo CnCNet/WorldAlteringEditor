@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.UI;
@@ -40,8 +39,6 @@ namespace TSMapEditor.Mutations.Classes
         public Point2D Offset { get; protected set; }
         public abstract CopiedEntryType EntryType { get; }
 
-        private byte[] buffer;
-
         protected CopiedMapEntry()
         {
         }
@@ -51,55 +48,16 @@ namespace TSMapEditor.Mutations.Classes
             Offset = offset;
         }
 
-        protected int ReadInt(Stream stream)
-        {
-            if (stream.Read(buffer, 0, 4) != 4)
-                throw new CopiedMapDataSerializationException("Failed to read integer from stream: end of stream");
-
-            return BitConverter.ToInt32(buffer, 0);
-        }
-
-        protected long ReadLong(Stream stream)
-        {
-            if (stream.Read(buffer, 0, 8) != 8)
-                throw new CopiedMapDataSerializationException("Failed to read integer from stream: end of stream");
-
-            return BitConverter.ToInt64(buffer, 0);
-        }
-
-        protected string ReadASCIIString(Stream stream)
-        {
-            int length = ReadInt(stream);
-            byte[] stringBuffer = new byte[length];
-            if (stream.Read(stringBuffer, 0, length) != length)
-                throw new CopiedMapDataSerializationException("Failed to read string from stream: end of stream");
-
-            string result = Encoding.ASCII.GetString(stringBuffer);
-            return result;
-        }
-
-        protected byte[] ASCIIStringToBytes(string str)
-        {
-            byte[] buffer = new byte[sizeof(int) + str.Length];
-            Array.Copy(BitConverter.GetBytes(str.Length), buffer, sizeof(int));
-            byte[] stringBytes = Encoding.ASCII.GetBytes(str);
-            Array.Copy(stringBytes, 0, buffer, sizeof(int), stringBytes.Length);
-            return buffer;
-        }
-
         /// <summary>
         /// Reads all of the map entry's data from a stream.
         /// </summary>
         /// <param name="stream">The stream to read the data from.</param>
         public void ReadData(Stream stream)
         {
-            buffer = new byte[8];
-
-            int x = ReadInt(stream);
-            int y = ReadInt(stream);
+            int x = StreamHelpers.ReadInt(stream);
+            int y = StreamHelpers.ReadInt(stream);
             Offset = new Point2D(x, y);
             ReadCustomData(stream);
-            buffer = null; // Free memory
         }
 
         /// <summary>
@@ -159,7 +117,7 @@ namespace TSMapEditor.Mutations.Classes
 
         protected override void ReadCustomData(Stream stream)
         {
-            TileIndex = ReadInt(stream);
+            TileIndex = StreamHelpers.ReadInt(stream);
             SubTileIndex = (byte)stream.ReadByte();
             HeightOffset = (byte)stream.ReadByte();
         }
@@ -184,7 +142,7 @@ namespace TSMapEditor.Mutations.Classes
 
         protected override byte[] GetCustomData()
         {
-            byte[] nameBytes = ASCIIStringToBytes(OverlayTypeName);
+            byte[] nameBytes = StreamHelpers.ASCIIStringToBytes(OverlayTypeName);
             byte[] buffer = new byte[ nameBytes.Length + sizeof(int)];
             Array.Copy(nameBytes, buffer, nameBytes.Length);
             Array.Copy(BitConverter.GetBytes(FrameIndex), 0, buffer, nameBytes.Length, sizeof(int));
@@ -193,8 +151,8 @@ namespace TSMapEditor.Mutations.Classes
 
         protected override void ReadCustomData(Stream stream)
         {
-            OverlayTypeName = ReadASCIIString(stream);
-            FrameIndex = ReadInt(stream);
+            OverlayTypeName = StreamHelpers.ReadASCIIString(stream);
+            FrameIndex = StreamHelpers.ReadInt(stream);
         }
     }
 
@@ -215,13 +173,13 @@ namespace TSMapEditor.Mutations.Classes
 
         protected override byte[] GetCustomData()
         {
-            byte[] nameBytes = ASCIIStringToBytes(SmudgeTypeName);
+            byte[] nameBytes = StreamHelpers.ASCIIStringToBytes(SmudgeTypeName);
             return nameBytes;
         }
 
         protected override void ReadCustomData(Stream stream)
         {
-            SmudgeTypeName = ReadASCIIString(stream);
+            SmudgeTypeName = StreamHelpers.ReadASCIIString(stream);
         }
     }
 
@@ -240,12 +198,12 @@ namespace TSMapEditor.Mutations.Classes
 
         protected override byte[] GetCustomData()
         {
-            return ASCIIStringToBytes(ObjectTypeName);
+            return StreamHelpers.ASCIIStringToBytes(ObjectTypeName);
         }
 
         protected override void ReadCustomData(Stream stream)
         {
-            ObjectTypeName = ReadASCIIString(stream);
+            ObjectTypeName = StreamHelpers.ReadASCIIString(stream);
         }
     }
 
@@ -285,9 +243,9 @@ namespace TSMapEditor.Mutations.Classes
 
         protected override byte[] GetCustomData()
         {
-            byte[] objectTypeBuffer = ASCIIStringToBytes(ObjectTypeName);
-            byte[] ownerBuffer = ASCIIStringToBytes(OwnerHouseName);
-            byte[] missionBuffer = ASCIIStringToBytes(Mission);
+            byte[] objectTypeBuffer = StreamHelpers.ASCIIStringToBytes(ObjectTypeName);
+            byte[] ownerBuffer = StreamHelpers.ASCIIStringToBytes(OwnerHouseName);
+            byte[] missionBuffer = StreamHelpers.ASCIIStringToBytes(Mission);
             byte[] result = new byte[sizeof(int) + sizeof(int) + 1 + objectTypeBuffer.Length + ownerBuffer.Length + missionBuffer.Length];
             Array.Copy(BitConverter.GetBytes(HP), 0, result, 0, sizeof(int));
             Array.Copy(BitConverter.GetBytes(Veterancy), 0, result, sizeof(int), sizeof(int));
@@ -300,12 +258,12 @@ namespace TSMapEditor.Mutations.Classes
 
         protected override void ReadCustomData(Stream stream)
         {
-            HP = ReadInt(stream);
-            Veterancy = ReadInt(stream);
+            HP = StreamHelpers.ReadInt(stream);
+            Veterancy = StreamHelpers.ReadInt(stream);
             Facing = (byte)stream.ReadByte();
-            ObjectTypeName = ReadASCIIString(stream);
-            OwnerHouseName = ReadASCIIString(stream);
-            Mission = ReadASCIIString(stream);
+            ObjectTypeName = StreamHelpers.ReadASCIIString(stream);
+            OwnerHouseName = StreamHelpers.ReadASCIIString(stream);
+            Mission = StreamHelpers.ReadASCIIString(stream);
         }
     }
 
@@ -362,7 +320,7 @@ namespace TSMapEditor.Mutations.Classes
         protected override void ReadCustomData(Stream stream)
         {
             base.ReadCustomData(stream);
-            SubCell = (SubCell)ReadInt(stream);
+            SubCell = (SubCell)StreamHelpers.ReadInt(stream);
         }
     }
 
@@ -379,11 +337,11 @@ namespace TSMapEditor.Mutations.Classes
 
             using (var memoryStream = new MemoryStream())
             {
-                memoryStream.Write(BitConverter.GetBytes(Width));
-                memoryStream.Write(BitConverter.GetBytes(Height));
+                StreamHelpers.WriteUShort(memoryStream, Width);
+                StreamHelpers.WriteUShort(memoryStream, Height);
 
                 // Write entry count
-                memoryStream.Write(BitConverter.GetBytes(CopiedMapEntries.Count));
+                StreamHelpers.WriteInt(memoryStream, CopiedMapEntries.Count);
 
                 // Write entries
                 foreach (var entry in CopiedMapEntries)

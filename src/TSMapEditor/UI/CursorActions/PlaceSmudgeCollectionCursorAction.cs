@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations.Classes;
@@ -13,9 +14,6 @@ namespace TSMapEditor.UI.CursorActions
 
         public override string GetName() => Translate("Name", "Place Smudge Collection");
 
-        private Smudge oldSmudge;
-        private Smudge smudge;
-
         private SmudgeCollection _smudgeCollection;
         public SmudgeCollection SmudgeCollection
         {
@@ -28,44 +26,71 @@ namespace TSMapEditor.UI.CursorActions
                 }
 
                 _smudgeCollection = value;
-                smudge = new Smudge { SmudgeType = _smudgeCollection.Entries[0].SmudgeType };
             }
         }
 
+        private List<Smudge> previewSmudges = new List<Smudge>();
+        private List<Smudge> existingSmudges = new List<Smudge>();
+
         public override void PreMapDraw(Point2D cellCoords)
         {
-            var cell = CursorActionTarget.Map.GetTile(cellCoords);
+            Point2D centeredBrushSizeCellCoords = CursorActionTarget.BrushSize.CenterWithinBrush(cellCoords);
+            existingSmudges.Clear();
 
-            // "Randomize" the smudge image, it makes it clearer that we're placing down one from a collection.
-            // If we used actual RNG here we'd need to avoid doing it every frame to avoid a constantly
-            // changing smudge even when the cursor is still. Using cell numbers gives the intended
-            // effect without pointless flickering.
-            int cellnum = cellCoords.X + cellCoords.Y;
-            int smudgeNumber = cellnum % SmudgeCollection.Entries.Length;
-            smudge.SmudgeType = SmudgeCollection.Entries[smudgeNumber].SmudgeType;
+            int i = 0;
+            CursorActionTarget.BrushSize.DoForBrushSize(offset =>
+            {
+                var cell = CursorActionTarget.Map.GetTile(centeredBrushSizeCellCoords + offset);
+                if (cell == null)
+                    return;
 
-            oldSmudge = cell.Smudge;
+                if (previewSmudges.Count <= i)
+                {
+                    previewSmudges.Add(new Smudge());
+                }
 
-            smudge.Position = cell.CoordsToPoint();
-            cell.Smudge = smudge;
+                // "Randomize" the smudge image, it makes it clearer that we're placing down one from a collection.
+                // If we used actual RNG here we'd need to avoid doing it every frame to avoid a constantly
+                // changing smudge even when the cursor is still. Using cell numbers gives the intended
+                // effect without pointless flickering.
+                int cellnum = cell.X + cell.Y;
+                int smudgeNumber = cellnum % SmudgeCollection.Entries.Length;
+                previewSmudges[i].SmudgeType = SmudgeCollection.Entries[smudgeNumber].SmudgeType;
+                previewSmudges[i].Position = cell.CoordsToPoint();
+                existingSmudges.Add(cell.Smudge);
 
-            CursorActionTarget.AddRefreshPoint(cellCoords);
+                cell.Smudge = previewSmudges[i];
+
+                i++;
+            });
+
+            CursorActionTarget.AddRefreshPoint(centeredBrushSizeCellCoords, MutationTarget.BrushSize.Max);
         }
 
         public override void PostMapDraw(Point2D cellCoords)
         {
-            var cell = CursorActionTarget.Map.GetTile(cellCoords);
-            if (cell.Smudge == smudge)
-            {
-                cell.Smudge = oldSmudge;
-            }
+            base.PostMapDraw(cellCoords);
 
-            CursorActionTarget.AddRefreshPoint(cellCoords);
+            Point2D centeredBrushSizeCellCoords = CursorActionTarget.BrushSize.CenterWithinBrush(cellCoords);
+
+            int i = 0;
+            CursorActionTarget.BrushSize.DoForBrushSize(offset =>
+            {
+                var cell = CursorActionTarget.Map.GetTile(centeredBrushSizeCellCoords + offset);
+                if (cell == null)
+                    return;
+
+                cell.Smudge = existingSmudges[i];
+                i++;
+            });
+
+            CursorActionTarget.AddRefreshPoint(centeredBrushSizeCellCoords, CursorActionTarget.BrushSize.Max);
         }
 
         public override void LeftDown(Point2D cellCoords)
         {
-            var mutation = new PlaceSmudgeCollectionMutation(CursorActionTarget.MutationTarget, SmudgeCollection, cellCoords);
+            Point2D centeredBrushSizeCellCoords = CursorActionTarget.BrushSize.CenterWithinBrush(cellCoords);
+            var mutation = new PlaceSmudgeCollectionMutation(CursorActionTarget.MutationTarget, SmudgeCollection, centeredBrushSizeCellCoords, MutationTarget.BrushSize);
             CursorActionTarget.MutationManager.PerformMutation(mutation);
         }
 

@@ -98,6 +98,7 @@ namespace TSMapEditor.UI
 
             // We should be the first control to subscribe to this event
             WindowManager.WindowSizeChangedByUser += WindowManager_WindowSizeChangedByUser;
+            WindowManager.RenderResolutionChanged += WindowManager_RenderResolutionChanged;
 
             InitTheme();
 
@@ -283,6 +284,12 @@ namespace TSMapEditor.UI
             }
         }
 
+        private void WindowManager_RenderResolutionChanged(object sender, EventArgs e)
+        {
+            Width = WindowManager.RenderResolutionX;
+            Height = WindowManager.RenderResolutionY;
+        }
+
         private void RefreshRenderResolution()
         {
             if (Game.Window.ClientBounds.Width == 0 || Game.Window.ClientBounds.Height == 0)
@@ -294,9 +301,10 @@ namespace TSMapEditor.UI
             if (newRenderWidth != WindowManager.RenderResolutionX || newRenderHeight != WindowManager.RenderResolutionY)
             {
                 WindowManager.SetRenderResolution(newRenderWidth, newRenderHeight);
+                // Done by event-handling code in WindowManager_RenderResolutionChanged
+                // Width = WindowManager.RenderResolutionX;
+                // Height = WindowManager.RenderResolutionY;
                 RenderResolutionChanged?.Invoke(this, EventArgs.Empty);
-                Width = WindowManager.RenderResolutionX;
-                Height = WindowManager.RenderResolutionY;
 
                 Parser.Instance.RefreshResolutionConstants(WindowManager);
                 SetNotificationManagerSizeAndPosition();
@@ -513,6 +521,7 @@ namespace TSMapEditor.UI
 
             WindowManager.GameClosing -= WindowManager_GameClosing;
             WindowManager.WindowSizeChangedByUser -= WindowManager_WindowSizeChangedByUser;
+            WindowManager.RenderResolutionChanged -= WindowManager_RenderResolutionChanged;
             KeyboardCommands.Instance.ToggleFullscreen.Triggered -= ToggleFullscreen_Triggered;
 
             Disable();

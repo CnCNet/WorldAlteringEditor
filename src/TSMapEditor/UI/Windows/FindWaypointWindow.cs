@@ -32,6 +32,7 @@ namespace TSMapEditor.UI.Windows
         {
             tbWaypoint.Text = string.Empty;
             Show();
+            WindowManager.SelectedControl = tbWaypoint;
         }
 
         private void BtnFind_LeftClick(object sender, EventArgs e)

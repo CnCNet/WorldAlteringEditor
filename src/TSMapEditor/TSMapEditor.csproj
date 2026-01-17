@@ -29,12 +29,14 @@
     <Compile Remove="Config\Scripts\Activate Assign Mission Cursor Action.cs" />
     <Compile Remove="Config\Scripts\Apply Animated Water.cs" />
     <Compile Remove="Config\Scripts\Disable All Debug Triggers.cs" />
+    <Compile Remove="Config\Scripts\List Unused Scripting Elements.cs" />
     <Compile Remove="Config\Scripts\Make Civilian Vehicles Sleep.cs" />
     <Compile Remove="Config\Scripts\Remove All Terrain Objects.cs" />
     <Compile Remove="Config\Scripts\Replace Autumn Grass With Tall Grass.cs" />
     <Compile Remove="Config\Scripts\Replace Autumn Jungle Grass With Summer Grass.cs" />
     <Compile Remove="Config\Scripts\Replace Autumn Trees With Summer Trees.cs" />
     <Compile Remove="Config\Scripts\Replace Frost With Clear.cs" />
+    <Compile Remove="Config\Scripts\Set Map Difficulty Settings.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Config\DefaultSettings.ini">
@@ -512,6 +514,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Config\Scripts\Disable All Debug Triggers.cs" />
+    <None Include="Config\Scripts\List Unused Scripting Elements.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="Config\Scripts\Make Civilian Vehicles Sleep.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -528,6 +533,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Config\Scripts\Replace Frost With Clear.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Config\Scripts\Set Map Difficulty Settings.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

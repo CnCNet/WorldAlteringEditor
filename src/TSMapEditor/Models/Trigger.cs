@@ -2,6 +2,8 @@
 using Rampastring.Tools;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Windows.Forms;
 using TSMapEditor.CCEngine;
 using TSMapEditor.Misc;
 using TSMapEditor.Models.Enums;
@@ -255,6 +257,101 @@ namespace TSMapEditor.Models
                 Normal = Conversions.BooleanFromString(parts[5], true),
                 Hard = Conversions.BooleanFromString(parts[6], true),
             };
+        }
+
+        public void Serialize(MemoryStream memoryStream)
+        {
+            StreamHelpers.WriteUnicodeString(memoryStream, HouseType);
+            StreamHelpers.WriteUnicodeString(memoryStream, Name);
+
+            StreamHelpers.WriteBool(memoryStream, Disabled);
+            StreamHelpers.WriteBool(memoryStream, Easy);
+            StreamHelpers.WriteBool(memoryStream, Normal);
+            StreamHelpers.WriteBool(memoryStream, Hard);
+
+            StreamHelpers.WriteUnicodeString(memoryStream, EditorColor);
+
+            StreamHelpers.WriteInt(memoryStream, Conditions.Count);
+            foreach (var condition in Conditions)
+            {
+                condition.Serialize(memoryStream);
+            }
+
+            StreamHelpers.WriteInt(memoryStream, Actions.Count);
+            foreach (var action in Actions)
+            {
+                action.Serialize(memoryStream);
+            }
+        }
+
+        public void Deserialize(MemoryStream memoryStream)
+        {
+            HouseType = StreamHelpers.ReadUnicodeString(memoryStream);
+            Name = StreamHelpers.ReadUnicodeString(memoryStream);                        
+            
+            Disabled = StreamHelpers.ReadBool(memoryStream);
+            Easy = StreamHelpers.ReadBool(memoryStream);
+            Normal = StreamHelpers.ReadBool(memoryStream);
+            Hard = StreamHelpers.ReadBool(memoryStream);
+
+            EditorColor = StreamHelpers.ReadUnicodeString(memoryStream);            
+            
+            int conditionCount = StreamHelpers.ReadInt(memoryStream);
+            Conditions = new List<TriggerCondition>(conditionCount);
+            for (int i = 0; i < conditionCount; i++)
+            {
+                var condition = new TriggerCondition();
+                condition.Deserialize(memoryStream);
+                Conditions.Add(condition);
+            }
+
+            int actionCount = StreamHelpers.ReadInt(memoryStream);
+            Actions = new List<TriggerAction>(actionCount);
+            for (int i = 0; i < actionCount; i++)
+            {
+                var action = new TriggerAction();
+                action.Deserialize(memoryStream);
+                Actions.Add(action);
+            }
+        }
+
+        public static void CopyToClipboard(Trigger trigger, Tag tag)
+        {
+            if (trigger == null || tag == null)
+                return;
+
+            byte[] bytes;
+            using var memoryStream = new MemoryStream();
+
+            trigger.Serialize(memoryStream);
+            tag.Serialize(memoryStream);
+
+            bytes = memoryStream.ToArray();
+            Clipboard.SetData(Constants.ClipboardTriggerFormatValue, bytes);
+        }
+
+        public static (Trigger, Tag) GetTriggerAndTagFromClipboard(Map map)
+        {
+            if (!HasTriggerInClipboard())
+                return (null, null);
+
+            var bytes = (byte[])Clipboard.GetData(Constants.ClipboardTriggerFormatValue);
+            using var memoryStream = new MemoryStream(bytes);
+
+            var trigger = new Trigger(map.GetNewUniqueInternalId());
+            trigger.Deserialize(memoryStream);
+
+            var tag = new Tag();
+            tag.ID = map.GetNewUniqueInternalId();
+            tag.Deserialize(memoryStream);
+            tag.Trigger = trigger;
+
+            return (trigger, tag);
+        }
+
+        public static bool HasTriggerInClipboard()
+        {
+            return Clipboard.ContainsData(Constants.ClipboardTriggerFormatValue);
         }
     }
 }

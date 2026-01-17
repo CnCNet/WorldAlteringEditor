@@ -1,5 +1,6 @@
 ﻿using Rampastring.Tools;
 using System;
+using System.IO;
 using TSMapEditor.CCEngine;
 
 namespace TSMapEditor.Models
@@ -25,6 +26,8 @@ namespace TSMapEditor.Models
 
         public TriggerCondition(TriggerEventType triggerEventType)
         {
+            ConditionIndex = triggerEventType.ID;
+
             for (int i = 0; i < Parameters.Length; i++)
             {
                 if (i < DEF_PARAM_COUNT)
@@ -87,6 +90,26 @@ namespace TSMapEditor.Models
                 return null;
 
             return triggerCondition;
+        }
+
+        public void Serialize(MemoryStream memoryStream)
+        {
+            StreamHelpers.WriteInt(memoryStream, ConditionIndex);
+
+            foreach (var parameter in Parameters)
+            {
+                StreamHelpers.WriteUnicodeString(memoryStream, parameter);
+            }
+        }
+
+        public void Deserialize(MemoryStream memoryStream)
+        {   
+            ConditionIndex = StreamHelpers.ReadInt(memoryStream);
+
+            for (int i = 0; i < Parameters.Length; i++)
+            {
+                Parameters[i] = StreamHelpers.ReadUnicodeString(memoryStream);
+            }
         }
     }
 }

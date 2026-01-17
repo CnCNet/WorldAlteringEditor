@@ -396,40 +396,32 @@ namespace TSMapEditor.Initialization
 
                 FindAttachedTag(map, building, attachedTag);
 
-                bool isClear = true;
+                bool isClear = false;
 
                 void CheckFoundationCell(Point2D cellCoords)
                 {
-                    if (!isClear)
-                        return;
-
                     var tile = map.GetTile(cellCoords);
-                    if (tile == null)
+                    if (tile != null)
                     {
-                        isClear = false;
-                        AddMapLoadError(string.Format(Translate("MapLoader.CheckFoundationCell.TileOutOfBounds", 
-                            "Building {0} has been placed outside of the map at {1}. Skipping adding it to map."),
-                            buildingType.ININame, cellCoords));
-                        return;
-                    }
-
-                    if (tile.Structures.Count > 0)
-                    {
-                        Logger.Log($"NOTE: Building {buildingType.ININame} exists in the cell at {cellCoords} that already contains other buildings: {string.Join(", ", tile.Structures.Select(s => s.ObjectType.ININame))}");
+                        isClear = true;
+                        tile.Structures.Add(building);
                     }
                 }
 
+                // Go through foundation cells and register the building to all tiles that are valid on its foundation.
+                // If the building was added to no cells (all cells on its foundation were nonexistent),
+                // then the building is outside of the map and we should not consider it as belonging to the map.
                 buildingType.ArtConfig.DoForFoundationCoordsOrOrigin(offset => CheckFoundationCell(building.Position + offset));
 
                 if (!isClear)
+                {
+                    AddMapLoadError(string.Format(Translate("MapLoader.CheckFoundationCell.TileOutOfBounds",
+                        "Building {0} has been placed outside of the map at {1}. Skipping adding it to map."),
+                        buildingType.ININame, building.Position));
                     continue;
+                }
 
                 map.Structures.Add(building);
-                buildingType.ArtConfig.DoForFoundationCoordsOrOrigin(offset =>
-                {
-                    var tile = map.GetTile(building.Position + offset);
-                    tile.Structures.Add(building);
-                });
 
                 building.LightTiles(map.Tiles);
             }
@@ -1099,6 +1091,23 @@ namespace TSMapEditor.Initialization
             }
 
             Logger.Log("AITriggerTypes read successfully.");
+
+            section = mapIni.GetSection("AITriggerTypesEnable");
+            if (section == null)
+                return;
+
+            foreach (var kvp in section.Keys)
+            {
+                string aiTriggerININame = kvp.Key;
+
+                var aiTrigger = map.AITriggerTypes.Find(aiTriggerType => aiTriggerType.ININame == aiTriggerININame);
+                if (aiTrigger == null)
+                    continue;
+
+                aiTrigger.Enabled = Conversions.BooleanFromString(kvp.Value, aiTrigger.Enabled);
+            }
+
+            Logger.Log("AITriggerTypesEnable read successfully.");
         }
 
         public static void ReadHouseTypes(IMap map, IniFile mapIni)

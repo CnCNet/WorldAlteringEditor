@@ -59,14 +59,14 @@ namespace TSMapEditor.UI.Windows
 
             int waypointNumber = tbWaypointNumber.Value;
 
-            PlaceWaypoint(waypointNumber, cellCoords);
-            Hide();
+            if (PlaceWaypoint(waypointNumber, cellCoords))
+                Hide();
         }
 
-        public void PlaceWaypoint(int waypointNumber, Point2D cellCoords)
+        public bool PlaceWaypoint(int waypointNumber, Point2D cellCoords)
         {
             if (waypointNumber < 0 || waypointNumber >= Constants.MaxWaypoint)
-                return;
+                return false;
 
             if (map.Waypoints.Exists(w => w.Identifier == waypointNumber))
             {
@@ -76,12 +76,13 @@ namespace TSMapEditor.UI.Windows
                         "A waypoint with the given number {0} already exists on the map!"), waypointNumber),
                     MessageBoxButtons.OK);
 
-                return;
+                return false;
             }
 
             string waypointColor = ddWaypointColor.SelectedItem != null ? ddWaypointColor.SelectedItem.Text : null;
 
             mutationManager.PerformMutation(new PlaceWaypointMutation(mutationTarget, cellCoords, waypointNumber, waypointColor));
+            return true;
         }
 
         public void Open(Point2D cellCoords)

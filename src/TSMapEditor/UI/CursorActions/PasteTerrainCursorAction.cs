@@ -8,7 +8,8 @@ using TSMapEditor.Mutations.Classes;
 using Rampastring.XNAUI;
 using Microsoft.Xna.Framework;
 using System.Linq;
-using TSMapEditor.UI.Controls;
+using System.IO;
+using TSMapEditor.UI.Windows;
 
 namespace TSMapEditor.UI.CursorActions
 {
@@ -96,7 +97,35 @@ namespace TSMapEditor.UI.CursorActions
                 return;
             }
 
-            byte[] data = (byte[])System.Windows.Forms.Clipboard.GetData(Constants.ClipboardMapDataFormatValue);
+            byte[] data;
+
+            object clipboardContents = System.Windows.Forms.Clipboard.GetData(Constants.ClipboardMapDataFormatValue);
+            if (clipboardContents == null)
+            {
+                Logger.Log($"WARNING: {nameof(PasteTerrainCursorAction)}: Clipboard data is null");
+                ExitAction();
+                return;
+            }
+
+            if (clipboardContents is byte[] cpBytes)
+            {
+                data = cpBytes;
+            }
+            else if (clipboardContents is MemoryStream ms)
+            {
+                // We write clipboard contents as a byte array, but for some reason, reading from the clipboard
+                // can sometimes give us a MemoryStream in some cases, based on error logs received from users.
+                Logger.Log($"WARNING: {nameof(PasteTerrainCursorAction)}: Reading clipboard contents as MemoryStream");
+                data = ms.ToArray();
+            }
+            else
+            {
+                string typeName = clipboardContents.GetType().Name;
+                Logger.Log($"WARNING: {nameof(PasteTerrainCursorAction)}: Unknown clipboard object type {typeName}");
+                EditorMessageBox.Show(CursorActionTarget.WindowManager, "Paste Error", $"Failed to read data from clipboard: unknown clipboard object type {typeName}", MessageBoxButtons.OK);
+                ExitAction();
+                return;
+            }
 
             try
             {

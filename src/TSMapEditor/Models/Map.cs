@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
+using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -28,7 +29,7 @@ namespace TSMapEditor.Models
 
     public class Map : IMap
     {
-        private const int MaxTubes = 127;
+        public const int MaxTubes = 127;
         public const int TileBufferSize = 600; // for now
 
         public event EventHandler HousesChanged;
@@ -1689,427 +1690,137 @@ namespace TSMapEditor.Models
             }
         }
 
-        /// <summary>
-        /// Checks the map for issues.
-        /// Returns a list of issues found.
-        /// TODO split up into multiple functions, preferably within a separate file/class
-        /// </summary>
         public List<string> CheckForIssues()
         {
-            var issueList = new List<string>();
-
-            DoForAllValidTiles(cell =>
-            {
-                if (cell.HasTiberium())
-                {
-                    ITileImage tile = TheaterInstance.GetTile(cell.TileIndex);
-                    ISubTileImage subTile = tile.GetSubTile(cell.SubTileIndex);
-
-                    // Check whether the cell has tiberium on an impassable terrain type
-                    if (Helpers.IsLandTypeImpassable(subTile.TmpImage.TerrainType, true))
-                    {
-                        issueList.Add(string.Format(Translate(this, "CheckForIssues.ImpassableTile", 
-                            "Cell at {0} has Tiberium on an otherwise impassable cell. This can cause harvesters to get stuck."),
-                                cell.CoordsToPoint()));
-                    }
-
-                    // Check for tiberium on ramps that don't support tiberium on them
-                    if (subTile.TmpImage.RampType > RampType.South)
-                    {
-                        issueList.Add(string.Format(Translate(this, "CheckForIssues.TiberiumUnsupportedRamp", 
-                            "Cell at {0} has Tiberium on a ramp that does not allow Tiberium on it. This can crash the game!"),
-                                cell.CoordsToPoint()));
-                    }
-                }
-            });
-
-            // Check for multiple houses having the same ININame
-            for (int i = 0; i < Houses.Count; i++)
-            {
-                House duplicate = Houses.Find(h => h != Houses[i] && h.ININame == Houses[i].ININame);
-                if (duplicate != null)
-                {
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.DuplicateHouseININame", 
-                        "The map has multiple houses named \"{0}\"! This will result in a corrupted house list in-game!"), duplicate.ININame));
-                    break;
-                }
-            }
-
-            // Check for teamtypes having no taskforce or script
-            TeamTypes.ForEach(tt =>
-            {
-                if (tt.TaskForce == null)
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.TeamTypeWithoutTaskForce", 
-                        "TeamType \"{0}\" has no TaskForce set!"), tt.Name));
-
-                if (tt.Script == null)
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.TeamTypeWithoutScript", 
-                        "TeamType \"{0}\" has no Script set!"), tt.Name));
-            });
-
-            const int EnableTriggerActionIndex = 53;
-            const int TriggerParamIndex = 1;
-            const int DisableTriggerActionIndex = 54;
-
-            // Check for triggers that are disabled and are never enabled by any other triggers
-            Triggers.ForEach(trigger =>
-            {
-                if (!trigger.Disabled)
-                    return;
-
-                const int RevealAllMapActionIndex = 16;
-
-                // If this trigger has a "reveal all map" action, don't create an issue - those are usually only for debugging
-                if (trigger.Actions.Exists(a => a.ActionIndex == RevealAllMapActionIndex))
-                    return;
-
-                // Allow the user to skip this warning by including "DEBUG" or "OBSOLETE" in the trigger's name
-                if (trigger.Name.ToUpperInvariant().Contains("DEBUG") || trigger.Name.ToUpperInvariant().Contains("OBSOLETE"))
-                    return;
-
-                // Is this trigger enabled by another trigger?
-                if (Triggers.Exists(otherTrigger => otherTrigger != trigger && otherTrigger.Actions.Exists(a => a.ActionIndex == EnableTriggerActionIndex && a.Parameters[TriggerParamIndex] == trigger.ID)))
-                    return;
-
-                // If it's not enabled by another trigger, add an issue
-                issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerDisabled", 
-                    "Trigger \"{0}\" ({1}) is disabled and never enabled by another trigger." + Environment.NewLine +
-                    "Did you forget to enable it? If the trigger exists for debugging purposes, add DEBUG or OBSOLETE to its name to skip this warning."),
-                        trigger.Name, trigger.ID));
-            });
-
-            // Check for triggers that are enabled by other triggers, but never disabled - enabling them is
-            // useless in that case and likely means that there's a scripting issue
-            Triggers.ForEach(trigger =>
-            {
-                if (trigger.Disabled)
-                    return;
-
-                // If this trigger is never enabled by another trigger, skip
-                if (!Triggers.Exists(otherTrigger => otherTrigger != trigger && otherTrigger.Actions.Exists(a => a.ActionIndex == EnableTriggerActionIndex && a.Parameters[TriggerParamIndex] == trigger.ID)))
-                    return;
-
-                // If this trigger is disabled by itself or some other trigger, skip
-                if (Triggers.Exists(otherTrigger => otherTrigger.Actions.Exists(a => a.ActionIndex == DisableTriggerActionIndex && a.Parameters[TriggerParamIndex] == trigger.ID)))
-                    return;
-
-                // This trigger is never disabled, but it is enabled by at least 1 other trigger - add an issue
-                issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerEnabledByOtherTriggers", 
-                    "Trigger \"{0}\" ({1}) is enabled by another trigger, but it is never in a disabled state" + Environment.NewLine +
-                    "(it is neither disabled by default nor disabled by other triggers). Did you forget to disable it?"),
-                        trigger.Name, trigger.ID));
-            });
-
-            // Check for triggers that enable themselves, there's no need to ever do this -> either redundant action or a scripting error
-            Triggers.ForEach(trigger =>
-            {
-                if (!trigger.Actions.Exists(a => a.ActionIndex == EnableTriggerActionIndex && a.Parameters[TriggerParamIndex] == trigger.ID))
-                    return;
-
-                issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerEnableSelf", 
-                    "Trigger \"{0}\" ({1}) has an action for enabling itself. Is it supposed to enable something else instead?"),
-                        trigger.Name, trigger.ID));
-            });
-
-            // Check that the primary player house has "Player Control" enabled in case [Basic] Player= is specified
-            // (iow. this is a singleplayer mission)
-            if (!string.IsNullOrWhiteSpace(Basic.Player) && !Helpers.IsStringNoneValue(Basic.Player))
-            {
-                House matchingHouse = GetHouses().Find(h => h.ININame == Basic.Player);
-                if (matchingHouse == null)
-                    issueList.Add(Translate(this, "CheckForIssues.PlayerHouseNotFound", 
-                        "A nonexistent house has been specified in [Basic] Player= ."));
-                else if (!matchingHouse.PlayerControl)
-                    issueList.Add(Translate(this, "CheckForIssues.PlayerHouseNotPlayerControlled", 
-                        "The human player's house does not have the \"Player-Controlled\" flag checked."));
-            }
-
-            // Check for more than 127 tunnel tubes
-            if (Tubes.Count > MaxTubes)
-            {
-                issueList.Add(string.Format(Translate(this, "CheckForIssues.MaxTubesExceeded", 
-                    "The map has more than {0} tunnel tubes. This might cause issues when units cross the tunnels."), MaxTubes));
-            }
-
-            // Check for vehicles sharing the same follows index and for vehicles following themselves
-            List<Unit> followedUnits = new List<Unit>();
-            for (int i = 0; i < Units.Count; i++)
-            {
-                var unit = Units[i];
-                int followsId = unit.FollowerUnit == null ? -1 : Units.IndexOf(unit.FollowerUnit);
-                if (followsId == -1)
-                    continue;
-
-                if (followedUnits.Contains(unit.FollowerUnit))
-                {
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.UnitFollowsMultipleUnits", 
-                        "Multiple units are configured to make unit {0} at {1} to follow them! " + Environment.NewLine +
-                            "This can cause strange behaviour in the game. {2} at {3} is one of the followed units."),
-                            unit.FollowerUnit.UnitType.ININame, unit.FollowerUnit.Position, unit.UnitType.ININame, unit.Position));
-                }
-                else
-                {
-                    followedUnits.Add(unit.FollowerUnit);
-                }
-
-                if (followsId < -1)
-                {
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.NegativeFollowerID",
-                        "Unit {0} at {1} has a follower ID below -1. It is unknown how the game reacts to this."),
-                        unit.UnitType.ININame, 1));
-                }
-                else if (followsId == i)
-                {
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.UnitFollowSelf",
-                        "Unit {0} at {1} follows itself! This can cause the game to crash or freeze!"),
-                        unit.UnitType.ININame, unit.Position));
-                }
-            }
-
-            var reportedTeams = new List<TeamType>();
-
-            // Check for AI Trigger linked TeamTypes having Max=0
-            foreach (var aiTrigger in AITriggerTypes)
-            {
-                CheckForAITriggerTeamWithMaxZeroIssue(aiTrigger, aiTrigger.PrimaryTeam, reportedTeams, issueList);
-                CheckForAITriggerTeamWithMaxZeroIssue(aiTrigger, aiTrigger.SecondaryTeam, reportedTeams, issueList);
-            }
-
-            // Check for triggers having 0 events or actions
-            foreach (var trigger in Triggers)
-            {
-                if (trigger.Conditions.Count == 0)
-                {
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.NoTriggerConditions", 
-                        "Trigger '{0}' has 0 events specified. It will never be fired. Did you forget to give it events?"), trigger.Name));
-                }
-
-                if (trigger.Actions.Count == 0)
-                {
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.NoTriggerActions", 
-                        "Trigger '{0}' has 0 actions specified. It will not do anything. Did you forget to give it actions?"), trigger.Name));
-                }
-            }
-
-            // Check for triggers using the "Entered by" event without being attached to anything
-            const int EnteredByConditionIndex = 1;
-            foreach (var trigger in Triggers)
-            {
-                if (!trigger.Conditions.Exists(c => c.ConditionIndex == EnteredByConditionIndex))
-                    continue;
-
-                var tag = Tags.Find(t => t.Trigger == trigger);
-                if (tag == null)
-                    continue;
-
-                if (!Structures.Exists(s => s.AttachedTag == tag) &&
-                    !Infantry.Exists(i => i.AttachedTag == tag) &&
-                    !Units.Exists(u => u.AttachedTag == tag) &&
-                    !Aircraft.Exists(a => a.AttachedTag == tag) &&
-                    !TeamTypes.Exists(tt => tt.Tag == tag) &&
-                    !CellTags.Exists(ct => ct.Tag == tag) &&
-                    !Triggers.Exists(otherTrigger => otherTrigger.LinkedTrigger == trigger))
-                {
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerEnteredByNoObjects", 
-                        "Trigger '{0}' is using the \"Entered by...\" event without being attached to any object, cell, or team. Did you forget to attach it?"),
-                            trigger.Name));
-                }
-            }
-
-            // Check for triggers using the "Bridge destroyed" event without being linked to any cell
-            const int BridgeDestroyedConditionIndex = 31;
-            foreach (var trigger in Triggers)
-            {
-                if (!trigger.Conditions.Exists(c => c.ConditionIndex == BridgeDestroyedConditionIndex))
-                    continue;
-
-                var tag = Tags.Find(t => t.Trigger == trigger);
-                if (tag == null)
-                    continue;
-
-                if (!CellTags.Exists(ct => ct.Tag == tag))
-                {
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerBridgeDestroyedNoCellTags", 
-                        "Trigger '{0}' is using the \"Bridge destroyed\" event, but it is not attached to any CellTag. Did you forget to place a celltag for it?"),
-                            trigger.Name));
-                }
-            }
-
-            // Check for triggers using an object-specific event (like "destroyed" or "damaged") without
-            // being linked to any object
-            var objectSpecificEventIndexes = new List<int>() {
-                4,  // Discovered by player
-                6,  // Attacked by any house
-                7,  // Destroyed by any house
-                29, // Destroyed by anything (not infiltrate)
-                33, // Selected by player
-                34, // Comes near waypoint
-                38, // First damaged (combat only)
-                39, // Half health (combat only)
-                40, // Quarter health (combat only)
-                41, // First damaged (any source)
-                42, // Half health (any source)
-                43, // Quarter health (any source)
-                44, // Attacked by (house)
-                48  // Destroyed by anything
-            };
-
-            if (!Constants.IsRA2YR)
-                objectSpecificEventIndexes.Add(55); // Limpet attached - Firestorm only, not in RA2/YR
-
-            foreach (var trigger in Triggers)
-            {
-                int indexInList = objectSpecificEventIndexes.FindIndex(eventIndex => trigger.Conditions.Exists(c => c.ConditionIndex == eventIndex));
-                if (indexInList == -1)
-                    continue;
-
-                int usedEventIndex = objectSpecificEventIndexes[indexInList];
-                var triggerEventType = EditorConfig.TriggerEventTypes.GetValueOrDefault(usedEventIndex);
-
-                if (triggerEventType == null)
-                    continue;
-
-                var tag = Tags.Find(t => t.Trigger == trigger);
-                if (tag == null)
-                    continue;
-
-                if (!Structures.Exists(s => s.AttachedTag == tag) &&
-                    !Infantry.Exists(i => i.AttachedTag == tag) &&
-                    !Units.Exists(u => u.AttachedTag == tag) &&
-                    !Aircraft.Exists(a => a.AttachedTag == tag) &&
-                    !TeamTypes.Exists(tt => tt.Tag == tag) &&
-                    !Triggers.Exists(otherTrigger => otherTrigger.LinkedTrigger == trigger))
-                {
-                    string eventName = triggerEventType.Name;
-
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerEventNoObjectAttached", 
-                        "Trigger '{0}' is using the {1} event without being attached to any object or team. Did you forget to attach it?"),
-                            trigger.Name, eventName));
-                }
-            }
-
-            // Check for triggers being attached to themselves (potentially recursively)
-            foreach (var trigger in Triggers)
-            {
-                if (trigger.LinkedTrigger == null)
-                    continue;
-
-                Trigger linkedTrigger = trigger.LinkedTrigger;
-                while (linkedTrigger != null)
-                {
-                    if (linkedTrigger == trigger)
-                    {
-                        issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerAttachedToSelf", 
-                            "Trigger '{0}' is attached to itself (potentially through other triggers). This will cause the game to crash!"), trigger.Name));
-                        break;
-                    }
-
-                    linkedTrigger = linkedTrigger.LinkedTrigger;
-                }
-            }
-
-            // Check for invalid TeamType parameter values in triggers
-            foreach (var trigger in Triggers)
-            {
-                foreach (var action in trigger.Actions)
-                {
-                    if (!EditorConfig.TriggerActionTypes.TryGetValue(action.ActionIndex, out var triggerActionType))
-                        continue;
-
-                    for (int i = 0; i < triggerActionType.Parameters.Length; i++)
-                    {
-                        if (triggerActionType.Parameters[i].TriggerParamType == TriggerParamType.TeamType)
-                        {
-                            if (!TeamTypes.Exists(tt => tt.ININame == action.Parameters[i]) && !Rules.TeamTypes.Exists(tt => tt.ININame == action.Parameters[i]))
-                            {
-                                issueList.Add(string.Format(Translate(this, "CheckForIssues.InvalidTriggerActionTeamType", 
-                                    "Trigger '{0}' has a nonexistent TeamType specified as a parameter for one or more of its actions."), trigger.Name));
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            var houseTypes = GetHouseTypes();
-
-            // Check for invalid HouseType parameter values in triggers
-            foreach (var trigger in Triggers)
-            {
-                foreach (var action in trigger.Actions)
-                {
-                    if (!EditorConfig.TriggerActionTypes.TryGetValue(action.ActionIndex, out var triggerActionType))
-                        continue;
-
-                    for (int i = 0; i < triggerActionType.Parameters.Length; i++)
-                    {
-                        if (triggerActionType.Parameters[i].TriggerParamType == TriggerParamType.HouseType)
-                        {
-                            int paramAsInt = Conversions.IntFromString(action.Parameters[i], -1);
-
-                            if (!houseTypes.Exists(ht => ht.Index == paramAsInt))
-                            {
-                                issueList.Add(string.Format(Translate(this, "CheckForIssues.InvalidTriggerActionHouse", 
-                                    "Trigger '{0}' has a nonexistent HouseType specified as a parameter for one or more of its actions."), trigger.Name));
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Check for triggers having invalid owners
-            foreach (var trigger in Triggers)
-            {
-                if (!houseTypes.Exists(ht => trigger.HouseType == ht.ININame))
-                    issueList.Add(string.Format(Translate(this, "CheckForIssues.InvalidTriggerOwner", 
-                        "Trigger '{0}' has a nonexistent HouseType '{1}' specified as its owner."),
-                            trigger.Name, trigger.HouseType));
-            }
-
-            // Check for triggers having too many actions. This can cause a crash because the game's buffer for parsing trigger actions
-            // is limited (to 512 chars according to ModEnc)
-            if (Constants.WarnOfTooManyTriggerActions)
-            {
-                const int maxActionCount = 18;
-                foreach (var trigger in Triggers)
-                {
-                    if (trigger.Actions.Count > maxActionCount)
-                    {
-                        issueList.Add(string.Format(Translate(this, "CheckForIssues.TriggerTooManyActions", 
-                            "Trigger '{0}' has more than {1} actions! This can cause the game to crash! Consider splitting it up to multiple triggers."),
-                                trigger.Name, maxActionCount));
-                    }
-                }
-            }
-
-            // In Tiberian Sun, waypoint #100 should be reserved for special dynamic use cases like paradrops
-            // (it is defined as WAYPT_SPECIAL in original game code)
-            if (!Constants.IsRA2YR && Waypoints.Exists(wp => wp.Identifier == Constants.TS_WAYPT_SPECIAL))
-            {
-                issueList.Add(string.Format(Translate(this, "CheckForIssues.SpecialWaypointUsed", 
-                    "The map makes use of waypoint #{0}. In Tiberian Sun, this waypoint is reserved for special use cases (WAYPT_SPECIAL). Using it as a normal waypoint may cause issues as it may be dynamically moved by game events."),
-                        Constants.TS_WAYPT_SPECIAL));
-            }
-
-            return issueList;
+            return MapIssueChecker.CheckForIssues(this);
         }
 
-        private void CheckForAITriggerTeamWithMaxZeroIssue(AITriggerType aiTrigger, TeamType team, List<TeamType> reportedTeams, List<string> issueList)
+        public bool IsLikelyMultiplayer()
         {
-            if (reportedTeams.Contains(team))
-                return;
+            if (Basic.MultiplayerOnly)
+                return true;
 
-            if (team == null)
-                return;
+            const int MaxUniqueHouses = 32;
+            const int FirstSpawnHouseIndex = 50;
 
-            if (TeamTypes.Contains(team) && team.Max == 0)
+            if (Houses.Count > 0 && Houses.Count < MaxUniqueHouses)
             {
-                issueList.Add(string.Format(Translate(this, "CheckForAITriggerTeamWithMaxZeroIssue.TeamTypeMax", 
-                    "Team '{0}', linked to AITrigger '{1}', has Max=0. This prevents the AI from building the team."),
-                        team.Name, aiTrigger.Name));
-                reportedTeams.Add(team);
+                // Most likely singleplayer - SP maps always have houses,
+                // while regular MP maps don't have houses
+                // and scripted TS MP maps need more than 50 houses
+                return false;
             }
+
+            if (Houses.Count > FirstSpawnHouseIndex)
+            {
+                // Most likely a scripted multiplayer scenario
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool IsWaypointInUse(Waypoint waypoint)
+        {
+            foreach (Trigger trigger in Triggers)
+            {
+                foreach (var action in trigger.Actions)
+                {
+                    var triggerActionType = EditorConfig.TriggerActionTypes.GetValueOrDefault(action.ActionIndex);
+
+                    if (triggerActionType == null)
+                        continue;
+
+                    for (int i = 0; i < triggerActionType.Parameters.Length; i++)
+                    {
+                        if (triggerActionType.Parameters[i] == null)
+                            continue;
+
+                        var param = triggerActionType.Parameters[i];
+
+                        if (param.TriggerParamType == TriggerParamType.Waypoint && action.Parameters[i] == waypoint.Identifier.ToString())
+                        {
+                            return true;
+                        }
+
+                        if (param.TriggerParamType == TriggerParamType.WaypointZZ && action.Parameters[i] == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                foreach (var condition in trigger.Conditions)
+                {
+                    var triggerEventType = EditorConfig.TriggerEventTypes.GetValueOrDefault(condition.ConditionIndex);
+
+                    if (triggerEventType == null)
+                        continue;
+
+                    for (int i = 0; i < triggerEventType.Parameters.Length; i++)
+                    {
+                        if (triggerEventType.Parameters[i] == null)
+                            continue;
+
+                        var param = triggerEventType.Parameters[i];
+
+                        if (param.TriggerParamType == TriggerParamType.Waypoint && condition.Parameters[i] == waypoint.Identifier.ToString())
+                        {
+                            return true;
+                        }
+
+                        if (param.TriggerParamType == TriggerParamType.WaypointZZ && condition.Parameters[i] == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            foreach (Script script in Scripts)
+            {
+                foreach (var actionEntry in script.Actions)
+                {
+                    var scriptAction = EditorConfig.ScriptActions.GetValueOrDefault(actionEntry.Action);
+
+                    if (scriptAction == null)
+                    {
+                        continue;
+                    }
+
+                    if (scriptAction.ParamType == TriggerParamType.Waypoint && actionEntry.Argument == waypoint.Identifier)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            foreach (TeamType team in TeamTypes)
+            {
+                if (team.Waypoint == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public Waypoint GetFirstUnusedWaypoint()
+        {
+            int firstValidIdentifier = IsLikelyMultiplayer() ? 8 : 0;
+
+            for (int i = 0; i < Waypoints.Count; i++)
+            {
+                Waypoint wp = Waypoints[i];
+                if (wp.Identifier < firstValidIdentifier)
+                    continue;
+
+                if (!IsWaypointInUse(wp))
+                    return wp;
+            }
+
+            return null;
         }
 
         public void Clear()

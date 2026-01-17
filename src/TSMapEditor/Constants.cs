@@ -4,7 +4,7 @@ namespace TSMapEditor
 {
     public static class Constants
     {
-        public const string ReleaseVersion = "1.7.4";
+        public const string ReleaseVersion = "1.7.7";
 
         public static int CellSizeX = 48;
         public static int CellSizeY = 24;
@@ -110,6 +110,8 @@ namespace TSMapEditor
         public static float DepthRenderStep = 0;
 
         public const string ClipboardMapDataFormatValue = "ScenarioEditorCopiedMapData";
+        public const string ClipboardTriggerActionEventFormatValue = "ScenarioEditorCopiedTriggerData";
+        public const string ClipboardTriggerFormatValue = "ScenarioEditorCopiedTrigger";
         public const string UserDataFolder = "UserData";
 
         public const char NewTheaterGenericLetter = 'G';
