@@ -969,7 +969,7 @@ namespace TSMapEditor.UI.Windows
                         BuildingType buildingType = map.Rules.BuildingTypes.GetElementIfInRange(buildingTypeIndex);
 
                         if (buildingType != null)
-                            textDetails = $"({buildingType.GetEditorDisplayName()} - {propertyDescription})";
+                            textDetails = $"({buildingType.Index} - {buildingType.GetEditorDisplayName()} - {propertyDescription})";
                         break;
 
                     case TriggerParamType.LocalVariable:
@@ -981,13 +981,13 @@ namespace TSMapEditor.UI.Windows
                     case TriggerParamType.HouseType:
                         var houseType = map.Houses.GetElementIfInRange(entry.Argument);
                         if (houseType != null)
-                            textDetails = $"({houseType.ININame})";
+                            textDetails = $"({houseType.ID} - {houseType.ININame})";
                         break;
 
                     case TriggerParamType.Animation:
                         var animation = map.Rules.AnimTypes.GetElementIfInRange(entry.Argument);
                         if (animation != null)
-                            textDetails = $"({animation.ININame})";
+                            textDetails = $"({animation.Index} - {animation.ININame})";
                         break;
 
                     case TriggerParamType.Unknown:
@@ -1001,7 +1001,7 @@ namespace TSMapEditor.UI.Windows
 
                     default:
                         if (hasValidPresetOption)
-                            textDetails = $"({action.PresetOptions[presetOptionIndex].Text})";
+                            textDetails = $"({presetOptionIndex} - {action.PresetOptions[presetOptionIndex].Text})";
                         else
                             textDetails = $"({entry.Argument.ToString(CultureInfo.InvariantCulture)})";
                         break;
