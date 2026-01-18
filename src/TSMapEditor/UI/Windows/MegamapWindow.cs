@@ -230,6 +230,7 @@ namespace TSMapEditor.UI.Windows
             {
                 Enabled = false;
                 WindowManager.RemoveControl(this);
+                return;
             }
 
             if (GetActiveChild() == null)
@@ -237,9 +238,11 @@ namespace TSMapEditor.UI.Windows
                 if (IsActive && Cursor.LeftDown)
                 {
                     if (!wasLeftDown)
+                    {
+                        CanBeMoved = enableToolbar && GetCursorPoint().Y < textureDrawRectangle.Y;
                         oldWindowPosition = new Point2D(X, Y);
+                    }
 
-                    CanBeMoved = !Keyboard.IsShiftHeldDown();
                     if (!CanBeMoved)
                         MoveCamera();
 
