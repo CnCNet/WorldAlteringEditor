@@ -1,4 +1,5 @@
 ﻿using Rampastring.XNAUI;
+using TSMapEditor.UI.Windows;
 
 namespace TSMapEditor.UI.Controls
 {
@@ -17,6 +18,7 @@ namespace TSMapEditor.UI.Controls
             AddControl(typeof(EditorPopUpSelector));
             AddControl(typeof(EditorLinkLabel));
             AddControl(typeof(SortButton));
+            AddControl(typeof(ScriptActionListBox));
         }
 
         private static EditorGUICreator _instance;

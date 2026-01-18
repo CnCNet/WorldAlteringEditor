@@ -1,4 +1,5 @@
-﻿using Rampastring.XNAUI;
+﻿using Microsoft.Xna.Framework;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
@@ -17,6 +18,153 @@ using TSMapEditor.UI.Notifications;
 
 namespace TSMapEditor.UI.Windows
 {
+    public class ScriptListBoxItemTag
+    {
+        public ScriptListBoxItemTag(ScriptActionEntry scriptActionEntry, string text, string description)
+        {
+            ScriptActionEntry = scriptActionEntry;
+            Text = text;
+            Description = description;
+        }
+
+        public ScriptActionEntry ScriptActionEntry { get; set; }
+
+        public string Text { get; set; }
+        public string Description { get; set; }
+
+        public void Process(int maxWidth, int fontIndex)
+        {
+            DescriptionLines.Clear();
+
+            if (Description == null)
+                return;
+
+            int textWidth = (int)Renderer.MeasureString(Text + " ", fontIndex).X;
+            int remainingWidth = maxWidth - textWidth;
+
+            int descriptionWidth = (int)Renderer.MeasureString(Description, fontIndex).X;
+            if (descriptionWidth > remainingWidth)
+            {
+                var lines = Renderer.GetFixedTextLines(Description, fontIndex, remainingWidth);
+                DescriptionLines.Add(lines[0]);
+                lines.RemoveAt(0);
+
+                string remainingText = string.Join(" ", lines);
+                DescriptionLines.AddRange(Renderer.GetFixedTextLines(remainingText, fontIndex, maxWidth));
+            }
+            else
+            {
+                DescriptionLines.Add(Description);
+            }
+        }
+
+        public List<string> DescriptionLines { get; } = new List<string>();
+    }
+
+    public class ScriptActionListBox : EditorListBox
+    {
+        public ScriptActionListBox(WindowManager windowManager) : base(windowManager)
+        {
+            AllowMultiLineItems = false;
+        }
+
+        public ScriptListBoxItemTag TagFromItem(int index) => (ScriptListBoxItemTag)Items[index].Tag;
+
+        public void AddTaggedItem(ScriptListBoxItemTag tag)
+        {
+            var item = new XNAListBoxItem() { Tag = tag };
+            tag.Process(Width - GetScrollBarWidth(), FontIndex);
+            AddItem(item);
+        }
+
+        public void UpdateItemTag(int index, string text, string description)
+        {
+            var tag = TagFromItem(index);
+            tag.Text = text;
+            tag.Description = description;
+            tag.Process(Width - GetScrollBarWidth(), FontIndex);
+        }
+
+        protected override int GetListBoxItemLineCount(XNAListBoxItem listBoxItem)
+        {
+            ScriptListBoxItemTag tag = (ScriptListBoxItemTag)listBoxItem.Tag;
+            if (tag.DescriptionLines.Count <= 1)
+                return 1;
+
+            return tag.DescriptionLines.Count;
+        }
+
+        protected override void DrawListBoxItem(int index, int y)
+        {
+            const int ITEM_TEXT_TEXTURE_MARGIN = 2;
+
+            XNAListBoxItem lbItem = Items[index];
+
+            int x = TextBorderDistance;
+
+            if (index == SelectedIndex)
+            {
+                int drawnWidth;
+
+                if (DrawSelectionUnderScrollbar || !ScrollBar.IsDrawn() || !EnableScrollbar)
+                {
+                    drawnWidth = Width - 2;
+                }
+                else
+                {
+                    drawnWidth = Width - 2 - ScrollBar.Width;
+                }
+
+                FillRectangle(new Rectangle(1, y, drawnWidth,
+                    GetListBoxItemLineCount(lbItem) * LineHeight),
+                    FocusColor);
+            }
+
+            if (lbItem.Texture != null)
+            {
+                int textureHeight = lbItem.Texture.Height;
+                int textureWidth = lbItem.Texture.Width;
+                int textureYPosition = 0;
+
+                if (lbItem.Texture.Height > LineHeight)
+                {
+                    double scaleRatio = textureHeight / (double)LineHeight;
+                    textureHeight = LineHeight;
+                    textureWidth = (int)(textureWidth / scaleRatio);
+                }
+                else
+                {
+                    textureYPosition = (LineHeight - textureHeight) / 2;
+                }
+
+                DrawTexture(lbItem.Texture,
+                    new Rectangle(x, y + textureYPosition,
+                    textureWidth, textureHeight), Color.White);
+
+                x += textureWidth + ITEM_TEXT_TEXTURE_MARGIN;
+            }
+
+            x += lbItem.TextXPadding;
+
+            var tag = TagFromItem(index);
+            if (tag.Description == null)
+            {
+                DrawStringWithShadow(tag.Text, FontIndex, new Vector2(x, y), UISettings.ActiveSettings.AltColor);
+            }
+            else
+            {
+                string text = tag.Text + " ";
+                int width = (int)Renderer.MeasureString(text, FontIndex).X;
+                DrawStringWithShadow(text, FontIndex, new Vector2(x, y), UISettings.ActiveSettings.AltColor);
+                DrawStringWithShadow(tag.DescriptionLines[0], FontIndex, new Vector2(x + width, y), UISettings.ActiveSettings.SubtleTextColor);
+                for (int i = 1; i < tag.DescriptionLines.Count; i++)
+                {
+                    DrawStringWithShadow(tag.DescriptionLines[i], FontIndex, new Vector2(x, y + (i * LineHeight)), UISettings.ActiveSettings.SubtleTextColor);
+                }
+            }
+        }
+    }
+
     public enum ScriptSortMode
     {
         ID,
@@ -47,7 +195,7 @@ namespace TSMapEditor.UI.Windows
         private EditorListBox lbScriptTypes;
         private EditorSuggestionTextBox tbFilter;
         private EditorTextBox tbName;
-        private EditorListBox lbActions;
+        private ScriptActionListBox lbActions;
         private EditorPopUpSelector selTypeOfAction;
         private XNALabel lblParameterDescription;
         private EditorNumberTextBox tbParameterValue;
@@ -90,7 +238,7 @@ namespace TSMapEditor.UI.Windows
             lbScriptTypes = FindChild<EditorListBox>(nameof(lbScriptTypes));
             tbFilter = FindChild<EditorSuggestionTextBox>(nameof(tbFilter));            
             tbName = FindChild<EditorTextBox>(nameof(tbName));
-            lbActions = FindChild<EditorListBox>(nameof(lbActions));
+            lbActions = FindChild<ScriptActionListBox>(nameof(lbActions));
             selTypeOfAction = FindChild<EditorPopUpSelector>(nameof(selTypeOfAction));
             lblParameterDescription = FindChild<XNALabel>(nameof(lblParameterDescription));
             tbParameterValue = FindChild<EditorNumberTextBox>(nameof(tbParameterValue));
@@ -482,7 +630,8 @@ namespace TSMapEditor.UI.Windows
 
             ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
             entry.Argument = tbParameterValue.Value;
-            lbActions.SelectedItem.Text = GetActionEntryText(lbActions.SelectedIndex, entry);
+            (string text, string description) = GetActionEntryText(lbActions.SelectedIndex, entry);
+            lbActions.UpdateItemTag(lbActions.SelectedIndex, text, description);
         }
 
         private void TbParameterValue_MouseScrolled(object sender, InputEventArgs e)
@@ -494,7 +643,8 @@ namespace TSMapEditor.UI.Windows
 
             ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
             entry.Argument = Cursor.ScrollWheelValue > 0 ? entry.Argument - 1 : entry.Argument + 1;
-            lbActions.SelectedItem.Text = GetActionEntryText(lbActions.SelectedIndex, entry);
+            (string text, string description) = GetActionEntryText(lbActions.SelectedIndex, entry);
+            lbActions.UpdateItemTag(lbActions.SelectedIndex, text, description);
 
             tbParameterValue.TextChanged -= TbParameterValue_TextChanged;
             ScriptAction action = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
@@ -623,7 +773,8 @@ namespace TSMapEditor.UI.Windows
                 {
                     ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
                     entry.Action = selectScriptActionWindow.SelectedObject.ID;
-                    lbActions.Items[lbActions.SelectedIndex].Text = GetActionEntryText(lbActions.SelectedIndex, entry);
+                    (string text, string description) = GetActionEntryText(lbActions.SelectedIndex, entry);
+                    lbActions.UpdateItemTag(lbActions.SelectedIndex, text, description);
                 }
             }
 
@@ -709,8 +860,6 @@ namespace TSMapEditor.UI.Windows
                 tbParameterValue.Value = scriptActionEntry.Argument;
                 return;
             }
-
-            lbActions.SelectedItem.Text = GetActionEntryText(scriptActionEntry.Action, scriptActionEntry);
 
             if (action.ParamType == TriggerParamType.BuildingWithProperty)
             {
@@ -928,11 +1077,8 @@ namespace TSMapEditor.UI.Windows
             for (int i = 0; i < editedScript.Actions.Count; i++)
             {
                 var actionEntry = editedScript.Actions[i];
-                lbActions.AddItem(new XNAListBoxItem()
-                {
-                    Text = GetActionEntryText(i, actionEntry),
-                    Tag = actionEntry
-                });
+                (string text, string description) = GetActionEntryText(i, actionEntry);
+                lbActions.AddTaggedItem(new ScriptListBoxItemTag(actionEntry, text, description));
             }
 
             ddScriptColor.SelectedIndex = ddScriptColor.Items.FindIndex(item => item.Text == editedScript.EditorColor);
@@ -944,16 +1090,16 @@ namespace TSMapEditor.UI.Windows
             lbActions.ScrollToSelectedElement();
         }
 
-        private string GetActionEntryText(int index, ScriptActionEntry entry)
+        private (string text, string description) GetActionEntryText(int index, ScriptActionEntry entry)
         {
             string actionEntryText;
             string textDetails = null;
 
             ScriptAction action = GetScriptAction(entry.Action);
             if (action == null)
-            {                
+            {
                 actionEntryText = $"#{index} - Unknown";
-                textDetails = $"({ entry.Argument.ToString(CultureInfo.InvariantCulture)})";
+                textDetails = $"{entry.Argument.ToString(CultureInfo.InvariantCulture)}";
             }
             else
             {
@@ -969,31 +1115,31 @@ namespace TSMapEditor.UI.Windows
                         BuildingType buildingType = map.Rules.BuildingTypes.GetElementIfInRange(buildingTypeIndex);
 
                         if (buildingType != null)
-                            textDetails = $"({buildingType.Index} - {buildingType.GetEditorDisplayName()} - {propertyDescription})";
+                            textDetails = $"{entry.Argument} - {buildingType.GetEditorDisplayName()} - {propertyDescription}";
                         break;
 
                     case TriggerParamType.LocalVariable:
                         var localVar = map.LocalVariables.GetElementIfInRange(entry.Argument);
                         if (localVar != null)
-                            textDetails = $"({localVar.Index} - {localVar.Name})";
+                            textDetails = $"{localVar.Index} - {localVar.Name}";
                         break;
 
                     case TriggerParamType.HouseType:
                         var houseType = map.Houses.GetElementIfInRange(entry.Argument);
                         if (houseType != null)
-                            textDetails = $"({houseType.ID} - {houseType.ININame})";
+                            textDetails = $"{houseType.ID} - {houseType.ININame}";
                         break;
 
                     case TriggerParamType.Animation:
                         var animation = map.Rules.AnimTypes.GetElementIfInRange(entry.Argument);
                         if (animation != null)
-                            textDetails = $"({animation.Index} - {animation.ININame})";
+                            textDetails = $"{animation.Index} - {animation.ININame}";
                         break;
 
                     case TriggerParamType.Unknown:
                         // special handling: script actions that have no type but still have presets should be handled by showing the preset value
                         // otherwise we'll show no text after the name of the action
-                        if (hasValidPresetOption) 
+                        if (hasValidPresetOption)
                             goto default;
 
                         textDetails = null;
@@ -1001,17 +1147,14 @@ namespace TSMapEditor.UI.Windows
 
                     default:
                         if (hasValidPresetOption)
-                            textDetails = $"({presetOptionIndex} - {action.PresetOptions[presetOptionIndex].Text})";
+                            textDetails = $"{presetOptionIndex} - {action.PresetOptions[presetOptionIndex].Text}";
                         else
-                            textDetails = $"({entry.Argument.ToString(CultureInfo.InvariantCulture)})";
+                            textDetails = $"{entry.Argument.ToString(CultureInfo.InvariantCulture)}";
                         break;
                 }
             }
 
-            if (string.IsNullOrEmpty(textDetails))
-                return actionEntryText;
-
-            return $"{actionEntryText} {textDetails}";
+            return (actionEntryText, textDetails);
         }
 
         private string GetActionNameFromIndex(int index)
