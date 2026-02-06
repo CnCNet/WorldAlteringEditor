@@ -1,6 +1,7 @@
 ﻿using Rampastring.Tools;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using TSMapEditor.CCEngine;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
@@ -12,6 +13,7 @@ namespace TSMapEditor.Misc
     {
         private const int EnableTriggerActionIndex = 53;
         private const int DisableTriggerActionIndex = 54;
+        private const int BuildingExistsTriggerActionIndex = 32;
         private const int TriggerParamIndex = 1;
 
         /// <summary>
@@ -386,6 +388,104 @@ namespace TSMapEditor.Misc
                     issueList.Add(string.Format(Translate(map, "CheckForIssues.InvalidTriggerOwner",
                         "Trigger '{0}' has a nonexistent HouseType '{1}' specified as its owner."),
                             trigger.Name, trigger.HouseType));
+            }
+
+            // Check for triggers in SP that have Building Exists event but house belongs to an AI
+            // that doesn't ever build or deploys a unit into the building
+            if (!map.IsLikelyMultiplayer())
+            {
+                foreach (var trigger in map.Triggers)
+                {
+                    // Get the house of the trigger
+                    var house = map.Houses.Find(house => house.ININame == trigger.HouseType);
+                    
+                    if (house == null)
+                        continue; // will be reported by the check for invalid owners
+
+                    foreach (var condition in trigger.Conditions)
+                    {
+                        // Check if current condition is Building Exists condition
+                        if (condition.ConditionIndex != BuildingExistsTriggerActionIndex) continue;
+
+                        // This check only checks AI houses as they're controlled by mappers in SP missions
+                        if (house.PlayerControl) continue;
+                        
+                        // Get the condition's building index
+                        int buildingIndex = int.Parse(condition.Parameters[1]);
+
+                        // Try to find a pre-placed structure on the map with the index belonging to the trigger's house
+                        // If found - all good, house has this structure and trigger is valid
+                        var building = map.Structures.Find(structure => 
+                            structure.ObjectType.Index == buildingIndex &&
+                            structure.Owner == house);
+                        
+                        if (building != null) continue;
+                        
+                        // Get the building type (rules configuration)
+                        var buildingType = map.Rules.BuildingTypes.Find(buildingType => buildingType.Index == buildingIndex);
+                        if (buildingType == null)
+                        {
+                            issueList.Add(string.Format(Translate(map, "CheckForIssues.BuildingExists.InvalidBuildingType",
+                                "Could not find buildingType with index {0} as was specified in trigger '{1}'"),
+                            buildingIndex, trigger.Name));
+                            continue;
+                        }
+
+                        // check the house's base nodes to see if the AI is intended to build it at some point
+                        // If found - all good, house will build this when it can (not checking activation or MCV etc.)
+                        var baseNode = house.BaseNodes.Find(baseNode => baseNode.StructureTypeName == buildingType.ININame);
+                        if (baseNode != null) continue;
+
+                        // Check if there is some techno that can deploy into this structure
+                        // If so, check if it's pre-placed or is in a task force in the TeamType used by the house
+                        bool hasDeployedTechno = false;
+                        var unitsThatDeployToBuilding = map.Rules.UnitTypes
+                            .FindAll(unitType => unitType.DeploysInto == buildingType.ININame)
+                            .Select(unitType => unitType.ININame)
+                            .ToList();
+
+                        if (unitsThatDeployToBuilding.Count > 0)
+                        {
+                            foreach (var unit in map.Units)
+                            {
+                                if (unit.Owner != house)
+                                    continue;
+
+                                if (unitsThatDeployToBuilding.Contains(unit.UnitType.ININame))
+                                    hasDeployedTechno = true;
+                            }
+
+                            // Still hasn't found the techno, keep checking in the owner's team types
+                            if (!hasDeployedTechno)
+                            {
+                                foreach (var teamType in map.TeamTypes)
+                                {
+                                    if (teamType.HouseType != house.HouseType)
+                                        continue;
+                                    
+                                    foreach (var technoTypeEntry in teamType.TaskForce.TechnoTypes)
+                                    {
+                                        if (technoTypeEntry == null)
+                                            continue;
+
+                                        if (unitsThatDeployToBuilding.Contains(technoTypeEntry.TechnoType.ININame))
+                                            hasDeployedTechno = true;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (hasDeployedTechno) continue;
+
+                        // If we got here, then there is no preplaced structure or base node for this house, and no unit that can deploy into it either.
+                        // This means the trigger will never spring.
+                        issueList.Add(string.Format(Translate(map, "CheckForIssues.BuildingExists.InvalidTriggerSetup",
+                                "Trigger '{0}' has a Building Exists event for building {1} ({2}), but trigger house '{3}' has neither a preplaced structure, a base node for it, or a unit that deploys into it. " +
+                                Environment.NewLine +
+                                "Did you forget to set the correct house or add the unit into a TeamType for the house?"),
+                                trigger.Name, buildingIndex, buildingType.Name, house.ININame));
+                    }
+                }
             }
 
             // Check for triggers having too many actions. This can cause a crash because the game's buffer for parsing trigger actions

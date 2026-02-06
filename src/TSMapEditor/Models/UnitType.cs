@@ -22,6 +22,7 @@ namespace TSMapEditor.Models
         public bool Turret { get; set; }
         public string SpeedType { get; set; }
         public string MovementZone { get; set; }
+        public string DeploysInto { get; set; }
 
         public int GetTurretStartFrame()
         {
