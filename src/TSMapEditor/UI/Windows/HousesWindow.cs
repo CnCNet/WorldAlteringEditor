@@ -315,7 +315,7 @@ namespace TSMapEditor.UI.Windows
                 MessageBoxButtons.YesNo);
             dialog.YesClickedAction = _ =>
             {
-                map.Structures.FindAll(s => s.Owner == editedHouse).ForEach(b => b.AIRepairable = true);
+                map.Structures.FindAll(s => s.Owner == editedHouse && s.ObjectType.Repairable).ForEach(b => b.AIRepairable = true);
                 editedHouse.DefaultRepairableStructures = true;
                 RefreshHouseInfo();
             };
