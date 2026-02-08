@@ -356,6 +356,45 @@ namespace TSMapEditor.Models
             }
         }
 
+        public void PostTheaterInit(Rules rules)
+        {
+            // Re-assign Theater Tiberium graphics overrides
+            foreach (var theater in Theaters)
+            {
+                foreach (var tileSet in theater.TileSets)
+                {
+                    tileSet.TiberiumGraphicsOverrides?.Clear();
+
+                    if (tileSet.ParsedTiberiumGraphicsOverrides != null &&
+                        tileSet.ParsedTiberiumGraphicsOverrides.Count > 0)
+                    {
+                        tileSet.TiberiumGraphicsOverrides = new Dictionary<TiberiumType, OverlayType>();
+
+                        foreach (var tiberiumGraphicsOverride in tileSet.ParsedTiberiumGraphicsOverrides)
+                        {
+                            TiberiumType tiberiumType = rules.TiberiumTypes.Find(tt => tt.ININame == tiberiumGraphicsOverride.tiberiumTypeName);
+
+                            if (tiberiumType == null)
+                            {
+                                throw new INIConfigException($"Failed to find TiberiumType \"{tiberiumGraphicsOverride.tiberiumTypeName}\" for " +
+                                    $"TiberiumOverlays= of TileSet {tileSet.SetName} ({tileSet.Index}) of Theater \"{theater.UIName}\"!");
+                            }
+
+                            OverlayType overlayType = rules.OverlayTypes.Find(ot => ot.ININame == tiberiumGraphicsOverride.graphicalOverlayName);
+
+                            if (overlayType == null)
+                            {
+                                throw new INIConfigException($"Failed to find OverlayType \"{tiberiumGraphicsOverride.graphicalOverlayName}\" for " +
+                                    $"TiberiumOverlays= of TileSet {tileSet.SetName} ({tileSet.Index}) of Theater \"{theater.UIName}\"!");
+                            }
+
+                            tileSet.TiberiumGraphicsOverrides.Add(tiberiumType, overlayType);
+                        }
+                    }
+                }
+            }
+        }
+
         private void ReadTeamTypeFlags()
         {
             TeamTypeFlags.Clear();

@@ -124,6 +124,8 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
 
             EditorGraphics editorGraphics = new EditorGraphics();
 
+            LoadedMap.EditorConfig.PostTheaterInit(LoadedMap.Rules);
+
             var uiManager = new UIManager(windowManager, LoadedMap, theaterGraphics, editorGraphics);
             windowManager.AddAndInitializeControl(uiManager);
 

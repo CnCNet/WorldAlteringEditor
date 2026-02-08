@@ -1,6 +1,8 @@
 ﻿using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
+using System;
+using System.Collections.Generic;
 using TSMapEditor.Models;
 
 namespace TSMapEditor.CCEngine
@@ -43,6 +45,9 @@ namespace TSMapEditor.CCEngine
         /// <param name="tileIndex">The index of the tile.</param>
         public bool ContainsTile(int tileIndex) => tileIndex >= StartTileIndex && tileIndex < StartTileIndex + LoadedTileCount;
 
+        public Dictionary<TiberiumType, OverlayType> TiberiumGraphicsOverrides { get; set; }
+        public List<(string tiberiumTypeName, string graphicalOverlayName)> ParsedTiberiumGraphicsOverrides { get; set; }
+
         private static string[] only1x1TileSets = new string[] { "cliffs", "rivers", "shores", "dirt road" };
 
         public void Read(IniSection iniSection)
@@ -58,6 +63,31 @@ namespace TSMapEditor.CCEngine
             const string colorKeyName = "EditorColor";
             if (iniSection.KeyExists(colorKeyName))
                 Color = iniSection.GetColorValue(colorKeyName, UISettings.ActiveSettings.AltColor);
+
+            // Support for DTA TiberiumOverlays graphics override feature
+            // TiberiumOverlays=Riparius:TIB1S_01,Vinifera:TIB2S_01,Ore:ORESNO01,Gems:GEMSRA01,GreenGems:GEMSRA01,BlueGems:GEMSRA01
+            const string tiberiumOverlaysKeyName = "TiberiumOverlays";
+            if (iniSection.KeyExists(tiberiumOverlaysKeyName))
+            {
+                ParsedTiberiumGraphicsOverrides = new List<(string tiberiumTypeName, string graphicalOverlayName)>();
+                string value = iniSection.GetStringValue(tiberiumOverlaysKeyName, null);
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    string[] values = value.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+                    foreach (string overrideValue in values)
+                    {
+                        string[] parts = overrideValue.Split(':');
+
+                        if (parts.Length != 2)
+                        {
+                            throw new INIConfigException($"Failed to parse TiberiumOverlays= of TileSet {SetName} (#{Index}).");
+                        }
+
+                        ParsedTiberiumGraphicsOverrides.Add((parts[0], parts[1]));
+                    }
+                }
+            }
         }
     }
 }

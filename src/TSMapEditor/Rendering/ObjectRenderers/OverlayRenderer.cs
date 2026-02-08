@@ -16,10 +16,30 @@ namespace TSMapEditor.Rendering.ObjectRenderers
 
         protected override CommonDrawParams GetDrawParams(Overlay gameObject)
         {
+            ShapeImage shape = TheaterGraphics.OverlayTextures[gameObject.OverlayType.Index];
+
+            // If this is an image for a Tiberium overlay type, check if the cell's underlying TileSet defines an override for the
+            // Tiberium overlay's graphics
+            if (gameObject.OverlayType.TiberiumType != null)
+            {
+                var cell = Map.GetTile(gameObject.Position);
+                var tileSet = Map.TheaterInstance.Theater.TileSets[Map.TheaterInstance.GetTileSetId(cell.TileIndex)];
+
+                if (tileSet.TiberiumGraphicsOverrides != null &&
+                    tileSet.TiberiumGraphicsOverrides.TryGetValue(gameObject.OverlayType.TiberiumType, out OverlayType startGraphicalOverlayType))
+                {
+                    // This comes with the assumption that a TiberiumType's Overlays are in the same order as they have been defined in Rules.ini
+                    int indexWithinOverlays = gameObject.OverlayType.TiberiumType.Overlays.IndexOf(gameObject.OverlayType);
+
+                    int totalOverrideIndex = startGraphicalOverlayType.Index + indexWithinOverlays;
+                    shape = TheaterGraphics.OverlayTextures[totalOverrideIndex];
+                }
+            }
+
             return new CommonDrawParams()
             {
                 IniName = gameObject.OverlayType.ININame,
-                ShapeImage = TheaterGraphics.OverlayTextures[gameObject.OverlayType.Index]
+                ShapeImage = shape
             };
         }
 
