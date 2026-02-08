@@ -398,20 +398,25 @@ namespace TSMapEditor.Initialization
 
                 bool isClear = false;
 
-                void CheckFoundationCell(Point2D cellCoords)
+                void ApplyFoundationCell(Point2D cellCoords)
                 {
                     var tile = map.GetTile(cellCoords);
                     if (tile != null)
                     {
-                        isClear = true;
                         tile.Structures.Add(building);
                     }
                 }
 
-                // Go through foundation cells and register the building to all tiles that are valid on its foundation.
-                // If the building was added to no cells (all cells on its foundation were nonexistent),
-                // then the building is outside of the map and we should not consider it as belonging to the map.
-                buildingType.ArtConfig.DoForFoundationCoordsOrOrigin(offset => CheckFoundationCell(building.Position + offset));
+                bool IsFoundationCellOnMap(Point2D cellCoords) => map.GetTile(cellCoords) != null;
+
+                // Check that the building's origin cell is within the map. If it is not, we should not add the building to the map at all.
+                if (IsFoundationCellOnMap(building.Position))
+                {
+                    isClear = true;
+
+                    // Go through foundation cells and register the building to all tiles that are valid on its foundation.
+                    buildingType.ArtConfig.DoForFoundationCoordsOrOrigin(offset => ApplyFoundationCell(building.Position + offset));
+                }
 
                 if (!isClear)
                 {
@@ -487,7 +492,15 @@ namespace TSMapEditor.Initialization
                 map.Aircraft.Add(aircraft);
                 var tile = map.GetTile(x, y);
                 if (tile != null)
+                {
                     tile.Aircraft.Add(aircraft);
+                }
+                else
+                {
+                    AddMapLoadError(string.Format(Translate("MapLoader.ReadAircraft.AircraftOutsideOfMap",
+                        "Warning: The map has an aircraft \"{0}\" ({1}) placed outside of the valid map area at {2}, {3}."),
+                        aircraftType.GetEditorDisplayName(), aircraftTypeId, x, y));
+                }
             }
 
             Logger.Log("Aircraft read successfully.");
@@ -553,7 +566,15 @@ namespace TSMapEditor.Initialization
                 map.Units.Add(unit);
                 var tile = map.GetTile(x, y);
                 if (tile != null)
+                {
                     tile.Vehicles.Add(unit);
+                }
+                else
+                {
+                    AddMapLoadError(string.Format(Translate("MapLoader.ReadUnits.UnitOutsideOfMap",
+                        "Warning: The map has a unit \"{0}\" ({1}) placed outside of the valid map area at {2}, {3}."),
+                        unitType.GetEditorDisplayName(), unitTypeId, x, y));
+                }
             }
 
             // Process follow IDs
@@ -628,7 +649,15 @@ namespace TSMapEditor.Initialization
                 map.Infantry.Add(infantry);
                 var tile = map.GetTile(x, y);
                 if (tile != null)
+                {
                     tile.Infantry[(int)subCell] = infantry;
+                }
+                else
+                {
+                    AddMapLoadError(string.Format(Translate("MapLoader.ReadInfantry.InfantryOutsideOfMap",
+                        "Warning: The map has an infantry \"{0}\" ({1}) placed outside of the valid map area at {2}, {3}."),
+                        infantryType.GetEditorDisplayName(), infantryTypeId, x, y));
+                }
             }
 
             Logger.Log("Infantry read successfully.");
