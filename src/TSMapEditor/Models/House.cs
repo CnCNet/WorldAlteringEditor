@@ -94,6 +94,7 @@ namespace TSMapEditor.Models
         public int TechLevel { get; set; }
         public int PercentBuilt { get; set; }
         public bool PlayerControl { get; set; }
+        public bool DefaultRepairableStructures { get; set; } = false;
 
         [INI(false)]
         public int ID { get; set; }

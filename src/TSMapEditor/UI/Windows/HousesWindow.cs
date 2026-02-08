@@ -309,12 +309,14 @@ namespace TSMapEditor.UI.Windows
 
             var dialog = EditorMessageBox.Show(WindowManager,
                 Translate(this, "EnableAIRepairs.Title", "Are you sure?"),
-                Translate(this, "EnableAIRepairs.Description", "This enables the \"AI Repairs\" flag on all buildings of the house, which makes the AI repair them." + Environment.NewLine + Environment.NewLine + 
+                Translate(this, "EnableAIRepairs.Description.v2", "This enables the \"AI Repairable\" flag on all buildings of the house, which makes the AI repair them." + Environment.NewLine +
+                    "Additionally, this will cause the \"AI Repairable\" flag to be automatically enabled for all buildings you place for this house." + Environment.NewLine + Environment.NewLine +
                     "No un-do is available. Do you wish to continue?"),
                 MessageBoxButtons.YesNo);
             dialog.YesClickedAction = _ =>
             {
                 map.Structures.FindAll(s => s.Owner == editedHouse).ForEach(b => b.AIRepairable = true);
+                editedHouse.DefaultRepairableStructures = true;
                 RefreshHouseInfo();
             };
         }
@@ -332,12 +334,14 @@ namespace TSMapEditor.UI.Windows
 
             var dialog = EditorMessageBox.Show(WindowManager,
                 Translate(this, "DisableAIRepairs.Title", "Are you sure?"),
-                Translate(this, "DisableAIRepairs.Description", "This disables the \"AI Repairs\" flag on all buildings of the house, which makes the AI NOT repair them." + Environment.NewLine + Environment.NewLine +
+                Translate(this, "DisableAIRepairs.Description.v2", "This disables the \"AI Repairable\" flag on all buildings of the house, which makes the AI NOT repair them." + Environment.NewLine +
+                "Additionally, this will cause the \"AI Repairable\" flag to be automatically disabled for all buildings you place for this house." + Environment.NewLine + Environment.NewLine +
                     "No un-do is available. Do you wish to continue?"),
                 MessageBoxButtons.YesNo);
             dialog.YesClickedAction = _ =>
             {
                 map.Structures.FindAll(s => s.Owner == editedHouse).ForEach(b => b.AIRepairable = false);
+                editedHouse.DefaultRepairableStructures = false;
                 RefreshHouseInfo();
             };
         }
@@ -588,8 +592,12 @@ namespace TSMapEditor.UI.Windows
             objectCountStats += Translate(this, "HouseStats.Infantry", "Infantry: ") + map.Infantry.Count(s => s.Owner == editedHouse) + Environment.NewLine;
             objectCountStats += Translate(this, "HouseStats.Vehicles", "Vehicles: ") + map.Units.Count(s => s.Owner == editedHouse) + Environment.NewLine;
             objectCountStats += Translate(this, "HouseStats.Buildings", "Buildings: ") + map.Structures.Count(s => s.Owner == editedHouse) + Environment.NewLine;
-            objectCountStats += Translate(this, "HouseStats.AIRepairable", "  AI repairable: ") + map.Structures.Count(s => s.Owner == editedHouse && s.AIRepairable) + Environment.NewLine;
-            objectCountStats += Translate(this, "HouseStats.NotAIRepairable", "  not AI repairable: ") + map.Structures.Count(s => s.Owner == editedHouse && !s.AIRepairable);
+            objectCountStats += Translate(this, "HouseStats.DefaultRepairable", "  AI Repairable by default: ") +
+                (editedHouse.DefaultRepairableStructures ?
+                    Translate(this, "HouseStats.DefaultRepairableYes", "Yes") :
+                    Translate(this, "HouseStats.DefaultRepairableNo", "No")) + Environment.NewLine;
+            objectCountStats += Translate(this, "HouseStats.AIRepairable", "  AI Repairable: ") + map.Structures.Count(s => s.Owner == editedHouse && s.AIRepairable) + Environment.NewLine;
+            objectCountStats += Translate(this, "HouseStats.NotAIRepairable", "  not AI Repairable: ") + map.Structures.Count(s => s.Owner == editedHouse && !s.AIRepairable) + Environment.NewLine;
 
             lblStatsObjectsCount.Text = objectCountStats;
 
