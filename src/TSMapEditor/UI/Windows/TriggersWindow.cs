@@ -1984,15 +1984,16 @@ namespace TSMapEditor.UI.Windows
                     case TriggerParamType.TeamType:
                         TeamType teamType = map.TeamTypes.Count > 0 ? map.TeamTypes[map.TeamTypes.Count - 1] : null;
                         if (teamType != null)
+                        {
                             action.Parameters[parameterIndex] = teamType.ININame;
 
-                        // Special case for action "Reinforcement at Waypoint" - assign the team's waypoint
-                        if (!string.IsNullOrWhiteSpace(teamType.Waypoint) && triggerActionType.Parameters[TriggerActionType.MAX_PARAM_COUNT - 1].TriggerParamType == TriggerParamType.WaypointZZ)
-                        {
-                            action.Parameters[TriggerActionType.MAX_PARAM_COUNT - 1] = teamType.Waypoint;
-                            return;
+                            // Special case for action "Reinforcement at Waypoint" - assign the team's waypoint
+                            if (!string.IsNullOrWhiteSpace(teamType.Waypoint) && triggerActionType.Parameters[TriggerActionType.MAX_PARAM_COUNT - 1].TriggerParamType == TriggerParamType.WaypointZZ)
+                            {
+                                action.Parameters[TriggerActionType.MAX_PARAM_COUNT - 1] = teamType.Waypoint;
+                                return;
+                            }
                         }
-
                         break;
                     case TriggerParamType.WaypointZZ:
                         if (map.Waypoints.Count > 0)
