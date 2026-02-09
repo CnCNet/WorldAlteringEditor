@@ -110,6 +110,7 @@ namespace TSMapEditor.Settings
         public BoolSetting QuickTriggerParameterSelection = new BoolSetting(General, nameof(QuickTriggerParameterSelection), true);
         public IntSetting AutoSaveInterval = new IntSetting(General, nameof(AutoSaveInterval), 300);
         public IntSetting SidebarWidth = new IntSetting(General, nameof(SidebarWidth), 250);
+        public BoolSetting DoNotSuggestMPStartingWaypoints = new BoolSetting(General, nameof(DoNotSuggestMPStartingWaypoints), false);
 
         public BoolSetting MultithreadedTextureLoading = new BoolSetting(General, nameof(MultithreadedTextureLoading), true);
         public BoolSetting LogFileLoading = new BoolSetting(General, nameof(LogFileLoading), false);
