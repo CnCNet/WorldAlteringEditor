@@ -97,6 +97,9 @@ namespace TSMapEditor.UI.Windows
             tbWaypointNumber.Value = availableWaypointNumber;
 
             Show();
+
+            WindowManager.SelectedControl = tbWaypointNumber;
+            tbWaypointNumber.SetSelection(0, tbWaypointNumber.Text.Length);
         }
 
         public int GetAvailableWaypointNumber()
