@@ -45,7 +45,7 @@ namespace TSMapEditor.UI.Windows
             // Init color dropdown options
             ddWaypointColor = FindChild<XNADropDown>(nameof(ddWaypointColor));
             ddWaypointColor.AddItem(Translate(this, "None", "None"));
-            Array.ForEach(Waypoint.SupportedColors, sc => ddWaypointColor.AddItem(Translate("NamedColors." + sc.Name, sc.Name), sc.Value));
+            UIHelpers.AddColorOptionsToDropDown(Waypoint.SupportedColors, ddWaypointColor);
         }
 
         private void BtnPlace_LeftClick(object sender, EventArgs e)
@@ -79,7 +79,7 @@ namespace TSMapEditor.UI.Windows
                 return false;
             }
 
-            string waypointColor = ddWaypointColor.SelectedItem != null ? ddWaypointColor.SelectedItem.Text : null;
+            string waypointColor = ddWaypointColor.SelectedItem != null ? (string)ddWaypointColor.SelectedItem.Tag : null;
 
             mutationManager.PerformMutation(new PlaceWaypointMutation(mutationTarget, cellCoords, waypointNumber, waypointColor));
             return true;

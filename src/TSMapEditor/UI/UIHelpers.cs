@@ -1,6 +1,8 @@
 ﻿using Rampastring.XNAUI.Input;
 using Rampastring.XNAUI.XNAControls;
 using System.Collections.Generic;
+using TSMapEditor.Misc;
+using TSMapEditor.Models;
 using TSMapEditor.UI.Controls;
 
 namespace TSMapEditor.UI
@@ -50,6 +52,19 @@ namespace TSMapEditor.UI
             }
 
             return current;
+        }
+
+        public static void AddColorOptionsToDropDown(NamedColor[] colors, XNADropDown dropDown)
+        {
+            foreach (var supportedColor in colors)
+            {
+                dropDown.AddItem(new XNADropDownItem()
+                {
+                    Text = Translate("NamedColors." + supportedColor.Name, supportedColor.Name),
+                    TextColor = supportedColor.Value,
+                    Tag = supportedColor.Name
+                });
+            }
         }
     }
 }

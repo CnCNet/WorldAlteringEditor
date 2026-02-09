@@ -10,8 +10,8 @@ namespace TSMapEditor.Models
     /// </summary>
     public class TriggerCondition : ICloneable
     {
-        public const int DEF_PARAM_COUNT = 2;
-        public const int MAX_PARAM_COUNT = 4;
+        public const int DEF_PARAM_COUNT = TriggerEventType.DEF_PARAM_COUNT;
+        public const int MAX_PARAM_COUNT = TriggerEventType.MAX_PARAM_COUNT;
 
         public TriggerCondition()
         {

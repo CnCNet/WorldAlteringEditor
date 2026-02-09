@@ -113,10 +113,7 @@ namespace TSMapEditor.UI.Windows
             ddTeamTypeColor = FindChild<XNADropDown>(nameof(ddTeamTypeColor));
 
             ddTeamTypeColor.AddItem(Translate(this, "HouseColor", "House Color"));
-            foreach (var supportedColor in TeamType.SupportedColors)
-            {
-                ddTeamTypeColor.AddItem(Translate("NamedColors." + supportedColor.Name, supportedColor.Name), supportedColor.Value);
-            }
+            UIHelpers.AddColorOptionsToDropDown(TeamType.SupportedColors, ddTeamTypeColor);
             ddTeamTypeColor.SelectedIndexChanged += DdTeamTypeColor_SelectedIndexChanged;
 
             tbFilter.TextChanged += TbFilter_TextChanged;
@@ -675,7 +672,7 @@ namespace TSMapEditor.UI.Windows
             tbMax.Value = editedTeamType.Max;
             tbTechLevel.Value = editedTeamType.TechLevel;
 
-            ddTeamTypeColor.SelectedIndex = ddTeamTypeColor.Items.FindIndex(item => item.Text == editedTeamType.EditorColor);
+            ddTeamTypeColor.SelectedIndex = ddTeamTypeColor.Items.FindIndex(item => (string)item.Tag == editedTeamType.EditorColor);
             if (ddTeamTypeColor.SelectedIndex == -1)
                 ddTeamTypeColor.SelectedIndex = 0;
 
@@ -743,7 +740,7 @@ namespace TSMapEditor.UI.Windows
 
         private void DdTeamTypeColor_SelectedIndexChanged(object sender, EventArgs e)
         {
-            editedTeamType.EditorColor = ddTeamTypeColor.SelectedIndex < 1 ? null : ddTeamTypeColor.SelectedItem.Text;
+            editedTeamType.EditorColor = ddTeamTypeColor.SelectedIndex < 1 ? null : (string)ddTeamTypeColor.SelectedItem.Tag;
             lbTeamTypes.SelectedItem.TextColor = editedTeamType.GetXNAColor();
         }
 

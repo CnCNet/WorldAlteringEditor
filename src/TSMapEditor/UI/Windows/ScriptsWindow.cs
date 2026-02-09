@@ -245,13 +245,10 @@ namespace TSMapEditor.UI.Windows
             btnEditorPresetValues = FindChild<MenuButton>(nameof(btnEditorPresetValues));
             btnEditorPresetValuesWindow = FindChild<EditorButton>(nameof(btnEditorPresetValuesWindow));
             lblActionDescriptionValue = FindChild<XNALabel>(nameof(lblActionDescriptionValue));
-            ddScriptColor = FindChild<XNADropDown>(nameof(ddScriptColor));            
+            ddScriptColor = FindChild<XNADropDown>(nameof(ddScriptColor));
 
             ddScriptColor.AddItem(Translate(this, "None", "None"));
-            Array.ForEach(Script.SupportedColors, supportedColor =>
-            {
-                ddScriptColor.AddItem(Translate("NamedColors." + supportedColor.Name, supportedColor.Name), supportedColor.Value);
-            });
+            UIHelpers.AddColorOptionsToDropDown(Script.SupportedColors, ddScriptColor);
 
             tbFilter.TextChanged += TbFilter_TextChanged;
 
@@ -619,7 +616,7 @@ namespace TSMapEditor.UI.Windows
                 return;
             }
 
-            editedScript.EditorColor = ddScriptColor.SelectedItem.Text;
+            editedScript.EditorColor = (string)ddScriptColor.SelectedItem.Tag;
             lbScriptTypes.SelectedItem.TextColor = ddScriptColor.SelectedItem.TextColor.Value;
         }
 
@@ -1081,7 +1078,7 @@ namespace TSMapEditor.UI.Windows
                 lbActions.AddTaggedItem(new ScriptListBoxItemTag(actionEntry, text, description));
             }
 
-            ddScriptColor.SelectedIndex = ddScriptColor.Items.FindIndex(item => item.Text == editedScript.EditorColor);
+            ddScriptColor.SelectedIndex = ddScriptColor.Items.FindIndex(item => (string)item.Tag == editedScript.EditorColor);
             if (ddScriptColor.SelectedIndex < 0)
                 ddScriptColor.SelectedIndex = 0;
 
