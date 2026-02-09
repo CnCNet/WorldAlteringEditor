@@ -36,6 +36,7 @@ namespace TSMapEditor.UI.Windows
 
             tbWaypointNumber = FindChild<EditorNumberTextBox>(nameof(tbWaypointNumber));
             tbWaypointNumber.MaximumTextLength = (Constants.MaxWaypoint - 1).ToString(CultureInfo.InvariantCulture).Length;
+            tbWaypointNumber.EnterPressed += (s, e) => BtnPlace_LeftClick(this, EventArgs.Empty);
 
             lblDescription = FindChild<XNALabel>(nameof(lblDescription));
             lblDescription.Text = string.Format(Translate(this, "DescriptionText", "Input waypoint number (0-{0}):"), Constants.MaxWaypoint - 1);
