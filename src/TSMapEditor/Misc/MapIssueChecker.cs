@@ -13,7 +13,7 @@ namespace TSMapEditor.Misc
     {
         private const int EnableTriggerActionIndex = 53;
         private const int DisableTriggerActionIndex = 54;
-        private const int BuildingExistsTriggerActionIndex = 32;
+        private const int BuildingExistsTriggerEventIndex = 32;
         private const int TriggerParamIndex = 1;
 
         /// <summary>
@@ -391,7 +391,7 @@ namespace TSMapEditor.Misc
             }
 
             // Check for triggers in SP that have Building Exists event but house belongs to an AI
-            // that doesn't ever build or deploys a unit into the building
+            // that doesn't ever build or deploy a unit into the building
             if (!map.IsLikelyMultiplayer())
             {
                 foreach (var trigger in map.Triggers)
@@ -421,61 +421,47 @@ namespace TSMapEditor.Misc
                         
                         if (building != null) continue;
                         
-                        // Get the building type (rules configuration)
-                        var buildingType = map.Rules.BuildingTypes.Find(buildingType => buildingType.Index == buildingIndex);
-                        if (buildingType == null)
+                        if (buildingIndex < 0 || buildingIndex >= map.Rules.BuildingTypes.Count)
                         {
                             issueList.Add(string.Format(Translate(map, "CheckForIssues.BuildingExists.InvalidBuildingType",
-                                "Could not find buildingType with index {0} as was specified in trigger '{1}'"),
+                                "No building type index {0} exists as was specified in trigger '{1}'"),
                             buildingIndex, trigger.Name));
                             continue;
                         }
+                        
+                        var buildingType = map.Rules.BuildingTypes[buildingIndex];
 
-                        // check the house's base nodes to see if the AI is intended to build it at some point
-                        // If found - all good, house will build this when it can (not checking activation or MCV etc.)
-                        var baseNode = house.BaseNodes.Find(baseNode => baseNode.StructureTypeName == buildingType.ININame);
-                        if (baseNode != null) continue;
+                        // Check the house's base nodes to see if the AI is intended to build it at some point
+                        // If found - all good, house will build this when it can (we assume they have a ConYard etc.)
+                        if (house.BaseNodes.Exists(baseNode => baseNode.StructureTypeName == buildingType.ININame))
+                            continue;
 
                         // Check if there is some techno that can deploy into this structure
                         // If so, check if it's pre-placed or is in a task force in the TeamType used by the house
                         bool hasDeployedTechno = false;
                         var unitsThatDeployToBuilding = map.Rules.UnitTypes
                             .FindAll(unitType => unitType.DeploysInto == buildingType.ININame)
-                            .Select(unitType => unitType.ININame)
                             .ToList();
 
                         if (unitsThatDeployToBuilding.Count > 0)
                         {
-                            foreach (var unit in map.Units)
+                            if (map.Units.Exists(u => u.Owner == house && unitsThatDeployToBuilding.Contains(u.UnitType)))
+                                continue;
+
+                            if (map.TeamTypes.Exists(teamType => 
                             {
-                                if (unit.Owner != house)
-                                    continue;
+                                if (teamType.HouseType != house.HouseType)
+                                    return false;
 
-                                if (unitsThatDeployToBuilding.Contains(unit.UnitType.ININame))
-                                    hasDeployedTechno = true;
-                            }
+                                if (teamType.TaskForce == null)
+                                    return false;
 
-                            // Still hasn't found the techno, keep checking in the owner's team types
-                            if (!hasDeployedTechno)
+                                return Array.Exists(teamType.TaskForce.TechnoTypes, tte => tte != null && tte.TechnoType.WhatAmI() == RTTIType.UnitType && unitsThatDeployToBuilding.Contains((UnitType)tte.TechnoType));
+                            }))
                             {
-                                foreach (var teamType in map.TeamTypes)
-                                {
-                                    if (teamType.HouseType != house.HouseType)
-                                        continue;
-                                    
-                                    foreach (var technoTypeEntry in teamType.TaskForce.TechnoTypes)
-                                    {
-                                        if (technoTypeEntry == null)
-                                            continue;
-
-                                        if (unitsThatDeployToBuilding.Contains(technoTypeEntry.TechnoType.ININame))
-                                            hasDeployedTechno = true;
-                                    }
-                                }
+                                continue;
                             }
                         }
-
-                        if (hasDeployedTechno) continue;
 
                         // If we got here, then there is no preplaced structure or base node for this house, and no unit that can deploy into it either.
                         // This means the trigger will never spring.
