@@ -402,24 +402,25 @@ namespace TSMapEditor.Misc
                     if (house == null)
                         continue; // will be reported by the check for invalid owners
 
+                    // This check only checks AI houses as they're controlled by mappers in SP missions
+                    if (house.PlayerControl)
+                        continue;
+
                     foreach (var condition in trigger.Conditions)
                     {
                         // Check if current condition is Building Exists condition
-                        if (condition.ConditionIndex != BuildingExistsTriggerActionIndex) continue;
-
-                        // This check only checks AI houses as they're controlled by mappers in SP missions
-                        if (house.PlayerControl) continue;
+                        if (condition.ConditionIndex != BuildingExistsTriggerEventIndex) 
+                            continue;                        
                         
                         // Get the condition's building index
                         int buildingIndex = int.Parse(condition.Parameters[1]);
 
                         // Try to find a pre-placed structure on the map with the index belonging to the trigger's house
                         // If found - all good, house has this structure and trigger is valid
-                        var building = map.Structures.Find(structure => 
+                        if (map.Structures.Exists(structure => 
                             structure.ObjectType.Index == buildingIndex &&
-                            structure.Owner == house);
-                        
-                        if (building != null) continue;
+                            structure.Owner == house))
+                            continue;
                         
                         if (buildingIndex < 0 || buildingIndex >= map.Rules.BuildingTypes.Count)
                         {
@@ -438,7 +439,6 @@ namespace TSMapEditor.Misc
 
                         // Check if there is some techno that can deploy into this structure
                         // If so, check if it's pre-placed or is in a task force in the TeamType used by the house
-                        bool hasDeployedTechno = false;
                         var unitsThatDeployToBuilding = map.Rules.UnitTypes
                             .FindAll(unitType => unitType.DeploysInto == buildingType.ININame)
                             .ToList();
@@ -456,11 +456,12 @@ namespace TSMapEditor.Misc
                                 if (teamType.TaskForce == null)
                                     return false;
 
-                                return Array.Exists(teamType.TaskForce.TechnoTypes, tte => tte != null && tte.TechnoType.WhatAmI() == RTTIType.UnitType && unitsThatDeployToBuilding.Contains((UnitType)tte.TechnoType));
+                                return Array.Exists(teamType.TaskForce.TechnoTypes, tte =>
+                                    tte != null &&
+                                    tte.TechnoType.WhatAmI() == RTTIType.UnitType &&
+                                    unitsThatDeployToBuilding.Contains((UnitType)tte.TechnoType));
                             }))
-                            {
                                 continue;
-                            }
                         }
 
                         // If we got here, then there is no preplaced structure or base node for this house, and no unit that can deploy into it either.
