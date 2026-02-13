@@ -260,6 +260,13 @@ namespace TSMapEditor.Models
 
             MapLoader.MapLoadErrors.Clear();
 
+            foreach (string weaponName in initializer.MissingWeapons)
+            {
+                MapLoader.MapLoadErrors.Add(string.Format(Translate("MapLoader.MissingWeapon",
+                    "Unable to find INI section for weapon {0}! Please check your Rules or the map's INI code for references to this weapon and either remove them, or implement the weapon properly."),
+                    weaponName));
+            }
+
             MapLoader.ReadBasicSection(this, mapIni);
             MapLoader.ReadMapSection(this, mapIni);
             MapLoader.ReadIsoMapPack(this, mapIni);

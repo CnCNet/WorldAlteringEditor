@@ -54,6 +54,8 @@ namespace TSMapEditor.Initialization
                 { typeof(AnimType), InitArtConfigGeneric }
             };
 
+        public List<string> MissingWeapons { get; private set; } = new List<string>();
+
         public void ReadObjectTypePropertiesFromINI<T>(T obj, IniFile iniFile) where T : INIDefineable, INIDefined
         {
             IniSection objectSection = iniFile.GetSection(obj.ININame);
@@ -100,7 +102,12 @@ namespace TSMapEditor.Initialization
                 weapon = new Weapon(weaponName);
                 var section = rulesIni.GetSection(weaponName);
                 if (section == null)
-                    throw new INIConfigException($"No section found for weapon {weaponName} while parsing Rules!");
+                {
+                    if (!MissingWeapons.Contains(weaponName))
+                        MissingWeapons.Add(weaponName);
+
+                    return null;
+                }
 
                 weapon.ReadPropertiesFromIniSection(section);
                 map.Rules.Weapons.Add(weapon);
