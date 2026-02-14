@@ -740,7 +740,7 @@ namespace TSMapEditor
             return false;
         }
 
-        public static IniFile ReadConfigINI(string path, bool applyTranslation = true)
+        public static IniFile ReadConfigINI(string path, bool applyTranslation = true, bool throwIfNotFound = false)
         {
             string customPath = Path.Combine(Environment.CurrentDirectory, "Config", path);
             string defaultPath = Path.Combine(Environment.CurrentDirectory, "Config", "Default", path);
@@ -753,6 +753,9 @@ namespace TSMapEditor
             }
             else
             {
+                if (throwIfNotFound && !File.Exists(defaultPath))
+                    throw new FileNotFoundException("Config INI not found: " + path);
+
                 iniFile = new IniFile(defaultPath);
             }
 

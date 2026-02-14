@@ -61,15 +61,7 @@ namespace TSMapEditor.UI.Controls
 
             if (ConfigIni == null)
             {
-                string defaultConfigIniPath = Path.Combine(Environment.CurrentDirectory, "Config", "Default", "UI", SubDirectory, Name + ".ini");
-                string configIniPath = Path.Combine(Environment.CurrentDirectory, "Config", "UI", SubDirectory, Name + ".ini");
-
-                if (File.Exists(configIniPath))
-                    ConfigIni = new IniFile(configIniPath);
-                else if (File.Exists(defaultConfigIniPath))
-                    ConfigIni = new IniFile(defaultConfigIniPath);
-                else
-                    throw new FileNotFoundException("Config INI not found: " + configIniPath);
+                ConfigIni = Helpers.ReadConfigINI(Path.Combine("UI", SubDirectory, Name + ".ini"), true, true);
             }
 
             Parser.Instance.SetPrimaryControl(this);

@@ -129,7 +129,7 @@ namespace TSMapEditor.Rendering
             Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
             AssetLoader.Initialize(GraphicsDevice, Content);
-            AssetLoader.AssetSearchPaths.Add(Path.Combine(Environment.CurrentDirectory, "Content", "Translations", TranslatorSetup.ActiveTranslationDirectory()));
+            AssetLoader.AssetSearchPaths.Add(Path.Combine(Environment.CurrentDirectory, "Config", "Translations", TranslatorSetup.ActiveTranslationDirectory()));
             AssetLoader.AssetSearchPaths.Add(Environment.CurrentDirectory + DSC + "Content" + DSC);
 
             // Hack: allow translations to override fonts
@@ -137,7 +137,7 @@ namespace TSMapEditor.Rendering
             while (true)
             {
                 string spriteFontPath = Path.Combine("Translations", TranslatorSetup.ActiveTranslationDirectory(), "SpriteFont" + i + ".xnb");
-                if (AssetLoader.AssetExists(Path.Combine(Environment.CurrentDirectory, "Content", spriteFontPath)))
+                if (AssetLoader.AssetExists(Path.Combine(Environment.CurrentDirectory, "Config", spriteFontPath)))
                 {
                     var spriteFont = Content.Load<SpriteFont>(spriteFontPath);
                     Renderer.GetFontList()[i] = spriteFont;
