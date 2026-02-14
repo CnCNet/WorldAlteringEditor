@@ -417,16 +417,14 @@ namespace TSMapEditor.Misc
 
                         // Try to find a pre-placed structure on the map with the index belonging to the trigger's house
                         // If found - all good, house has this structure and trigger is valid
-                        if (map.Structures.Exists(structure => 
-                            structure.ObjectType.Index == buildingIndex &&
-                            structure.Owner == house))
+                        if (map.Structures.Exists(structure => structure.ObjectType.Index == buildingIndex && structure.Owner == house))
                             continue;
                         
                         if (buildingIndex < 0 || buildingIndex >= map.Rules.BuildingTypes.Count)
                         {
                             issueList.Add(string.Format(Translate(map, "CheckForIssues.BuildingExists.InvalidBuildingType",
                                 "No building type index {0} exists as was specified in trigger '{1}'"),
-                            buildingIndex, trigger.Name));
+                                buildingIndex, trigger.Name));
                             continue;
                         }
                         
@@ -461,7 +459,9 @@ namespace TSMapEditor.Misc
                                     tte.TechnoType.WhatAmI() == RTTIType.UnitType &&
                                     unitsThatDeployToBuilding.Contains((UnitType)tte.TechnoType));
                             }))
+                            {
                                 continue;
+                            }
                         }
 
                         // If we got here, then there is no preplaced structure or base node for this house, and no unit that can deploy into it either.
