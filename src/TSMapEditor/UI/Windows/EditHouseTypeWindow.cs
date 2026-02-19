@@ -54,7 +54,6 @@ namespace TSMapEditor.UI.Windows
             chkMultiplayPassive = FindChild<XNACheckBox>(nameof(chkMultiplayPassive));
             chkWallOwner = FindChild<XNACheckBox>(nameof(chkWallOwner));
 
-            tbName.InputEnabled = false;
             tbSuffix.AllowComma = false;
             tbPrefix.AllowComma = false;
             tbSelectedMultiplier.AllowDecimals = true;
@@ -89,7 +88,12 @@ namespace TSMapEditor.UI.Windows
             }
 
             tbSelectedMultiplier.DoubleDefaultValue = 1.0;
-            tbName.InputEnabled = false;
+        }
+
+        private void TbName_TextChanged(object sender, EventArgs e)
+        {
+            editedCountry.ININame = tbName.Text;
+            CheckAddRulesHouseType(editedCountry);
         }
 
         private void ChkWallOwner_CheckedChanged(object sender, EventArgs e)
@@ -188,6 +192,7 @@ namespace TSMapEditor.UI.Windows
 
         private void LoadHouseTypeInfo()
         {
+            tbName.TextChanged -= TbName_TextChanged;
             ddParentCountry.SelectedIndexChanged -= DdParentCountry_SelectedIndexChanged;
             tbSuffix.TextChanged -= TbSuffix_TextChanged;
             tbPrefix.TextChanged -= TbPrefix_TextChanged;
@@ -209,12 +214,14 @@ namespace TSMapEditor.UI.Windows
 
                 ddParentCountry.SelectedIndex = map.Rules.RulesHouseTypes.FindIndex(c => c.ININame == editedCountry.ParentCountry);
                 ddParentCountry.AllowDropDown = true;
+                tbName.InputEnabled = true;
             }
             else
             {
                 ddParentCountry.AddItem(Translate(this, "StandardCountry", "Standard country - no parent"));
                 ddParentCountry.SelectedIndex = 0;
                 ddParentCountry.AllowDropDown = false;
+                tbName.InputEnabled = false;
             }
 
             tbName.Text = editedCountry.ININame;
@@ -229,6 +236,7 @@ namespace TSMapEditor.UI.Windows
             chkMultiplayPassive.Checked = editedCountry.MultiplayPassive ?? false;
             chkWallOwner.Checked = editedCountry.WallOwner ?? false;
 
+            tbName.TextChanged += TbName_TextChanged;
             ddParentCountry.SelectedIndexChanged += DdParentCountry_SelectedIndexChanged;
             tbSuffix.TextChanged += TbSuffix_TextChanged;
             tbPrefix.TextChanged += TbPrefix_TextChanged;
