@@ -123,6 +123,8 @@ namespace TSMapEditor
 
         public const int TS_WAYPT_SPECIAL = 100;
 
+        public const string DefaultHouseTypeName = "Neutral";
+
         public static void Init()
         {
             const string ConstantsSectionName = "Constants";

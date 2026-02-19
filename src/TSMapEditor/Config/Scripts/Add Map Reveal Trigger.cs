@@ -48,7 +48,7 @@ namespace WAEScript
         {
             var trigger = new Trigger(map.GetNewUniqueInternalId());
             trigger.Name = mapRevealTriggerName;
-            trigger.HouseType = "Neutral";
+            trigger.HouseType = map.FindHouseType(Constants.DefaultHouseTypeName);
 
             var timeElapsedCondition = new TriggerCondition();
             timeElapsedCondition.ConditionIndex = 13;

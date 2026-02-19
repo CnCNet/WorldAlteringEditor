@@ -1768,7 +1768,7 @@ namespace TSMapEditor.UI.Windows
         {
             map.TriggersChanged -= Map_TriggersChanged;
 
-            var newTrigger = new Trigger(map.GetNewUniqueInternalId()) { Name = "New trigger", HouseType = "Neutral" };
+            var newTrigger = new Trigger(map.GetNewUniqueInternalId()) { Name = "New trigger", HouseType = map.FindHouseType(Constants.DefaultHouseTypeName) };
             map.AddTrigger(newTrigger);
             map.AddTag(new Tag() { ID = map.GetNewUniqueInternalId(), Name = "New tag", Trigger = newTrigger });
             ListTriggers();
@@ -2232,7 +2232,7 @@ namespace TSMapEditor.UI.Windows
         private void RefreshHouses()
         {
             ddHouseType.Items.Clear();
-            map.GetHouseTypes().ForEach(ht => ddHouseType.AddItem(ht.ININame, Helpers.GetHouseTypeUITextColor(ht)));
+            map.GetHouseTypes().ForEach(ht => ddHouseType.AddItem(new XNADropDownItem() { Text = ht.ININame, TextColor = Helpers.GetHouseTypeUITextColor(ht), Tag = ht }));
         }
 
         private void ListTriggers()
@@ -2339,7 +2339,7 @@ namespace TSMapEditor.UI.Windows
             }
 
             tbName.Text = editedTrigger.Name;
-            ddHouseType.SelectedIndex = map.GetHouseTypes().FindIndex(h => h.ININame == trigger.HouseType);
+            ddHouseType.SelectedIndex = map.GetHouseTypes().FindIndex(h => h == trigger.HouseType);
             ddType.SelectedIndex = tag == null ? 3 : tag.Repeating;
             selAttachedTrigger.Text = editedTrigger.LinkedTrigger == null ? Constants.NoneValue1 : editedTrigger.LinkedTrigger.Name;
             selAttachedTrigger.Tag = editedTrigger.LinkedTrigger;
@@ -2419,7 +2419,7 @@ namespace TSMapEditor.UI.Windows
 
         private void DdHouse_SelectedIndexChanged(object sender, EventArgs e)
         {
-            editedTrigger.HouseType = ddHouseType.SelectedItem.Text;
+            editedTrigger.HouseType = (HouseType)ddHouseType.SelectedItem.Tag;
         }
 
         private void ChkDisabled_CheckedChanged(object sender, EventArgs e)

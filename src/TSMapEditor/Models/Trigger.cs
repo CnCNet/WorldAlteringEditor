@@ -23,7 +23,14 @@ namespace TSMapEditor.Models
         public void SetInternalID(string id) => ID = id;
 
         public string ID { get; private set; }
-        public string HouseType { get; set; }
+
+        public HouseType HouseType { get; set; }
+
+        /// <summary>
+        /// The name of the trigger's HouseType as loaded from the map.
+        /// Should not be used for anything after the map has been loaded.
+        /// </summary>
+        public string LoadedHouseTypeName { get; private set; }
 
         /// <summary>
         /// The linked trigger ID loaded from the map.
@@ -103,8 +110,9 @@ namespace TSMapEditor.Models
         {
             // Write entry to [Triggers]
             string linkedTriggerId = LinkedTrigger == null ? Constants.NoneValue1 : LinkedTrigger.ID;
+            string owner = HouseType != null ? HouseType.ININame : Constants.NoneValue1;
             iniFile.SetStringValue("Triggers", ID,
-                $"{HouseType},{linkedTriggerId},{Name}," +
+                $"{owner},{linkedTriggerId},{Name}," +
                 $"{Helpers.BoolToIntString(Disabled)}," +
                 $"{Helpers.BoolToIntString(Easy)},{Helpers.BoolToIntString(Normal)},{Helpers.BoolToIntString(Hard)},0");
 
@@ -249,7 +257,7 @@ namespace TSMapEditor.Models
 
             return new Trigger(id)
             {
-                HouseType = parts[0],
+                LoadedHouseTypeName = parts[0],
                 LinkedTriggerId = parts[1],
                 Name = parts[2],
                 Disabled = Conversions.BooleanFromString(parts[3], false),
@@ -261,7 +269,7 @@ namespace TSMapEditor.Models
 
         public void Serialize(MemoryStream memoryStream)
         {
-            StreamHelpers.WriteUnicodeString(memoryStream, HouseType);
+            StreamHelpers.WriteUnicodeString(memoryStream, HouseType != null ? HouseType.ININame : Constants.NoneValue1);
             StreamHelpers.WriteUnicodeString(memoryStream, Name);
 
             StreamHelpers.WriteBool(memoryStream, Disabled);
@@ -286,7 +294,7 @@ namespace TSMapEditor.Models
 
         public void Deserialize(MemoryStream memoryStream)
         {
-            HouseType = StreamHelpers.ReadUnicodeString(memoryStream);
+            LoadedHouseTypeName = StreamHelpers.ReadUnicodeString(memoryStream);
             Name = StreamHelpers.ReadUnicodeString(memoryStream);                        
             
             Disabled = StreamHelpers.ReadBool(memoryStream);
@@ -340,6 +348,7 @@ namespace TSMapEditor.Models
 
             var trigger = new Trigger(map.GetNewUniqueInternalId());
             trigger.Deserialize(memoryStream);
+            trigger.HouseType = map.FindHouseType(trigger.LoadedHouseTypeName);
 
             var tag = new Tag();
             tag.ID = map.GetNewUniqueInternalId();

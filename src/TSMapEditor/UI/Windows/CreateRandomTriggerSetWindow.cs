@@ -154,7 +154,7 @@ namespace TSMapEditor.UI.Windows
 
             var baseTrigger = new Trigger(map.GetNewUniqueInternalId());
             baseTrigger.Name = triggerName;
-            baseTrigger.HouseType = "Neutral";
+            baseTrigger.HouseType = map.FindHouseType(Constants.DefaultHouseTypeName);
 
             if (!string.IsNullOrWhiteSpace(color))
             {
@@ -203,7 +203,7 @@ namespace TSMapEditor.UI.Windows
             {
                 var childTrigger = new Trigger(map.GetNewUniqueInternalId());
                 childTrigger.Name = $"{name} {i + 1}";
-                childTrigger.HouseType = "Neutral";
+                childTrigger.HouseType = map.FindHouseType(Constants.DefaultHouseTypeName);
                 childTrigger.Disabled = true;
                 
                 if (!string.IsNullOrWhiteSpace(color))

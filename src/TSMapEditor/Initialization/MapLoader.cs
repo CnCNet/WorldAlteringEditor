@@ -864,8 +864,20 @@ namespace TSMapEditor.Initialization
                     continue;
 
                 var trigger = Trigger.ParseTrigger(kvp.Key, kvp.Value);
-                if (trigger != null)
-                    map.AddTrigger(trigger);
+                if (trigger == null)
+                {
+                    AddMapLoadError(string.Format(Translate("MapLoader.ReadTriggers.FailedToLoadTrigger", "Failed to load trigger {0}! It most likely has a malformed INI format."), kvp.Key));
+                    continue;
+                }
+
+                map.AddTrigger(trigger);
+                trigger.HouseType = map.FindHouseType(trigger.LoadedHouseTypeName);
+                if (trigger.HouseType == null)
+                {
+                    trigger.HouseType = map.FindHouseType(Constants.DefaultHouseTypeName);
+                    AddMapLoadError(string.Format(Translate("MapLoader.ReadTriggers.InvalidHouseTypeForTrigger", "Trigger \"{0}\" had a non-existent HouseType \"{1}\" as its owner. It has been reset to \"{2}\"."),
+                        trigger.Name, trigger.LoadedHouseTypeName, trigger.HouseType?.ININame));
+                }
 
                 string actionData = mapIni.GetStringValue("Actions", trigger.ID, null);
                 trigger.ParseActions(actionData);
