@@ -780,7 +780,7 @@ namespace TSMapEditor.Rendering
                 new Rectangle(drawX, drawY, Constants.CellSizeX, Constants.CellSizeY),
                 sourceRectangle, color, depthTop, depthBottom);
 
-            if (tmpImage.TmpImage.HasExtraData())
+            if (tmpImage.TmpImage.HasExtraData() && (!EditorState.Is2DMode || UserSettings.Instance.DrawExtraGraphicsIn2DMode))
             {
                 drawX = drawX + tmpImage.TmpImage.XExtra - tmpImage.TmpImage.X;
                 drawY = drawPointWithoutCellHeight.Y + tmpImage.TmpImage.YExtra - tmpImage.TmpImage.Y;

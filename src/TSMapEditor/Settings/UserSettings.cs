@@ -42,6 +42,7 @@ namespace TSMapEditor.Settings
 
                 ScrollRate,
                 MapWideOverlayOpacity,
+                DrawExtraGraphicsIn2DMode,
 
                 Theme,
                 UseBoldFont,
@@ -102,6 +103,7 @@ namespace TSMapEditor.Settings
 
         public IntSetting ScrollRate = new IntSetting(MapView, nameof(ScrollRate), 15);
         public IntSetting MapWideOverlayOpacity = new IntSetting(MapView, nameof(MapWideOverlayOpacity), 50);
+        public BoolSetting DrawExtraGraphicsIn2DMode = new BoolSetting(MapView, nameof(DrawExtraGraphicsIn2DMode), true);
 
         public StringSetting Theme = new StringSetting(General, nameof(Theme), "Default");
         public BoolSetting UseBoldFont = new BoolSetting(General, nameof(UseBoldFont), false);

@@ -171,6 +171,7 @@ namespace TSMapEditor.UI.TopBar
             viewContextMenu.AddItem(" ", null, () => false, null, null);
             viewContextMenu.AddItem(Translate(this, "View.ToggleImpassableCells", "Toggle Impassable Cells"), () => mapUI.EditorState.HighlightImpassableCells = !mapUI.EditorState.HighlightImpassableCells, null, null, null);
             viewContextMenu.AddItem(Translate(this, "View.ToggleIceGrowthPreview", "Toggle IceGrowth Preview"), () => mapUI.EditorState.HighlightIceGrowth = !mapUI.EditorState.HighlightIceGrowth, null, null, null);
+            viewContextMenu.AddItem(Translate(this, "View.ToggleExtraGraphicsIn2DMode", "Toggle Extra Graphics in 2D Mode"), ToggleExtraGraphicsIn2DMode, null, null, null);
             viewContextMenu.AddItem(" ", null, () => false, null, null);
             viewContextMenu.AddItem(Translate(this, "View.ViewMinimap", "View Minimap"), () => windowController.MinimapWindow.Open());
             viewContextMenu.AddItem(" ", null, () => false, null, null);
@@ -412,6 +413,13 @@ namespace TSMapEditor.UI.TopBar
         private void SmoothenIce()
         {
             new SmoothenIceScript().Perform(map);
+            mapUI.InvalidateMap();
+        }
+
+        private void ToggleExtraGraphicsIn2DMode()
+        {
+            UserSettings.Instance.DrawExtraGraphicsIn2DMode.UserDefinedValue = !UserSettings.Instance.DrawExtraGraphicsIn2DMode;
+            _ = UserSettings.Instance.SaveSettingsAsync();
             mapUI.InvalidateMap();
         }
 
