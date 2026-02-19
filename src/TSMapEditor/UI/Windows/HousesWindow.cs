@@ -251,6 +251,12 @@ namespace TSMapEditor.UI.Windows
             HouseType clonedHouseType = (HouseType)editedHouse.HouseType.Clone();
             clonedHouseType.ININame = editedHouse.HouseType.ININame + cloneININame;
             clonedHouseType.Index = map.HouseTypes.Count + (Constants.IsRA2YR ? map.Rules.RulesHouseTypes.Count : 0);
+
+            if (Constants.IsRA2YR)
+            {
+                clonedHouseType.ParentCountry = editedHouse.HouseType.ParentCountry != null ? editedHouse.HouseType.ParentCountry : editedHouse.HouseType.ININame;
+            }
+
             map.HouseTypes.Add(clonedHouseType);
 
             House clonedHouse = (House)editedHouse.Clone();
