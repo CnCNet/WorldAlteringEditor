@@ -516,6 +516,7 @@ namespace TSMapEditor.Misc
 
             CheckForMismatchedDifficultyEnableIssue(map, issueList);
             CheckForMismatchedDifficultyDisableIssue(map, issueList);
+            CheckForInvalidParentCountryIssue(map, issueList);
 
             return issueList;
         }
@@ -641,6 +642,20 @@ namespace TSMapEditor.Misc
                             }
                         }
                     }
+                }
+            }
+        }
+
+        private static void CheckForInvalidParentCountryIssue(Map map, List<string> issueList)
+        {
+            if (!Constants.IsRA2YR)
+                return;
+
+            foreach (var customHouseType in map.HouseTypes)
+            {
+                if (map.Rules.RulesHouseTypes.Find(ht => ht.ININame == customHouseType.ParentCountry) == null)
+                {
+                    issueList.Add(string.Format(Translate(map, "CheckForIssues.InvalidParentCountry", "The map-defined country \"{0}\" has an invalid ParentCountry value \"{1}\"!")));
                 }
             }
         }
