@@ -85,6 +85,7 @@ namespace TSMapEditor.Models
         public int X { get; set; }
         public int YSort { get; set; }
         public int ZAdjust { get; set; }
-        public readonly int SortValue => YSort - ZAdjust * ZAdjustMult;
+
+        public int SortValue(int ySortAdjust) => YSort + ySortAdjust - ZAdjust * ZAdjustMult;
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Xna.Framework;
 using System.Collections.Generic;
 using TSMapEditor.CCEngine;
@@ -16,7 +17,9 @@ namespace TSMapEditor.Rendering.ObjectRenderers
 
         private List<Animation> animationList = new List<Animation>();
 
-        DepthRectangle cachedDepth;
+        private DepthRectangle cachedDepth;
+
+        private bool isDrawingBib = false;
 
         public override void InitDrawForObject(Structure gameObject)
         {
@@ -114,7 +117,7 @@ namespace TSMapEditor.Rendering.ObjectRenderers
             return (float)foundation.Width / (foundation.Width + foundation.Height);
         }
 
-        private DepthRectangle GetDepthForAnimation(Structure gameObject, Rectangle drawingBounds)
+        private DepthRectangle GetDepthForAnimation(Structure gameObject, Rectangle drawingBounds, bool isBelowBuilding)
         {
             float foundationCenterXPoint = GetFoundationCenterXPoint(gameObject);
             int distRight = (int)(drawingBounds.Width * (1.0f - foundationCenterXPoint));
@@ -132,7 +135,11 @@ namespace TSMapEditor.Rendering.ObjectRenderers
                 bottom += heightReferenceCell.Level * Constants.CellHeight;
             }
 
-            int yReference = CellMath.CellBottomPointFromCellCoords(southernmostFoundationCellCoords, Map);
+            int yReference;
+            if (isBelowBuilding)
+                yReference = CellMath.CellTopLeftPointFromCellCoords(gameObject.Position, Map).Y;
+            else
+                yReference = CellMath.CellBottomPointFromCellCoords(southernmostFoundationCellCoords, Map);
 
             float topDepth = CellMath.GetDepthForPixelInCube(y, 0, yReference, heightReferenceCell, Map);
             float bottomDepth = CellMath.GetDepthForPixelInCube(bottom, 0, yReference, heightReferenceCell, Map);
@@ -181,23 +188,35 @@ namespace TSMapEditor.Rendering.ObjectRenderers
 
             // drawingBounds includes effect of height, which is undesirable for depth rendering
             int y = drawingBounds.Y;
+            int bottom = drawingBounds.Bottom;
 
             if (heightReferenceCell != null && !RenderDependencies.EditorState.Is2DMode)
             {
                 y += heightReferenceCell.Level * Constants.CellHeight;
+                bottom += heightReferenceCell.Level * Constants.CellHeight;
             }
 
-            int yReference = CellMath.CellBottomPointFromCellCoords(southernmostFoundationCellCoords, Map);
+            if (isDrawingBib)
+            {
+                int topYReference = CellMath.CellTopLeftPointFromCellCoords(gameObject.Position, Map).Y;
+                float topDepth = CellMath.GetDepthForPixelInCube(y, 0, topYReference, heightReferenceCell, Map);
+                float bottomDepth = CellMath.GetDepthForPixelInCube(bottom, 0, topYReference, heightReferenceCell, Map);
+                return new DepthRectangle(topDepth, bottomDepth);
+            }
+            else
+            {
+                int yReference = CellMath.CellBottomPointFromCellCoords(southernmostFoundationCellCoords, Map);
 
-            // Used for drawing turrets and stuff, just return maximum depth since they must be on top of the building
-            float maxDepth = CellMath.GetDepthForPixelInCube(y, 0, yReference, heightReferenceCell, Map);
+                // Used for drawing turrets and stuff, just return maximum depth since they must be on top of the building
+                float maxDepth = CellMath.GetDepthForPixelInCube(y, 0, yReference, heightReferenceCell, Map);
 
-            if (maxDepth < cachedDepth.TopLeft)
+                if (maxDepth < cachedDepth.TopLeft)
+                    return cachedDepth;
+
+                cachedDepth = new DepthRectangle(maxDepth);
+
                 return cachedDepth;
-
-            cachedDepth = new DepthRectangle(maxDepth);
-
-            return cachedDepth;
+            }
         }
 
         private (DepthRectangle depthRectangle, Rectangle sourceRect) GetLeftDepthRectangle(Structure gameObject, PositionedTexture texture, Rectangle drawingBounds)
@@ -285,8 +304,10 @@ namespace TSMapEditor.Rendering.ObjectRenderers
 
         private void DrawBibGraphics(Structure gameObject, ShapeImage bibGraphics, Point2D drawPoint, in CommonDrawParams drawParams, bool affectedByLighting)
         {
+            isDrawingBib = true;
             DrawShapeImage(gameObject, bibGraphics, 0, Color.White, true, gameObject.GetRemapColor(),
                 affectedByLighting, !drawParams.ShapeImage.SubjectToLighting, drawPoint);
+            isDrawingBib = false;
         }
 
         protected override void Render(Structure gameObject, Point2D drawPoint, in CommonDrawParams drawParams)
@@ -314,7 +335,7 @@ namespace TSMapEditor.Rendering.ObjectRenderers
 
             // Sort the anims according to their settings
             animationList.Sort((anim1, anim2) =>
-                anim1.BuildingAnimDrawConfig.SortValue.CompareTo(anim2.BuildingAnimDrawConfig.SortValue));
+                anim1.BuildingAnimDrawConfig.SortValue(anim1.AnimType.ArtConfig.YSortAdjust).CompareTo(anim2.BuildingAnimDrawConfig.SortValue(anim2.AnimType.ArtConfig.YSortAdjust)));
 
             bool affectedByAmbient = !affectedByLighting;
 
@@ -323,14 +344,14 @@ namespace TSMapEditor.Rendering.ObjectRenderers
             {
                 var anim = animationList[i];
 
-                if (anim.BuildingAnimDrawConfig.SortValue < 0)
+                if (anim.BuildingAnimDrawConfig.SortValue(anim.AnimType.ArtConfig.YSortAdjust) < 0)
                 {
                     var animShape = TheaterGraphics.AnimTextures[anim.AnimType.Index];
                     if (animShape != null)
                     {
                         DrawAnimationImage(gameObject, anim, animShape, anim.GetFrameIndex(animShape.GetFrameCount()),
                             nonRemapColor, true, gameObject.GetRemapColor(), affectedByLighting, affectedByAmbient,
-                            drawPoint, depthAddition);
+                            drawPoint, Constants.DepthEpsilon, true);
                     }
                 }
             }
@@ -356,7 +377,7 @@ namespace TSMapEditor.Rendering.ObjectRenderers
             {
                 var anim = animationList[i];
 
-                if (anim.BuildingAnimDrawConfig.SortValue >= 0)
+                if (anim.BuildingAnimDrawConfig.SortValue(anim.AnimType.ArtConfig.YSortAdjust) >= 0)
                 {
                     // It gets challenging to handle depth if the anim renderer draws anims that are "above" the building, 
                     // as it does not have proper context of the building it's drawing on.
@@ -367,7 +388,7 @@ namespace TSMapEditor.Rendering.ObjectRenderers
                     {
                         DrawAnimationImage(gameObject, anim, animShape, anim.GetFrameIndex(animShape.GetFrameCount()),
                             nonRemapColor, true, gameObject.GetRemapColor(), affectedByLighting, affectedByAmbient,
-                            drawPoint, depthAddition);
+                            drawPoint, 0, false);
                     }
                 }
             }
@@ -462,7 +483,7 @@ namespace TSMapEditor.Rendering.ObjectRenderers
 
         private void DrawAnimationImage(Structure gameObject, Animation animation, ShapeImage image, int frameIndex, Color color,
             bool drawRemap, Color remapColor, bool affectedByLighting, bool affectedByAmbient, Point2D drawPoint,
-            float depthAddition = 0f)
+            float depthAddition, bool isBelowBuilding)
         {
             if (image == null)
                 return;
@@ -496,9 +517,11 @@ namespace TSMapEditor.Rendering.ObjectRenderers
                 }
             }
 
-            var depthRectangle = GetDepthForAnimation(gameObject, drawingBounds);
+            var depthRectangle = GetDepthForAnimation(gameObject, drawingBounds, isBelowBuilding);
             depthRectangle += depthAddition;
-            depthRectangle += GetDepthAddition(gameObject);
+
+            if (!isBelowBuilding)
+                depthRectangle += GetDepthAddition(gameObject);
 
             RenderFrame(gameObject, frame, remapFrame, color, drawRemap, remapColor,
                 drawingBounds, image.GetPaletteTexture(), lighting, depthRectangle);

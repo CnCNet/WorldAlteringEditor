@@ -10,6 +10,7 @@ namespace TSMapEditor.Models.ArtConfig
         public string Image { get; set; }
         public int YDrawOffset { get; set; }
         public int XDrawOffset { get; set; } // Phobos
+        public int YSortAdjust { get; set; }
         public bool NewTheater { get; set; }
         public bool Theater { get; set; }
         public bool AltPalette { get; set; }
@@ -40,6 +41,7 @@ namespace TSMapEditor.Models.ArtConfig
             Image = iniSection.GetStringValue(nameof(Image), Image);
             YDrawOffset = iniSection.GetIntValue(nameof(YDrawOffset), YDrawOffset);
             XDrawOffset = iniSection.GetIntValue(nameof(XDrawOffset), XDrawOffset);
+            YSortAdjust = iniSection.GetIntValue(nameof(YSortAdjust), YSortAdjust);
             NewTheater = iniSection.GetBooleanValue(nameof(NewTheater), NewTheater);
             Theater = iniSection.GetBooleanValue(nameof(Theater), Theater);
             AltPalette = iniSection.GetBooleanValue(nameof(AltPalette), AltPalette);
