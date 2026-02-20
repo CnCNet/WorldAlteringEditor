@@ -203,7 +203,7 @@ namespace TSMapEditor.Models.ArtConfig
                 {
                     string animTypeName = iniSection.GetStringValue(animClass.Name + suffix, null);
                     if (string.IsNullOrEmpty(animTypeName))
-                        break;
+                        continue;
 
                     var animConfig = new BuildingAnimArtConfig();
                     animConfig.ReadFromIniSection(iniSection, animClass.Name + suffix);
