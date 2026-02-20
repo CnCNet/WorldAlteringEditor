@@ -523,6 +523,22 @@ namespace TSMapEditor.Rendering.ObjectRenderers
             if (!isBelowBuilding)
                 depthRectangle += GetDepthAddition(gameObject);
 
+            switch (animation.AnimType.ArtConfig.Translucency)
+            {
+                default:
+                case 0:
+                    break;
+                case 25:
+                    color = color with { A = 192 };
+                    break;
+                case 50:
+                    color = color with { A = 128 };
+                    break;
+                case 75:
+                    color = color with { A = 64 };
+                    break;
+            }
+
             RenderFrame(gameObject, frame, remapFrame, color, drawRemap, remapColor,
                 drawingBounds, image.GetPaletteTexture(), lighting, depthRectangle);
         }

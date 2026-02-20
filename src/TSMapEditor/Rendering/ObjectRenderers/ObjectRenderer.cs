@@ -495,7 +495,7 @@ namespace TSMapEditor.Rendering.ObjectRenderers
         {
             color = new Color((color.R / 255.0f) * lightingColor.X / 2f,
                 (color.B / 255.0f) * lightingColor.Y / 2f,
-                (color.B / 255.0f) * lightingColor.Z / 2f, color.A);
+                (color.B / 255.0f) * lightingColor.Z / 2f, color.A / 255.0f);
 
             RenderDependencies.ObjectSpriteRecord.AddGraphicsEntry(new ObjectSpriteEntry(paletteTexture, frame, drawingBounds, color, false, false, depthRectangle));
 
@@ -505,7 +505,7 @@ namespace TSMapEditor.Rendering.ObjectRenderers
                     (remapColor.R / 255.0f),
                     (remapColor.G / 255.0f),
                     (remapColor.B / 255.0f),
-                    color.A);
+                    color.A / 255.0f);
 
                 RenderDependencies.ObjectSpriteRecord.AddGraphicsEntry(new ObjectSpriteEntry(paletteTexture, remapFrame, drawingBounds, remapColor, true, false, depthRectangle + Constants.DepthEpsilon));
             }
