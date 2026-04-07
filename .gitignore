@@ -187,6 +187,11 @@ PublishScripts/
 *.nupkg
 # NuGet Symbol Packages
 *.snupkg
+
+# Except for *.nupkg and *.snupkg files in src/TSMapEditor/References
+!src/TSMapEditor/References/*.nupkg
+!src/TSMapEditor/References/*.snupkg
+
 # The packages folder can be ignored because of Package Restore
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.
