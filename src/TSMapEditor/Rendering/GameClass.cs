@@ -132,21 +132,21 @@ namespace TSMapEditor.Rendering
             AssetLoader.AssetSearchPaths.Add(Path.Combine(Environment.CurrentDirectory, "Config", "Translations", TranslatorSetup.ActiveTranslationDirectory()));
             AssetLoader.AssetSearchPaths.Add(Environment.CurrentDirectory + DSC + "Content" + DSC);
 
-            // Hack: allow translations to override fonts
-            int i = 0;
-            while (true)
-            {
-                string spriteFontPath = Path.Combine("Translations", TranslatorSetup.ActiveTranslationDirectory(), "SpriteFont" + i + ".xnb");
-                if (AssetLoader.AssetExists(Path.Combine(Environment.CurrentDirectory, "Config", spriteFontPath)))
-                {
-                    var spriteFont = Content.Load<SpriteFont>(spriteFontPath);
-                    Renderer.GetFontList()[i] = spriteFont;
-                }
-                else
-                {
-                    break;
-                }
-            }
+            // // Hack: allow translations to override fonts
+            // int i = 0;
+            // while (true)
+            // {
+            //     string spriteFontPath = Path.Combine("Translations", TranslatorSetup.ActiveTranslationDirectory(), "SpriteFont" + i + ".xnb");
+            //     if (AssetLoader.AssetExists(Path.Combine(Environment.CurrentDirectory, "Config", spriteFontPath)))
+            //     {
+            //         var spriteFont = Content.Load<SpriteFont>(spriteFontPath);
+            //         Renderer.GetFontList()[i] = spriteFont;
+            //     }
+            //     else
+            //     {
+            //         break;
+            //     }
+            // }
 
             windowManager = new WindowManager(this, graphics);
             windowManager.Initialize(Content, Environment.CurrentDirectory + DSC + "Content" + DSC);
