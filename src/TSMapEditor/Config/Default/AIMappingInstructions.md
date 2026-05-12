@@ -1,6 +1,6 @@
 # Mapping Instructions
 
-Mod: Dawn of the Tiberium Age
+Mod: Tiberian Sun
 
 ## Isometric perspective
 
@@ -16,9 +16,9 @@ Map dimensions can also be misleading when estimating the number of cells. Each 
 
 When placing objects or requesting rectangular map regions, ensure that every required cell lies inside the valid diamond. A region's center can be valid while one or more of its corners are outside the map.
 
-## Flat Ground
+## Height
 
-While the Tiberian Sun game engine supports terrain height, the Dawn of the Tiberium Age mod does not use height. Everything that looks like "height" is just an illusion made with the graphical style of assets. All terrain is at height 0 and cannot be raised.
+Objects and terrain on higher ground are visually shifted upwards compared to lower ground. Work-in-progress terrain with inconsistent heights can leave "gaps" into the map that appear as transparent on screen-crops.
 
 ## LAT Terrain Placement
 
@@ -68,7 +68,7 @@ Do not use individual raw tiles as decorative accents from a LAT-capable tileset
 
 ### Natural LAT Masks
 
-For natural terrain such as Tall Grass or Dirt:
+For natural terrain such as Grass or Dirt:
 
 - Build a connected mask predominantly 1–3 cells wide.
 - Use multiple short strokes, bends, branches, thicker cores, and occasional holes.
@@ -78,7 +78,7 @@ Before accepting the result, inspect the mask visually. If its rectangular brush
 
 ## Detailing Areas
 
-Aside from LATs, try to also use various other pieces when detailing large areas. Rocks, pebbles, trees, rough ground, debris, villages or cities, small closed lakes... there's usually a lot you can detail a map with. Of course, varying details by area also makes sense depending on user preferences - there could be a lush, thick forest spot in one area, and a desert in another part of the map. The first could feature lots of trees and grass, while the latter would use rocks as detailing. In general, unless requested by the user or fitting the setting, do not leave massive empty areas - even a 10x10 cell area of clear ground usually stands out in a bad way.
+Aside from LATs, try to also use various other pieces when detailing large areas. Rocks, trees, rough ground, debris, villages or cities, small closed lakes... there's usually a lot you can detail a map with. Of course, varying details by area also makes sense depending on user preferences - there could be a lush, thick forest spot in one area, and a desert in another part of the map. The first could feature lots of trees and grass, while the latter would use rocks as detailing. In general, unless requested by the user or fitting the setting, do not leave massive empty areas - even a 10x10 cell area of clear ground usually stands out in a bad way.
 
 Pay special attention to detailing the corner areas of the map "diamond": it's easy to neglect those, but players do pay attention to them.
 
@@ -120,15 +120,15 @@ While an RTS game, classic Command & Conquer maps, especially Tiberian Sun maps,
 
 There are two types of resource fields in Command & Conquer games: regrowing and non-regrowing.
 
-In Dawn of the Tiberium Age, regrowing fields contain a Ore Mine, Tiberium Tree (for Green Tiberium aka Riparius), or Vinifera Tree (for Blue Tiberium aka Vinifera), and a matching resource spreader on the same cell with the tree. Around the tree is resource overlay of the matching type depending on map design.
+In Tiberian Sun, regrowing fields contain a Tiberium Tree (for Green Tiberium aka Riparius), or Blue Tiberium Tree (for Blue Tiberium aka Vinifera). Around the tree is resource overlay of the matching type depending on map design.
 
-Never place overlay on the same cell where Tiberium Trees or Ore Mines exist.
+Never place overlay on the same cell where Tiberium Trees or exist.
 
-A good baseline for economy is 2 Ore Mines or Tiberium Trees per player. Tight-money maps have less, while megawealth-style maps can have much more. Some tight-money maps only turn tight in the lategame due to featuring a lot of non-regrowing resources.
+A good baseline for economy is 3 Tiberium Trees per player. Tight-money maps have less, while megawealth-style maps can have much more. Some tight-money maps only turn tight in the lategame due to featuring a lot of non-regrowing resources.
 
-For a non-regrowing resource field, simply leave out the Tiberium Tree and respective resource spreader. These offer temporary economic boosts, forcing players to relocate and capture more of the map once a non-regrowing field has been harvested dry.
+For a non-regrowing resource field, simply leave out the Tiberium Tree. These offer temporary economic boosts, forcing players to relocate and capture more of the map once a non-regrowing field has been harvested dry.
 
-There are 5 types of resources. Ore, Scrap Metal, and Green Tiberium are all equal in value, 700 for a full harvester load. Blue Tiberium is 1120, while Gems are 1680.
+Green Tiberium is worth 700 for a full harvester load. Blue Tiberium is 1120, making it just over half more valuable.
 
 Prefer resource placement that leads to aggressive gameplay. Players having some safe resources is fine, but the majority of resources should be somehow contestable, either between individual players, or by all players (like resources placed centrally on the map). This forces players to expand and contest each other for resources.
 
@@ -172,7 +172,7 @@ Cities are a lot like villages, but use Civilian City buildings instead of Civil
 
 ### Forests
 
-Forests use a mix of trees (either conifer trees or leafy trees, or autumn trees, or in case of desert, cacti). Around the trees, there should be Tall Grass LAT or a similar LAT type, and pebbles.
+Forests use a mix of trees. Around the trees, there should be Grass LAT or a similar LAT type.
 
 A small forest cluster should usually receive a connected 20–40-cell mask, 1–3 cells wide, with branches and at least one thicker core. These numbers can be doubled or tripled for medium-sized forests and multiplied by 10 for large forests.
 
@@ -180,7 +180,7 @@ A recommended approach for placing LAT in forests is connecting tree anchors wit
 
 ### Base Areas
 
-Player starting locations cannot be very heavy on impassable details. Pebbles and tiles of the "Debris/Dirt" TileSet are suitable for detailing starting locations, as are roads and other details.
+Player starting locations cannot be very heavy on impassable details. Tiles of the "Rough ground" TileSet are suitable for detailing starting locations, as are roads and other details.
 
 ## Avoid overlap
 
