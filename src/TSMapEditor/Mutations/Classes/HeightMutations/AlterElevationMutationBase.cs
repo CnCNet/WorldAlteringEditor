@@ -56,16 +56,41 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
         /// which case nothing on the map was changed.
         /// </summary>
         protected List<MapTile> SmoothFlat(List<Point2D> targetedCells, int newLevel, HeightFloodMode mode, bool allowSteep)
+            => SmoothFlat(targetedCells, null, newLevel, mode, allowSteep);
+
+        /// <summary>
+        /// As <see cref="SmoothFlat(List{Point2D}, int, HeightFloodMode, bool)"/>, but with a
+        /// second set of cells that are only seeded if they legally can be. A required cell that
+        /// cannot be seeded (it would move a corner anchored by immutable terrain) rejects the
+        /// whole edit; an optional cell that cannot be seeded is simply skipped.
+        /// </summary>
+        protected List<MapTile> SmoothFlat(List<Point2D> requiredCells, List<Point2D> optionalCells, int newLevel, HeightFloodMode mode, bool allowSteep)
         {
-            GetCellBounds(targetedCells, out int minX, out int minY, out int maxX, out int maxY);
+            var allCells = new List<Point2D>(requiredCells);
+            if (optionalCells != null)
+                allCells.AddRange(optionalCells);
+
+            if (allCells.Count == 0)
+                return null;
+
+            GetCellBounds(allCells, out int minX, out int minY, out int maxX, out int maxY);
 
             var field = new CornerHeightField(Map, minX, minY, maxX, maxY);
             field.Build();
 
-            foreach (var cellCoords in targetedCells)
+            foreach (var cellCoords in requiredCells)
             {
                 if (!field.TrySeedFlat(cellCoords, newLevel))
                     return null;
+            }
+
+            if (optionalCells != null)
+            {
+                foreach (var cellCoords in optionalCells)
+                {
+                    if (field.CanSeedFlat(cellCoords, newLevel))
+                        field.TrySeedFlat(cellCoords, newLevel);
+                }
             }
 
             return RunSmoothing(field, mode, allowSteep);

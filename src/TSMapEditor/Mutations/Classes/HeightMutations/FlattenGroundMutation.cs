@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using TSMapEditor.CCEngine;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
+using TSMapEditor.Models.Enums;
 using TSMapEditor.UI;
 
 namespace TSMapEditor.Mutations.Classes.HeightMutations
@@ -41,28 +43,38 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             int beginX = OriginCell.X - (xSize - 1) / 2;
             int endX = OriginCell.X + xSize / 2;
 
-            var targetedCells = new List<Point2D>();
+            // Cells at a different level must be flattened (and reject the whole edit if they
+            // cannot be, matching the game). Ramp cells already at the desired level (e.g. a
+            // ridge where two slopes meet, with no flat top) should also be flattened, but only
+            // where they legally can be — otherwise they are skipped rather than blocking the edit.
+            var requiredCells = new List<Point2D>();
+            var optionalCells = new List<Point2D>();
             for (int y = beginY; y <= endY; y++)
             {
                 for (int x = beginX; x <= endX; x++)
                 {
                     var cellCoords = new Point2D(x, y);
                     var cell = Map.GetTile(cellCoords);
-                    if (cell == null || cell.Level == desiredHeightLevel)
+                    if (cell == null || !IsCellMorphable(cell))
                         continue;
 
-                    if (!IsCellMorphable(cell))
+                    var tmpImage = Map.TheaterInstance.GetTile(cell.TileIndex).GetSubTile(cell.SubTileIndex).TmpImage;
+                    LandType landType = (LandType)tmpImage.TerrainType;
+                    if (landType == LandType.Rock || landType == LandType.Water)
                         continue;
 
-                    targetedCells.Add(cellCoords);
+                    if (cell.Level != desiredHeightLevel)
+                        requiredCells.Add(cellCoords);
+                    else if (tmpImage.RampType != RampType.None)
+                        optionalCells.Add(cellCoords);
                 }
             }
 
-            if (targetedCells.Count == 0)
+            if (requiredCells.Count == 0 && optionalCells.Count == 0)
                 return;
 
             // Flattening produces only non-steep ramps, like the game.
-            var changedCells = SmoothFlat(targetedCells, desiredHeightLevel, HeightFloodMode.Both, allowSteep: false);
+            var changedCells = SmoothFlat(requiredCells, optionalCells, desiredHeightLevel, HeightFloodMode.Both, allowSteep: false);
 
             if (changedCells != null && MutationTarget.AutoLATEnabled)
                 ApplyAutoLAT(changedCells);

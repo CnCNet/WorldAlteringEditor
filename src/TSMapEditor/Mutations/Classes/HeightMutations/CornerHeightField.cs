@@ -166,18 +166,28 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
         }
 
         /// <summary>
-        /// Sets all four corners of a cell to a uniform height (used to raise/lower/flatten
-        /// a targeted cell). Returns false if a corner anchored by an immutable cell would
-        /// have to move, in which case the whole operation must be rejected.
+        /// Seeds a cell to a uniform height (used to raise/lower/flatten a targeted cell).
+        /// A corner anchored by an immutable cell that cannot take the height itself is
+        /// snapped to the nearest height the immutable terrain actually has at that corner,
+        /// if one exists within a one-level slope of the target — so a cell flattened against
+        /// e.g. a cliff lip becomes a ramp rising to the lip. Returns false if some corner
+        /// could not legally be seeded, in which case the whole operation must be rejected.
         /// </summary>
         public bool TrySeedFlat(Point2D cellCoords, int level)
         {
+            level = Math.Clamp(level, 0, Constants.MaxMapHeightLevel);
+
             bool ok = true;
             for (int i = 0; i < CornerOffsets.Length; i++)
             {
                 var pt = cellCoords + CornerOffsets[i];
-                if (!TrySetCorner(pt.X, pt.Y, level))
+                if (!TryResolveSeedCorner(pt.X, pt.Y, level, out int resolved))
+                {
                     ok = false;
+                    continue;
+                }
+
+                SetCornerDirect(pt.X, pt.Y, resolved);
             }
 
             return ok;
@@ -196,9 +206,34 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             return TrySetCorner(point.X, point.Y, current + delta);
         }
 
-        private bool TrySetCorner(int px, int py, int newHeight)
+        /// <summary>
+        /// Read-only check of whether <see cref="TrySeedFlat"/> would succeed for a cell.
+        /// Used to skip (rather than abort on) ramp cells that are already at the desired level
+        /// but happen to be pinned by adjacent immutable terrain.
+        /// </summary>
+        public bool CanSeedFlat(Point2D cellCoords, int level)
         {
-            newHeight = Math.Clamp(newHeight, 0, Constants.MaxMapHeightLevel);
+            level = Math.Clamp(level, 0, Constants.MaxMapHeightLevel);
+
+            for (int i = 0; i < CornerOffsets.Length; i++)
+            {
+                var pt = cellCoords + CornerOffsets[i];
+                if (!TryResolveSeedCorner(pt.X, pt.Y, level, out _))
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Determines the height a corner should take when its cell is seeded to
+        /// <paramref name="level"/>: the level itself for free corners, or the nearest height
+        /// the immutable terrain actually has at the corner (within a one-level slope of the
+        /// target) for anchored corners. Returns false if the corner cannot legally be seeded.
+        /// </summary>
+        private bool TryResolveSeedCorner(int px, int py, int level, out int resolved)
+        {
+            resolved = level;
 
             if (!InRegion(px, py))
                 return false;
@@ -210,12 +245,81 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             if (!hasOwner[ix, iy])
                 return true;
 
-            if (rigid[ix, iy] && heights[ix, iy] != newHeight)
+            if (!rigid[ix, iy])
+                return true;
+
+            // Anchored corners always snap to a height the immutable terrain actually has at
+            // this corner. This makes the result independent of the order in which cells are
+            // brushed: a cell flattened one level below a cliff lip, for example, always gets
+            // its lip corners at the lip height (becoming a ramp), never a stale in-between
+            // value from earlier smoothing.
+            int? snapped = GetBestExactHeight(px, py, level - 1, level + 1, level);
+            if (snapped == null)
                 return false;
+
+            resolved = snapped.Value;
+            return true;
+        }
+
+        private void SetCornerDirect(int px, int py, int height)
+        {
+            int ix = px - originX;
+            int iy = py - originY;
+
+            if (!hasOwner[ix, iy])
+                return;
+
+            heights[ix, iy] = height;
+            done[ix, iy] = true;
+            worklist.Enqueue(new Point2D(px, py));
+        }
+
+        private bool TrySetCorner(int px, int py, int newHeight)
+        {
+            newHeight = Math.Clamp(newHeight, 0, Constants.MaxMapHeightLevel);
+
+            if (!InRegion(px, py))
+                return false;
+
+            if (!CornerCanTake(px, py, newHeight))
+                return false;
+
+            int ix = px - originX;
+            int iy = py - originY;
+
+            // Off-map / outside-diamond corners are a free boundary; there is nothing to seed.
+            if (!hasOwner[ix, iy])
+                return true;
 
             heights[ix, iy] = newHeight;
             done[ix, iy] = true;
             worklist.Enqueue(new Point2D(px, py));
+            return true;
+        }
+
+        /// <summary>
+        /// Whether a corner may legally be set to <paramref name="newHeight"/>. Off-map corners
+        /// are a free boundary (a no-op, not a rejection). A rigid corner may only take a height
+        /// within the span that the immutable terrain touching it covers: a cliff face spans from
+        /// its base level to its top level, so ground may legally meet it at any height in
+        /// between. Flat immutable terrain (e.g. water, or a cliff base) has a single-height
+        /// span, keeping mismatched edits against it rejected.
+        /// </summary>
+        private bool CornerCanTake(int px, int py, int newHeight)
+        {
+            int ix = px - originX;
+            int iy = py - originY;
+
+            if (!hasOwner[ix, iy])
+                return true;
+
+            if (rigid[ix, iy] && heights[ix, iy] != newHeight)
+            {
+                GetAdmissibleRange(px, py, out int admMin, out int admMax, out _);
+                if (newHeight < admMin || newHeight > admMax)
+                    return false;
+            }
+
             return true;
         }
 
@@ -247,6 +351,7 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
                 int six = p.X - originX;
                 int siy = p.Y - originY;
                 int startHeight = heights[six, siy];
+                bool startRigid = rigid[six, siy];
 
                 for (int dy = -1; dy <= 1; dy++)
                 {
@@ -277,7 +382,54 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
                             continue;
 
                         if (rigid[nix, niy])
-                            return false; // would have to move a corner anchored by immutable terrain
+                        {
+                            // A slope violation between two rigid corners is the immutable
+                            // terrain's own geometry (e.g. a diagonal cliff cell whose art spans
+                            // its full height within one cell) — never a conflict to resolve or
+                            // reject over.
+                            if (startRigid)
+                                continue;
+
+                            // A rigid corner may only move within the range of heights that the
+                            // immutable terrain touching it implies (a cliff face, for example,
+                            // spans from its base level to its top level, so ground may meet it
+                            // at any height in between). If the start corner is out of slope
+                            // range of even that span, the two cannot legally coexist — this
+                            // happens around art anomalies such as exposed diagonal cliff ends.
+                            // The immutable terrain wins: yield the morphable start corner into
+                            // compliance instead of rejecting the whole edit.
+                            GetAdmissibleRange(nx, ny, out int admMin, out int admMax, out bool bordersMorphable);
+                            if (startHeight < admMin - threshold || startHeight > admMax + threshold)
+                            {
+                                startHeight = Math.Clamp(startHeight, admMin - threshold, admMax + threshold);
+                                heights[six, siy] = startHeight;
+                                done[six, siy] = true;
+                                worklist.Enqueue(p);
+                            }
+
+                            // Slide the corner along the immutable face just far enough to be in
+                            // slope range of the start corner. This ignores the pass direction on
+                            // purpose: the move is bounded by the art span either way, and without
+                            // it a corner can be left pinned at the wrong end of the face,
+                            // producing "holes" (cells skipped by the write-back spread guard).
+                            // Corners interior to immutable terrain (no morphable cell touches
+                            // them) are left alone: moving them has no visual meaning and would
+                            // create false conflicts inside cliff bodies.
+                            int target = Math.Clamp(
+                                Math.Clamp(neighborHeight, startHeight - threshold, startHeight + threshold),
+                                admMin, admMax);
+
+                            if (bordersMorphable && target != neighborHeight)
+                            {
+                                // Mark done so the touching cells are written back as ramps, but
+                                // do NOT enqueue: the flood must never propagate through immutable
+                                // terrain to its far side.
+                                heights[nix, niy] = target;
+                                done[nix, niy] = true;
+                            }
+
+                            continue;
+                        }
 
                         int newHeight = neighborHeight;
                         if (diff < 0)
@@ -312,7 +464,10 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             {
                 for (int ix = 0; ix < pointWidth; ix++)
                 {
-                    if (done[ix, iy])
+                    // Rigid corners never act as flood fronts: they may have been marked done
+                    // for write-back purposes, but propagation must not start from (or pass
+                    // through) immutable terrain.
+                    if (done[ix, iy] && !rigid[ix, iy])
                         worklist.Enqueue(new Point2D(originX + ix, originY + iy));
                 }
             }
@@ -429,6 +584,63 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
                 rampIndex = 0;
 
             return rampIndex;
+        }
+
+        /// <summary>
+        /// Of the corner heights that the immutable cells touching corner point (px, py) have
+        /// at it, returns the one closest to <paramref name="preferred"/> that lies within
+        /// [<paramref name="lo"/>, <paramref name="hi"/>], or null if none does. Morphable
+        /// touching cells are ignored: their current heights are editable, not anchors.
+        /// The cell touching the corner at corner-index k sits at (px, py) - CornerOffsets[k],
+        /// and contributes its own corner k's height. The index k must match on both sides.
+        /// </summary>
+        private int? GetBestExactHeight(int px, int py, int lo, int hi, int preferred)
+        {
+            int? best = null;
+
+            for (int k = 0; k < CornerOffsets.Length; k++)
+            {
+                var cell = map.GetTile(px - CornerOffsets[k].X, py - CornerOffsets[k].Y);
+                if (cell == null || map.IsCellMorphable(cell))
+                    continue;
+
+                int h = cell.Level + RampCornerHeights[GetRampIndex(cell)][k];
+                if (h < lo || h > hi)
+                    continue;
+
+                if (best == null || Math.Abs(h - preferred) < Math.Abs(best.Value - preferred))
+                    best = h;
+            }
+
+            return best;
+        }
+
+        /// <summary>
+        /// The lowest and highest corner heights implied for corner point (px, py) by the cells
+        /// touching it (see <see cref="IsAdmissibleHeight"/>). Only called for corners with an
+        /// owner, so at least the owning cell always contributes a value.
+        /// Also reports whether any morphable cell touches the corner; corners interior to
+        /// immutable terrain are treated differently by the flood.
+        /// </summary>
+        private void GetAdmissibleRange(int px, int py, out int min, out int max, out bool bordersMorphable)
+        {
+            min = int.MaxValue;
+            max = int.MinValue;
+            bordersMorphable = false;
+
+            for (int k = 0; k < CornerOffsets.Length; k++)
+            {
+                var cell = map.GetTile(px - CornerOffsets[k].X, py - CornerOffsets[k].Y);
+                if (cell == null)
+                    continue;
+
+                if (map.IsCellMorphable(cell))
+                    bordersMorphable = true;
+
+                int h = cell.Level + RampCornerHeights[GetRampIndex(cell)][k];
+                if (h < min) min = h;
+                if (h > max) max = h;
+            }
         }
 
         private static Dictionary<int, RampType> BuildReverseLookup()
