@@ -2779,7 +2779,7 @@ namespace TSMapEditor.UI.Windows
 
         private Color GetParamValueColor(string paramValue, TriggerParamType paramType)
         {
-            bool intParseSuccess = int.TryParse(paramValue, NumberStyles.None, CultureInfo.InvariantCulture, out int intValue);
+            bool intParseSuccess = int.TryParse(paramValue, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int intValue);
 
             switch (paramType)
             {
@@ -2830,7 +2830,7 @@ namespace TSMapEditor.UI.Windows
 
         private string GetParamValueText(string paramValue, TriggerParamType paramType, List<string> presetOptions)
         {
-            bool intParseSuccess = int.TryParse(paramValue, NumberStyles.None, CultureInfo.InvariantCulture, out int intValue);
+            bool intParseSuccess = int.TryParse(paramValue, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int intValue);
             if (paramValue == null)
                 paramValue = string.Empty;
 
@@ -3037,7 +3037,7 @@ namespace TSMapEditor.UI.Windows
 
         private string GetObjectValueText<T>(RTTIType rtti, List<T> objectTypeList, string paramValue) where T : TechnoType
         {
-            bool intParseSuccess = int.TryParse(paramValue, NumberStyles.None, CultureInfo.InvariantCulture, out int intValue);
+            bool intParseSuccess = int.TryParse(paramValue, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int intValue);
 
             if (!intParseSuccess)
                 return paramValue;
