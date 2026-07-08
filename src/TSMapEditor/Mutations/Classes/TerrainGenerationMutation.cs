@@ -380,9 +380,9 @@ namespace TSMapEditor.Mutations.Classes
 
     public class TerrainGenerationMutation : Mutation
     {
-        public TerrainGenerationMutation(IMutationTarget mutationTarget, List<Point2D> cells, TerrainGeneratorConfiguration configuration) : base(mutationTarget)
+        public TerrainGenerationMutation(IMutationTarget mutationTarget, List<Point2D> cells, TerrainGeneratorConfiguration configuration, int? seed = null) : base(mutationTarget)
         {
-            seed = DateTime.Now.Millisecond;
+            this.seed = seed ?? DateTime.Now.Millisecond;
             random = new Random();
             this.cells = cells;
             this.terrainGeneratorConfiguration = configuration;

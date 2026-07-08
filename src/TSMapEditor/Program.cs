@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Windows.Forms;
+using TSMapEditor.Initialization;
 using TSMapEditor.Rendering;
 
 namespace TSMapEditor
@@ -9,12 +11,31 @@ namespace TSMapEditor
         public static string[] args;
 
         /// <summary>
+        /// When set, the editor was launched in headless random-map-generation mode
+        /// (via the --generate-map command line flag) instead of the interactive GUI.
+        /// </summary>
+        public static HeadlessRmgOptions HeadlessRmgOptions { get; private set; }
+
+        /// <summary>
         /// The main entry point for the application.
         /// </summary>
         [STAThread]
         static void Main(string[] args)
         {
             Program.args = args;
+
+            if (args.Any(a => a.Equals("--generate-map", StringComparison.OrdinalIgnoreCase)))
+            {
+                HeadlessRmgOptions = HeadlessRmgOptions.ParseArgs(args);
+
+                string validationError = HeadlessRmgOptions.Validate();
+                if (validationError != null)
+                {
+                    Console.Error.WriteLine("Invalid --generate-map arguments: " + validationError);
+                    Environment.Exit(1);
+                    return;
+                }
+            }
 
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
 

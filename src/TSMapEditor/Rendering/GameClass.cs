@@ -200,7 +200,36 @@ namespace TSMapEditor.Rendering
             windowManager.IMEHandler = imeHandler;
 #endif
 
+            // Headless random map generation: skip the interactive UI entirely, hide the
+            // window (it only exists because we need a live GraphicsDevice), generate the
+            // map, print the result, and exit with a status code - no MainMenu is shown.
+            if (Program.HeadlessRmgOptions != null)
+            {
+                RunHeadlessMapGeneration();
+                return;
+            }
+
             InitMainMenu();
+        }
+
+        private void RunHeadlessMapGeneration()
+        {
+#if WINDOWS
+            var form = System.Windows.Forms.Control.FromHandle(Window.Handle) as System.Windows.Forms.Form;
+            form?.Hide();
+#endif
+            string error = TSMapEditor.Initialization.HeadlessMapGenerator.Generate(Program.HeadlessRmgOptions, GraphicsDevice);
+
+            if (error == null)
+            {
+                Console.WriteLine("Map generation succeeded. Output written to: " + Program.HeadlessRmgOptions.OutputPath);
+                Environment.Exit(0);
+            }
+            else
+            {
+                Console.Error.WriteLine("Map generation failed: " + error);
+                Environment.Exit(1);
+            }
         }
 
         private void InitMainMenu()
