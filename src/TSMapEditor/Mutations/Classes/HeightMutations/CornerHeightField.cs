@@ -29,7 +29,6 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
     /// <summary>
     /// A transient cell-corner height field used for "smart" ground-height smoothing.
     ///
-    /// Ported from the original Tiberian Sun terrain smoothing system (smooth.cpp).
     /// Instead of operating on per-cell height levels and guessing ramps from neighbour
     /// patterns, this assigns a height to every cell <i>corner</i>, smooths the corner
     /// field so neighbouring corners never differ by more than the allowed slope, and then
@@ -51,9 +50,10 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
         };
 
         // Per-ramp corner heights in level units, in CornerOffsets order, indexed by RampType.
-        // Ported verbatim from the game's _ramptypes table (smooth.cpp): HALFHEIGHT -> 1,
-        // FULLHEIGHT -> 2. Rows 19/20 (DoubleUp/DownNWSE) duplicate 17/18 and exist only so
-        // existing tiles of those types reconstruct correctly; they are never emitted.
+        // Each row is the height of the four corners for that ramp type: normal ramps raise a
+        // corner by one level, steep ramps raise their far corner by two. Rows 19/20
+        // (DoubleUp/DownNWSE) duplicate 17/18 and exist only so existing tiles of those types
+        // reconstruct correctly; they are never emitted.
         private static readonly int[][] RampCornerHeights =
         {
             new[] { 0, 0, 0, 0 }, // None
@@ -84,8 +84,8 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
 
         // Reverse lookup: normalized 4-corner pattern (base-3 key) -> RampType. Built from
         // rows 0..18 only, first match wins, so the ambiguous double patterns
-        // {0,1,0,1}/{1,0,1,0} canonically resolve to the SWNE variants (17/18), matching
-        // the game's emission loop (for ramp = 0..18).
+        // {0,1,0,1}/{1,0,1,0} canonically resolve to the SWNE variants (17/18) and the
+        // duplicate NWSE rows are never emitted.
         private static readonly Dictionary<int, RampType> RampByCornerPattern = BuildReverseLookup();
 
         public CornerHeightField(Map map, int cellMinX, int cellMinY, int cellMaxX, int cellMaxY)
@@ -141,8 +141,8 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
                     int cellY = originY + iy;
 
                     // A corner takes its height from a single owning cell (the cell whose
-                    // NW corner this point is), matching the game. This keeps the field
-                    // well-defined even on hand-edited maps where neighbours disagree.
+                    // NW corner this point is). This keeps the field well-defined even on
+                    // hand-edited maps where neighbours disagree on a shared corner.
                     var owner = map.GetTile(cellX, cellY);
                     if (owner == null)
                     {

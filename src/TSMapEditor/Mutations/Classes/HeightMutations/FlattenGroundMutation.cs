@@ -44,9 +44,9 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             int endX = OriginCell.X + xSize / 2;
 
             // Cells at a different level must be flattened (and reject the whole edit if they
-            // cannot be, matching the game). Ramp cells already at the desired level (e.g. a
-            // ridge where two slopes meet, with no flat top) should also be flattened, but only
-            // where they legally can be — otherwise they are skipped rather than blocking the edit.
+            // cannot be). Ramp cells already at the desired level (e.g. a ridge where two slopes
+            // meet, with no flat top) should also be flattened, but only where they legally can
+            // be — otherwise they are skipped rather than blocking the edit.
             var requiredCells = new List<Point2D>();
             var optionalCells = new List<Point2D>();
             for (int y = beginY; y <= endY; y++)
@@ -73,7 +73,7 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             if (requiredCells.Count == 0 && optionalCells.Count == 0)
                 return;
 
-            // Flattening produces only non-steep ramps, like the game.
+            // Flattening only ever produces non-steep ramps.
             var changedCells = SmoothFlat(requiredCells, optionalCells, desiredHeightLevel, HeightFloodMode.Both, allowSteep: false);
 
             if (changedCells != null && MutationTarget.AutoLATEnabled)
