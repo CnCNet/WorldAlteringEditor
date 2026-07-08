@@ -36,24 +36,54 @@ namespace TSMapEditor.Initialization
         /// <summary>Seed for deterministic random generation. If null, a random seed is used.</summary>
         public int? Seed { get; set; }
 
+        /// <summary>
+        /// Optional game mode name (e.g. "Standard", "MegaWealth"). Currently accepted and
+        /// logged for forward-compatibility with the calling client, but does not yet alter
+        /// generation - see plan.md / cross-session notes for the open question on whether
+        /// this should drive resource density or a specific terrain generator preset.
+        /// </summary>
+        public string GameMode { get; set; }
+
         /// <summary>Path (including file name) that the generated .map file should be written to.</summary>
         public string OutputPath { get; set; }
 
+        /// <summary>
+        /// Parses CLI arguments in either "--flag value" (space-separated) or "--flag=value"
+        /// form. The "--generate-map" flag itself takes no value and is ignored here.
+        /// </summary>
         public static HeadlessRmgOptions ParseArgs(string[] args)
         {
             var options = new HeadlessRmgOptions();
 
-            foreach (string arg in args)
+            for (int i = 0; i < args.Length; i++)
             {
+                string arg = args[i];
                 if (!arg.StartsWith("--"))
                     continue;
 
-                int separatorIndex = arg.IndexOf('=');
-                if (separatorIndex < 0)
-                    continue;
+                string key;
+                string value = null;
 
-                string key = arg.Substring(2, separatorIndex - 2).Trim().ToLowerInvariant();
-                string value = arg.Substring(separatorIndex + 1).Trim();
+                int separatorIndex = arg.IndexOf('=');
+                if (separatorIndex >= 0)
+                {
+                    // --flag=value form
+                    key = arg.Substring(2, separatorIndex - 2).Trim().ToLowerInvariant();
+                    value = arg.Substring(separatorIndex + 1).Trim();
+                }
+                else
+                {
+                    // --flag value (space-separated) form
+                    key = arg.Substring(2).Trim().ToLowerInvariant();
+                    if (i + 1 < args.Length && !args[i + 1].StartsWith("--"))
+                    {
+                        value = args[i + 1].Trim();
+                        i++;
+                    }
+                }
+
+                if (value == null)
+                    continue;
 
                 switch (key)
                 {
@@ -74,6 +104,9 @@ namespace TSMapEditor.Initialization
                         break;
                     case "seed":
                         options.Seed = int.Parse(value, CultureInfo.InvariantCulture);
+                        break;
+                    case "gamemode":
+                        options.GameMode = value;
                         break;
                     case "output":
                         options.OutputPath = value;
@@ -175,7 +208,7 @@ namespace TSMapEditor.Initialization
                 map.AutoSave(options.OutputPath);
 
                 Logger.Log($"Headless RMG: generated {options.Width}x{options.Height} {options.Theater} map " +
-                    $"with {options.PlayerCount} player starts (seed {seed}) -> {options.OutputPath}");
+                    $"with {options.PlayerCount} player starts (seed {seed}, gamemode {options.GameMode ?? "(none)"}) -> {options.OutputPath}");
 
                 return null;
             }
