@@ -39,7 +39,14 @@ namespace TSMapEditor.Mutations.Classes
             public byte Level;
         }
 
-        private const int MaxTimeInMilliseconds = 10;
+        // The stall watchdog resets whenever the search progresses, so a generous budget only
+        // extends genuinely stuck searches. The browser gets more time to compensate for the
+        // interpreted runtime's higher per-node cost and coarser timer granularity.
+        private static readonly int MaxTimeInMilliseconds = OperatingSystem.IsBrowser() ? 100 : 10;
+
+        // Stopwatch timestamps use Stopwatch.Frequency units, which differ per platform
+        // (they only coincide with TimeSpan's 100ns ticks on Windows).
+        private static readonly long MaxTimeInStopwatchTicks = Stopwatch.Frequency / 1000 * MaxTimeInMilliseconds;
         private const float TileSizePenaltyPerFoundationCell = 0.07f;
         private const int RepeatPenaltyAncestorWindow = 5;
         private const float RepeatPenaltyPerWeightedUse = 0.75f;
@@ -101,7 +108,7 @@ namespace TSMapEditor.Mutations.Classes
                 lastNode.Destination = end;
             }
 
-            long timeoutTimestamp = Stopwatch.GetTimestamp() + TimeSpan.FromMilliseconds(MaxTimeInMilliseconds).Ticks;
+            long timeoutTimestamp = Stopwatch.GetTimestamp() + MaxTimeInStopwatchTicks;
             openSet.Enqueue(lastNode, (GetNodePriorityScore(lastNode), lastNode.Tile?.ExtraPriority ?? 0));
 
             while (openSet.Count > 0)
@@ -120,7 +127,7 @@ namespace TSMapEditor.Mutations.Classes
                 {
                     bestNode = currentNode;
                     bestDistance = currentDistance;
-                    timeoutTimestamp = Stopwatch.GetTimestamp() + TimeSpan.FromMilliseconds(MaxTimeInMilliseconds).Ticks;
+                    timeoutTimestamp = Stopwatch.GetTimestamp() + MaxTimeInStopwatchTicks;
                 }
 
                 if (bestDistance == 0 || Stopwatch.GetTimestamp() > timeoutTimestamp)
