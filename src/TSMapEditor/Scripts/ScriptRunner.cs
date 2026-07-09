@@ -1,4 +1,4 @@
-﻿using Rampastring.Tools;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using System;
 using System.IO;
@@ -29,6 +29,7 @@ namespace TSMapEditor.Scripts
             EditorState = editorState;
             WindowManager = windowManager;
             WindowController = windowController;
+            FileManager = fileManager;
         }
     }
 

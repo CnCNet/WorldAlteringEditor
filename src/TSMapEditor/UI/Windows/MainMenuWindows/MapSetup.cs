@@ -9,16 +9,21 @@ using TSMapEditor.Rendering;
 using TSMapEditor.Extensions;
 using System.Collections.Generic;
 using System.Linq;
+using TSMapEditor.CCEngine.TileData;
 
 namespace TSMapEditor.UI.Windows.MainMenuWindows
 {
     /// <summary>
     /// Helper class for setting up a map.
     /// </summary>
-    public static class MapSetup
+    public class MapSetup
     {
-        private static Map LoadedMap;
-        private static CCFileManager ccFileManager;
+        private readonly List<string> mapLoadErrors = new List<string>();
+
+        public Map LoadedMap { get; private set; }
+        public CCFileManager FileManager { get; private set; }
+
+        public IReadOnlyList<string> MapLoadErrors => mapLoadErrors;
 
         /// <summary>
         /// Tries to load a map. If successful, returns null. If loading the map
@@ -31,24 +36,28 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
         /// <param name="newMapSize">The size of the map, if creating a new map.</param>
         /// <param name="windowManager">The XNAUI window manager.</param>
         /// <returns>Null of loading the map was successful, otherwise an error message.</returns>
-        public static string InitializeMap(string gameDirectory, bool createNew, string existingMapPath, CreateNewMapEventArgs newMapParameters, WindowManager windowManager)
+        public string InitializeMap(string gameDirectory, bool createNew, string existingMapPath, CreateNewMapEventArgs newMapParameters, WindowManager windowManager = null)
         {
-            ccFileManager = new() { GameDirectory = gameDirectory };
-            ccFileManager.ReadConfig();
+            LoadedMap = null;
+            mapLoadErrors.Clear();
 
-            var gameConfigIniFiles = new GameConfigINIFiles(gameDirectory, ccFileManager);
+            FileManager = new() { GameDirectory = gameDirectory };
+            FileManager.ReadConfig();
+
+            var gameConfigIniFiles = new GameConfigINIFiles(gameDirectory, FileManager);
 
             // Search for tutorial lines from all directories specified in the file manager configuration
-            string tutorialsPath = ccFileManager.FindFileFromDirectories(Constants.TutorialIniPath);
+            string tutorialsPath = FileManager.FindFileFromDirectories(Constants.TutorialIniPath);
             if (tutorialsPath == null)
                 tutorialsPath = Path.Combine(gameDirectory, Constants.TutorialIniPath);
 
-            var tutorialLines = new TutorialLines(tutorialsPath, a => windowManager.AddCallback(a, null));
-            var themes = new Themes(IniFileEx.FromPathOrMix(Constants.ThemeIniPath, gameDirectory, ccFileManager));
-            var evaSpeeches = new EvaSpeeches(IniFileEx.FromPathOrMix(Constants.EvaIniPath, gameDirectory, ccFileManager));
-            var sounds = new Sounds(IniFileEx.FromPathOrMix(Constants.SoundIniPath, gameDirectory, ccFileManager));
+            Action<Action> tutorialLinesModifyCallback = windowManager == null ? _ => { } : a => windowManager.AddCallback(a, null);
+            var tutorialLines = new TutorialLines(tutorialsPath, tutorialLinesModifyCallback);
+            var themes = new Themes(IniFileEx.FromPathOrMix(Constants.ThemeIniPath, gameDirectory, FileManager));
+            var evaSpeeches = new EvaSpeeches(IniFileEx.FromPathOrMix(Constants.EvaIniPath, gameDirectory, FileManager));
+            var sounds = new Sounds(IniFileEx.FromPathOrMix(Constants.SoundIniPath, gameDirectory, FileManager));
 
-            Map map = new Map(ccFileManager);
+            Map map = new Map(FileManager);
 
             if (createNew)
             {
@@ -61,7 +70,7 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
             {
                 try
                 {
-                    IniFileEx mapIni = new(Path.Combine(gameDirectory, existingMapPath), ccFileManager);
+                    IniFileEx mapIni = new(Path.Combine(gameDirectory, existingMapPath), FileManager);
 
                     MapLoader.PreCheckMapIni(mapIni);
 
@@ -92,35 +101,49 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
             Console.WriteLine("Map created.");
 
             LoadedMap = map;
+            mapLoadErrors.AddRange(MapLoader.MapLoadErrors);
 
             return null;
+        }
+
+        private Theater InitTheater()
+        {
+            Theater theater = LoadedMap.EditorConfig.Theaters.Find(t => t.UIName.Equals(LoadedMap.TheaterName, StringComparison.InvariantCultureIgnoreCase));
+            if (theater == null)
+                throw new InvalidOperationException("Theater of map not found: " + LoadedMap.TheaterName);
+
+            theater.ReadConfigINI(FileManager.GameDirectory, FileManager);
+
+            foreach (string theaterMIXName in theater.ContentMIXName)
+                FileManager.LoadRequiredMixFile(theaterMIXName);
+
+            foreach (string theaterMIXName in theater.OptionalContentMIXName)
+                FileManager.LoadOptionalMixFile(theaterMIXName);
+
+            return theater;
         }
 
         /// <summary>
         /// Loads the theater graphics for the last-loaded map.
         /// </summary>
         /// <param name="windowManager">The window manager.</param>
-        /// <param name="gameDirectory">The path to the game directory.</param>
-        public static void LoadTheaterGraphics(WindowManager windowManager, string gameDirectory)
+        public void LoadTheaterGraphics(WindowManager windowManager)
         {
-            Theater theater = LoadedMap.EditorConfig.Theaters.Find(t => t.UIName.Equals(LoadedMap.TheaterName, StringComparison.InvariantCultureIgnoreCase));
-            if (theater == null)
-            {
-                throw new InvalidOperationException("Theater of map not found: " + LoadedMap.TheaterName);
-            }
-            theater.ReadConfigINI(gameDirectory, ccFileManager);
+            if (LoadedMap == null)
+                throw new InvalidOperationException("Cannot load theater graphics before a map has been initialized.");
 
-            foreach (string theaterMIXName in theater.ContentMIXName)
-                ccFileManager.LoadRequiredMixFile(theaterMIXName);
+            Theater theater = InitTheater();
 
-            foreach (string theaterMIXName in theater.OptionalContentMIXName)
-                ccFileManager.LoadOptionalMixFile(theaterMIXName);
-
-            TheaterGraphics theaterGraphics = new TheaterGraphics(windowManager.GraphicsDevice, theater, ccFileManager, LoadedMap.Rules);
+            TheaterGraphics theaterGraphics = new TheaterGraphics(windowManager.GraphicsDevice, theater, FileManager, LoadedMap.Rules);
             LoadedMap.TheaterInstance = theaterGraphics;
             FillConnectedTileFoundations(theaterGraphics);
 
+            MapLoader.MapLoadErrors.Clear();
+            MapLoader.MapLoadErrors.AddRange(mapLoadErrors);
+
             MapLoader.PostCheckMap(LoadedMap, theaterGraphics);
+            mapLoadErrors.Clear();
+            mapLoadErrors.AddRange(MapLoader.MapLoadErrors);
 
             EditorGraphics editorGraphics = new EditorGraphics();
 
@@ -130,7 +153,7 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
             windowManager.AddAndInitializeControl(uiManager);
 
             const int margin = 60;
-            string errorList = string.Join("\r\n\r\n", MapLoader.MapLoadErrors);
+            string errorList = string.Join("\r\n\r\n", mapLoadErrors);
             int errorListHeight = (int)Renderer.GetTextDimensions(errorList, Constants.UIDefaultFont).Y;
 
             if (errorListHeight > windowManager.RenderResolutionY - margin)
@@ -140,7 +163,7 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
                     Translate("MapSetup.ManyMapLoadErrors.Description", "A massive number of errors was encountered while loading the map. See MapEditorLog.log for details."),
                     MessageBoxButtons.OK);
             }
-            else if (MapLoader.MapLoadErrors.Count > 0)
+            else if (mapLoadErrors.Count > 0)
             {
                 EditorMessageBox.Show(windowManager, 
                     Translate("MapSetup.MapLoadErrors.Title", "Errors while loading map"),
@@ -151,10 +174,34 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
         }
 
         /// <summary>
+        /// Loads theater data without forming GPU texture instances.
+        /// </summary>
+        public void LoadNonGraphicalTheater()
+        {
+            if (LoadedMap == null)
+                throw new InvalidOperationException("Cannot load theater before a map has been initialized.");
+
+            Theater theater = InitTheater();
+
+            TheaterTileData theaterTileData = new TheaterTileData(theater, FileManager, LoadedMap.Rules);
+            LoadedMap.TheaterInstance = theaterTileData;
+            FillConnectedTileFoundations(theaterTileData);
+
+            MapLoader.MapLoadErrors.Clear();
+            MapLoader.MapLoadErrors.AddRange(mapLoadErrors);
+
+            MapLoader.PostCheckMap(LoadedMap, theaterTileData);
+            mapLoadErrors.Clear();
+            mapLoadErrors.AddRange(MapLoader.MapLoadErrors);
+
+            LoadedMap.EditorConfig.PostTheaterInit(LoadedMap.Rules);
+        }
+
+        /// <summary>
         /// Automatically fills the foundations of all connected tiles
         /// for which the foundation has not been specified in the config.
         /// </summary>
-        private static void FillConnectedTileFoundations(TheaterGraphics theaterGraphics)
+        private void FillConnectedTileFoundations(ITheater theaterTileInfo)
         {
             foreach (var cliffType in LoadedMap.EditorConfig.Cliffs)
             {
@@ -167,7 +214,7 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
 
                 foreach (var cliffTypeTile in cliffType.Tiles)
                 {
-                    var tileSet = theaterGraphics.Theater.TileSets.Find(ts => ts.SetName == cliffTypeTile.TileSetName && ts.AllowToPlace);
+                    var tileSet = theaterTileInfo.Theater.TileSets.Find(ts => ts.SetName == cliffTypeTile.TileSetName && ts.AllowToPlace);
 
                     if (tileSet == null)
                     {
@@ -194,7 +241,7 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
 
                     int totalFirstTileIndex = tileSet.StartTileIndex + firstTileIndexWithinSet;
 
-                    var tile = theaterGraphics.GetTile(totalFirstTileIndex);
+                    var tile = theaterTileInfo.GetTile(totalFirstTileIndex);
 
                     for (int i = 0; i < tile.SubTileCount; i++)
                     {

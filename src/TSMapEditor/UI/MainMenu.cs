@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
@@ -35,8 +35,11 @@ namespace TSMapEditor.UI
         private FileBrowserListBox lbFileList;
 
         private SettingsPanel settingsPanel;
+        private MapSetup mapSetup;
+        private DarkeningPanel loadingDarkeningPanel;
 
         private int loadingStage;
+        private bool nextLoadingStage = false;
 
         public override void Initialize()
         {
@@ -254,11 +257,12 @@ namespace TSMapEditor.UI
 
         private void CreateMapWindow_OnCreateNewMap(object sender, CreateNewMapEventArgs e)
         {
-            string error = MapSetup.InitializeMap(gameDirectory, true, null, e, WindowManager);
+            mapSetup = new MapSetup();
+            string error = mapSetup.InitializeMap(gameDirectory, true, null, e, WindowManager);
             if (!string.IsNullOrWhiteSpace(error))
                 throw new InvalidOperationException("Failed to create new map! Returned error message: " + error);
 
-            MapSetup.LoadTheaterGraphics(WindowManager, gameDirectory);
+            mapSetup.LoadTheaterGraphics(WindowManager);
             ((CreateNewMapWindow)sender).OnCreateNewMap -= CreateMapWindow_OnCreateNewMap;
         }
 
@@ -461,10 +465,24 @@ namespace TSMapEditor.UI
 
         public override void Update(GameTime gameTime)
         {
-            if (loadingStage == 3)
+            if (loadingStage == 1)
+            {
+                ShowLoadingDarkeningPanel();
+            }
+            else if (loadingStage == 3)
+            {
                 LoadMap(tbMapPath.Text);
+            }
             else if (loadingStage == 5)
+            {
                 LoadTheater();
+            }
+
+            if (loadingStage > 0 && nextLoadingStage)
+            {
+                loadingStage++;
+                nextLoadingStage = false;
+            }
 
             base.Update(gameTime);
         }
@@ -475,26 +493,30 @@ namespace TSMapEditor.UI
 
             if (loadingStage > 0)
             {
-                loadingStage++;
+                nextLoadingStage = true;
             }
+        }
+
+        private void ShowLoadingDarkeningPanel()
+        {
+            var messageBox = new EditorMessageBox(WindowManager,
+                Translate(this, "Loading.Title", "Loading"),
+                Translate(this, "Loading.Description", "Please wait, loading map..."),
+                MessageBoxButtons.None);
+
+            loadingDarkeningPanel = new DarkeningPanel(WindowManager);
+            AddChild(loadingDarkeningPanel);
+            loadingDarkeningPanel.AddChild(messageBox);
         }
 
         private void LoadMap(string mapPath)
         {
-            string error = MapSetup.InitializeMap(gameDirectory, false, mapPath, null, WindowManager);
+            mapSetup = new MapSetup();
+            string error = mapSetup.InitializeMap(gameDirectory, false, mapPath, null, WindowManager);
 
             if (error == null)
             {
                 ApplySettings();
-
-                var messageBox = new EditorMessageBox(WindowManager, 
-                    Translate(this, "Loading.Title", "Loading"),
-                    Translate(this, "Loading.Description", "Please wait, loading map..."),
-                    MessageBoxButtons.None);
-
-                var dp = new DarkeningPanel(WindowManager);
-                AddChild(dp);
-                dp.AddChild(messageBox);
 
                 return;
             }
@@ -504,11 +526,20 @@ namespace TSMapEditor.UI
                 Translate(this, "MapLoadError.Title", "Error Loading File"),
                 error,
                 MessageBoxButtons.OK);
+
+            loadingDarkeningPanel.Disable();
+            RemoveChild(loadingDarkeningPanel);
+
+            WindowManager.AddCallback(() =>
+            {
+                loadingDarkeningPanel.Kill();
+                loadingDarkeningPanel = null;
+            });
         }
 
         private void LoadTheater()
         {
-            MapSetup.LoadTheaterGraphics(WindowManager, gameDirectory);
+            mapSetup.LoadTheaterGraphics(WindowManager);
             WindowManager.RemoveControl(this);
         }
     }
