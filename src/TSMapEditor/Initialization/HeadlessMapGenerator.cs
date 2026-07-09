@@ -27,6 +27,25 @@ namespace TSMapEditor.Initialization
     }
 
     /// <summary>
+    /// Terrain generation strategy used by the headless RMG pipeline.
+    /// </summary>
+    public enum TerrainAlgorithm
+    {
+        /// <summary>The original approach: run <see cref="Mutations.Classes.TerrainGenerationMutation"/>
+        /// once over the whole map with all configured tile groups competing independently per cell.</summary>
+        Scatter,
+
+        /// <summary>
+        /// Divide the map into blocks and use a Wave Function Collapse solver (see
+        /// <see cref="WaveFunctionCollapseSolver"/>) to decide which tile group governs each
+        /// block, respecting the theater's real LAT ground/base adjacency rules so neighboring
+        /// blocks are only assigned tile groups that are actually allowed to sit next to each
+        /// other. Produces more spatially coherent terrain clusters than <see cref="Scatter"/>.
+        /// </summary>
+        WaveFunctionCollapse
+    }
+
+    /// <summary>
     /// Parameters for headless, non-interactive random map generation.
     /// </summary>
     public class HeadlessRmgOptions
@@ -62,6 +81,13 @@ namespace TSMapEditor.Initialization
         /// Defaults to <see cref="SymmetryMode.Rotational"/>.
         /// </summary>
         public SymmetryMode Symmetry { get; set; } = SymmetryMode.Rotational;
+
+        /// <summary>
+        /// Terrain generation strategy. Defaults to <see cref="TerrainAlgorithm.Scatter"/>
+        /// (the original, already-shipped behavior) for backwards compatibility; pass
+        /// "--algorithm wfc" to opt into the newer Wave-Function-Collapse-based layout.
+        /// </summary>
+        public TerrainAlgorithm Algorithm { get; set; } = TerrainAlgorithm.Scatter;
 
         /// <summary>Path (including file name) that the generated .map file should be written to.</summary>
         public string OutputPath { get; set; }
@@ -132,6 +158,13 @@ namespace TSMapEditor.Initialization
                             options.Symmetry = SymmetryMode.Mirror;
                         else if (value.Equals("rotational", StringComparison.OrdinalIgnoreCase))
                             options.Symmetry = SymmetryMode.Rotational;
+                        break;
+                    case "algorithm":
+                        if (value.Equals("wfc", StringComparison.OrdinalIgnoreCase) ||
+                            value.Equals("wavefunctioncollapse", StringComparison.OrdinalIgnoreCase))
+                            options.Algorithm = TerrainAlgorithm.WaveFunctionCollapse;
+                        else if (value.Equals("scatter", StringComparison.OrdinalIgnoreCase))
+                            options.Algorithm = TerrainAlgorithm.Scatter;
                         break;
                     case "output":
                         options.OutputPath = value;
@@ -226,14 +259,14 @@ namespace TSMapEditor.Initialization
 
                 var mutationTarget = new HeadlessMutationTarget(map);
 
-                GenerateTerrain(map, mutationTarget, theater, random);
+                GenerateTerrain(map, mutationTarget, theater, random, options.Algorithm);
                 PlaceResources(map, random, options.PlayerCount, options.Symmetry);
                 PlacePlayerStarts(map, options.PlayerCount, options.Symmetry);
 
                 map.AutoSave(options.OutputPath);
 
                 Logger.Log($"Headless RMG: generated {options.Width}x{options.Height} {options.Theater} map " +
-                    $"with {options.PlayerCount} player starts ({options.Symmetry} symmetry, seed {seed}, gamemode {options.GameMode ?? "(none)"}) -> {options.OutputPath}");
+                    $"with {options.PlayerCount} player starts ({options.Symmetry} symmetry, {options.Algorithm} terrain algorithm, seed {seed}, gamemode {options.GameMode ?? "(none)"}) -> {options.OutputPath}");
 
                 return null;
             }
@@ -266,9 +299,11 @@ namespace TSMapEditor.Initialization
         /// <summary>
         /// Runs the existing brush-based terrain generator engine (<see cref="TerrainGenerationMutation"/>)
         /// over the entire playable area of the map, using the first terrain generator preset
-        /// configured for the map's theater in Config/TerrainGeneratorPresets.ini.
+        /// configured for the map's theater in Config/TerrainGeneratorPresets.ini. Dispatches to
+        /// either the original whole-map "scatter" strategy or the newer Wave-Function-Collapse
+        /// block layout strategy, depending on <paramref name="algorithm"/>.
         /// </summary>
-        private static void GenerateTerrain(Map map, HeadlessMutationTarget mutationTarget, Theater theater, Random random)
+        private static void GenerateTerrain(Map map, HeadlessMutationTarget mutationTarget, Theater theater, Random random, TerrainAlgorithm algorithm)
         {
             var presetsIni = Helpers.ReadConfigINI("TerrainGeneratorPresets.ini");
 
@@ -309,8 +344,132 @@ namespace TSMapEditor.Initialization
                 (cells[i], cells[j]) = (cells[j], cells[i]);
             }
 
+            if (algorithm == TerrainAlgorithm.WaveFunctionCollapse && configuration.TileGroups.Count >= 2)
+            {
+                if (GenerateTerrainWithWfc(map, mutationTarget, theater, configuration, random))
+                    return;
+
+                Logger.Log("Headless RMG: Wave Function Collapse terrain layout failed (contradiction or setup issue); falling back to the scatter algorithm.");
+            }
+
             var mutation = new TerrainGenerationMutation(mutationTarget, cells, configuration, random.Next());
             mutation.Generate();
+        }
+
+        /// <summary>
+        /// Lays out terrain by dividing the map into fixed-size blocks and using a Wave
+        /// Function Collapse solver to decide which single <see cref="TerrainGeneratorTileGroup"/>
+        /// governs each block, so neighboring blocks are only ever assigned tile groups that the
+        /// theater's actual LAT ground/base data says are allowed to be adjacent (falling back to
+        /// "always compatible with the theater's default base tileset", index 0, which every LAT
+        /// transition in the theater is ultimately defined relative to - see Theater.InitLATGround).
+        /// Each block is then painted using the existing, already-vetted
+        /// <see cref="TerrainGenerationMutation"/> engine, restricted to that one tile group.
+        ///
+        /// Returns false (without modifying the map further) if the solver hits a contradiction
+        /// or the configuration doesn't have enough tile groups to make WFC meaningful, so the
+        /// caller can fall back to the scatter algorithm instead.
+        /// </summary>
+        private static bool GenerateTerrainWithWfc(Map map, HeadlessMutationTarget mutationTarget, Theater theater, TerrainGeneratorConfiguration configuration, Random random)
+        {
+            const int blockSize = 6; // cells per block edge; arbitrary proof-of-concept granularity
+
+            var domains = configuration.TileGroups;
+            int domainCount = domains.Count;
+
+            var weights = new double[domainCount];
+            for (int i = 0; i < domainCount; i++)
+                weights[i] = Math.Max(domains[i].OpenChance, 0.01);
+
+            var compatibility = new bool[domainCount, domainCount];
+            for (int i = 0; i < domainCount; i++)
+            {
+                for (int j = 0; j < domainCount; j++)
+                {
+                    if (i == j)
+                    {
+                        compatibility[i, j] = true;
+                        continue;
+                    }
+
+                    var tileSetA = domains[i].TileSet;
+                    var tileSetB = domains[j].TileSet;
+
+                    bool compatible =
+                        tileSetA == tileSetB ||
+                        tileSetA.Index == 0 || tileSetB.Index == 0 || // the theater's default base/clear tileset is always a safe neighbor
+                        theater.LATGrounds.Exists(lg =>
+                            (lg.GroundTileSet == tileSetA && lg.BaseTileSet == tileSetB) ||
+                            (lg.GroundTileSet == tileSetB && lg.BaseTileSet == tileSetA));
+
+                    compatibility[i, j] = compatible;
+                }
+            }
+
+            int blocksX = Math.Max(1, (int)Math.Ceiling(map.LocalSize.Width / (double)blockSize));
+            int blocksY = Math.Max(1, (int)Math.Ceiling(map.LocalSize.Height / (double)blockSize));
+
+            var solver = new WaveFunctionCollapseSolver(blocksX, blocksY, weights, compatibility);
+            int[] assignment = solver.Solve(random);
+
+            if (assignment == null)
+                return false;
+
+            for (int by = 0; by < blocksY; by++)
+            {
+                for (int bx = 0; bx < blocksX; bx++)
+                {
+                    int domainIndex = assignment[by * blocksX + bx];
+                    var tileGroup = domains[domainIndex];
+
+                    var blockCells = new List<Point2D>();
+                    int startX = map.LocalSize.X + bx * blockSize;
+                    int startY = map.LocalSize.Y + by * blockSize;
+                    int endX = Math.Min(startX + blockSize, map.LocalSize.X + map.LocalSize.Width);
+                    int endY = Math.Min(startY + blockSize, map.LocalSize.Y + map.LocalSize.Height);
+
+                    for (int y = startY; y < endY; y++)
+                    {
+                        for (int x = startX; x < endX; x++)
+                        {
+                            if (map.GetTile(x, y) != null)
+                                blockCells.Add(new Point2D(x, y));
+                        }
+                    }
+
+                    if (blockCells.Count == 0)
+                        continue;
+
+                    for (int i = blockCells.Count - 1; i > 0; i--)
+                    {
+                        int j = random.Next(i + 1);
+                        (blockCells[i], blockCells[j]) = (blockCells[j], blockCells[i]);
+                    }
+
+                    var blockConfiguration = new TerrainGeneratorConfiguration(
+                        configuration.Name + " (WFC block)",
+                        configuration.Theater,
+                        configuration.IsUserConfiguration,
+                        configuration.TerrainTypeGroups,
+                        new List<TerrainGeneratorTileGroup> { tileGroup },
+                        new List<TerrainGeneratorOverlayGroup>(), // resource/overlay placement is handled separately by PlaceResources
+                        configuration.SmudgeGroups);
+
+                    try
+                    {
+                        var mutation = new TerrainGenerationMutation(mutationTarget, blockCells, blockConfiguration, random.Next());
+                        mutation.Generate();
+                    }
+                    catch (Exception ex)
+                    {
+                        // Don't let one bad block abort the whole map; log and keep going so the
+                        // rest of the map still gets a usable layout.
+                        Logger.Log($"Headless RMG: WFC block ({bx},{by}) terrain generation failed, leaving it unpainted: {ex.Message}");
+                    }
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
