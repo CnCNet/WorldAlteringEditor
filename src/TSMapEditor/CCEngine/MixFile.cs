@@ -87,7 +87,7 @@ namespace TSMapEditor.CCEngine
             entries = new List<MixFileEntry>();
 
             byte[] buffer = new byte[256];
-            stream.Read(buffer, 0, 4);
+            stream.ReadExactly(buffer, 0, 4);
             MixType mixType = (MixType)BitConverter.ToInt32(buffer, 0);
             
             bool isEncrypted = (mixType & MixType.ENCRYPTED) != 0;
@@ -95,11 +95,11 @@ namespace TSMapEditor.CCEngine
             if (isEncrypted)
             {
                 // Read and decrypt the Blowfish associated with this MIX.
-                stream.Read(buffer, 0, KeyDecryptor.SIZE_OF_ENCRYPTED_KEY);
+                stream.ReadExactly(buffer, 0, KeyDecryptor.SIZE_OF_ENCRYPTED_KEY);
                 stream = new BlowfishStream(stream, KeyDecryptor.DecryptBlowfishKey(buffer));
             }
 
-            stream.Read(buffer, 0, MixFileHeader.SIZE_OF_HEADER);
+            stream.ReadExactly(buffer, 0, MixFileHeader.SIZE_OF_HEADER);
 
             MixFileHeader header = new MixFileHeader(buffer);
 
@@ -117,7 +117,7 @@ namespace TSMapEditor.CCEngine
                 if (stream.Position + MixFileEntry.SIZE_OF_FILE_ENTRY >= stream.Length)
                     throw new MixParseException("Invalid MIX file.");
 
-                stream.Read(buffer, 0, MixFileEntry.SIZE_OF_FILE_ENTRY);
+                stream.ReadExactly(buffer, 0, MixFileEntry.SIZE_OF_FILE_ENTRY);
                 entries.Add(new MixFileEntry(buffer));
             }
 
@@ -173,7 +173,7 @@ namespace TSMapEditor.CCEngine
             byte[] buffer = new byte[count];
 
             stream.Position = mixStartOffset + bodyOffset + offset;
-            stream.Read(buffer, 0, count);
+            stream.ReadExactly(buffer, 0, count);
 
             return buffer;
         }

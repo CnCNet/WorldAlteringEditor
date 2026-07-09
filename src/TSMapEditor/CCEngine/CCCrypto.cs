@@ -309,15 +309,12 @@ internal class BlowfishStream : Stream
         }
 
         // Read new encrypted data to staging buffer.
-        int read = stream.Read(stagingBuffer, stagingBufferOffset, sizeToRead);
-
-        if ((read & (SIZE_OF_BLOCK - 1)) != 0)
-            throw new System.ArgumentException("Number of bytes read from encapsulated stream isn't a multiple of Blowfish block size");
+        stream.ReadExactly(stagingBuffer, stagingBufferOffset, sizeToRead);
 
         int dataStart = stagingBufferOffset - stagingRemainingBytes;
 
         // Decrypt blocks in-place in staging buffer.
-        for (int i = 0; i < read; i += SIZE_OF_BLOCK)
+        for (int i = 0; i < sizeToRead; i += SIZE_OF_BLOCK)
         {
             DecryptBlock();
             stagingBufferOffset += SIZE_OF_BLOCK;
