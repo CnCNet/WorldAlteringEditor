@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Rampastring.XNAUI;
@@ -15,7 +15,7 @@ namespace TSMapEditor.UI
 {
     class TileDisplayTile
     {
-        public TileDisplayTile(Point location, Point offset, Point size, TileImage tileImageToDisplay, TileImage tileImageToPlace)
+        public TileDisplayTile(Point location, Point offset, Point size, MGTileImage tileImageToDisplay, MGTileImage tileImageToPlace)
         {
             Location = location;
             Offset = offset;
@@ -27,8 +27,8 @@ namespace TSMapEditor.UI
         public Point Location { get; set; }
         public Point Offset { get; set; }
         public Point Size { get; set; }
-        public TileImage TileImageToDisplay { get; set; }
-        public TileImage TileImageToPlace { get; set; }
+        public MGTileImage TileImageToDisplay { get; set; }
+        public MGTileImage TileImageToPlace { get; set; }
     }
 
     public class TileDisplay : XNAPanel
@@ -49,8 +49,8 @@ namespace TSMapEditor.UI
 
         public event EventHandler SelectedTileChanged;
 
-        private TileImage _selectedTile;
-        public TileImage SelectedTile
+        private MGTileImage _selectedTile;
+        public MGTileImage SelectedTile
         {
             get => _selectedTile;
             set
@@ -199,8 +199,8 @@ namespace TSMapEditor.UI
                 if (tileIndex > theaterGraphics.TileCount)
                     break;
 
-                TileImage tileImageToPlace = theaterGraphics.GetTileGraphics(tileIndex);
-                TileImage tileImageToDisplay = editorState.IsMarbleMadness ? theaterGraphics.GetMarbleMadnessTileGraphics(tileIndex) : tileImageToPlace;
+                MGTileImage tileImageToPlace = theaterGraphics.GetTileGraphics(tileIndex);
+                MGTileImage tileImageToDisplay = editorState.IsMarbleMadness ? theaterGraphics.GetMarbleMadnessTileGraphics(tileIndex) : tileImageToPlace;
 
                 if (tileImageToDisplay == null)
                     break;
@@ -318,12 +318,12 @@ namespace TSMapEditor.UI
             {
                 var rectangle = new Rectangle(tile.Location.X, tile.Location.Y + (int)ViewY, tile.Size.X, tile.Size.Y);
 
-                if (tile.TileImageToDisplay.TMPImages.Length == 0)
+                if (tile.TileImageToDisplay.SubTileCount == 0)
                     continue;
 
                 bool paletteTextureSet = false;
 
-                foreach (MGTMPImage image in tile.TileImageToDisplay.TMPImages)
+                foreach (MGSubTileImage image in tile.TileImageToDisplay.TMPImages)
                 {
                     if (image == null || image.TmpImage == null)
                         continue;

@@ -1,58 +1,20 @@
-﻿using System;
+using System;
 using TSMapEditor.GameMath;
 
-namespace TSMapEditor.Rendering
+namespace TSMapEditor.CCEngine.TileData
 {
     /// <summary>
-    /// Interface for a full tile image (containing all sub-tiles).
+    /// Base class for a full TMP tile, composed of one or more sub-tiles.
     /// </summary>
-    public interface ITileImage
+    public abstract class TileImage : ITileImage
     {
-        /// <summary>
-        /// Width of the tile in cells.
-        /// </summary>
-        int Width { get; }
-
-        /// <summary>
-        /// Height of the tile in cells.
-        /// </summary>
-        int Height { get; }
-
-        /// <summary>
-        /// The index of the tile's tileset.
-        /// </summary>
-        int TileSetId { get; }
-
-        /// <summary>
-        /// The index of the tile within its tileset.
-        /// </summary>
-        int TileIndexInTileSet { get; }
-
-        /// <summary>
-        /// The unique ID of this tile within all tiles in the game.
-        /// </summary>
-        int TileID { get; }
-
-        int SubTileCount { get; }
-
-        ISubTileImage GetSubTile(int index);
-
-        Point2D? GetSubTileCoordOffset(int index);
-    }
-
-    /// <summary>
-    /// Contains graphics for a single full TMP (all sub-tiles / all cells).
-    /// </summary>
-    public class TileImage : ITileImage
-    {
-        public TileImage(int width, int height, int tileSetId, int tileIndex, int tileId, MGTMPImage[] tmpImages)
+        protected TileImage(int width, int height, int tileSetId, int tileIndex, int tileId)
         {
             Width = width;
             Height = height;
             TileSetId = tileSetId;
             TileIndexInTileSet = tileIndex;
             TileID = tileId;
-            TMPImages = tmpImages;
         }
 
         /// <summary>
@@ -80,11 +42,11 @@ namespace TSMapEditor.Rendering
         /// </summary>
         public int TileID { get; set; }
 
-        public ISubTileImage GetSubTile(int index) => TMPImages[index];
+        public abstract ISubTileImage GetSubTile(int index);
 
         public Point2D? GetSubTileCoordOffset(int index)
         {
-            if (TMPImages[index] == null)
+            if (GetSubTile(index) == null)
                 return null;
 
             int x = index % Width;
@@ -92,19 +54,36 @@ namespace TSMapEditor.Rendering
             return new Point2D(x, y);
         }
 
-        public int SubTileCount => TMPImages.Length;
-
-        public MGTMPImage[] TMPImages { get; set; }
+        public abstract int SubTileCount { get; }
 
         /// <summary>
-        /// Performs an action for all valid sub-tiles of the TMP image.
+        /// Checks if a condition is true for any valid sub-tile.
+        /// </summary>
+        public bool CheckForAnyValidSubTile(Func<ISubTileImage, bool> condition)
+        {
+            for (int i = 0; i < SubTileCount; i++)
+            {
+                ISubTileImage image = GetSubTile(i);
+
+                if (image?.TmpImage == null)
+                    continue;
+
+                if (condition(image))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Performs an action for all valid sub-tiles of the tile image.
         /// </summary>
         /// <param name="action">The action to perform. First parameter is the sub-tile, second parameter its offset within the tile, and the third parameter is the sub-tile's index.</param>
-        public void DoForValidSubTiles(Action<MGTMPImage, Point2D, int> action)
+        public void DoForValidSubTiles(Action<ISubTileImage, Point2D, int> action)
         {
-            for (int i = 0; i < TMPImages.Length; i++)
+            for (int i = 0; i < SubTileCount; i++)
             {
-                MGTMPImage image = TMPImages[i];
+                ISubTileImage image = GetSubTile(i);
 
                 if (image == null)
                     continue;
@@ -116,26 +95,7 @@ namespace TSMapEditor.Rendering
             }
         }
 
-        /// <summary>
-        /// Checks if a condition is true for any valid sub-tile.
-        /// </summary>
-        public bool CheckForAnyValidSubTile(Func<MGTMPImage, bool> condition)
-        {
-            for (int i = 0; i < TMPImages.Length; i++)
-            {
-                MGTMPImage image = TMPImages[i];
-
-                if (image == null)
-                    continue;
-
-                if (condition(image))
-                    return true;
-            }
-
-            return false;
-        }
-
-        public bool Flat => !CheckForAnyValidSubTile(tmpImage => tmpImage.TmpImage.Height > 0);
+        public bool Flat => !CheckForAnyValidSubTile(subTile => subTile.TmpImage.Height > 0);
 
         /// <summary>
         /// Calculates and returns the width of this full tile image.
@@ -144,18 +104,15 @@ namespace TSMapEditor.Rendering
         {
             outMinX = 0;
 
-            if (TMPImages == null)
+            if (SubTileCount == 0)
                 return 0;
 
             int maxX = int.MinValue;
             int minX = int.MaxValue;
 
-            for (int i = 0; i < TMPImages.Length; i++)
+            for (int i = 0; i < SubTileCount; i++)
             {
-                if (TMPImages[i] == null)
-                    continue;
-
-                var tmpData = TMPImages[i].TmpImage;
+                var tmpData = GetSubTile(i)?.TmpImage;
                 if (tmpData == null)
                     continue;
 
@@ -166,13 +123,16 @@ namespace TSMapEditor.Rendering
                 if (cellRightXCoordinate > maxX)
                     maxX = cellRightXCoordinate;
 
-                if (TMPImages[i].TmpImage.HasExtraData())
+                if (tmpData.HasExtraData())
                 {
-                    int extraRightXCoordinate = tmpData.X + TMPImages[i].TmpImage.XExtra + TMPImages[i].ExtraSourceRectangle.Width;
+                    int extraRightXCoordinate = tmpData.X + tmpData.XExtra + (int)tmpData.ExtraWidth;
                     if (extraRightXCoordinate > maxX)
                         maxX = extraRightXCoordinate;
                 }
             }
+
+            if (minX == int.MaxValue)
+                return 0;
 
             outMinX = minX;
             return maxX - minX;
@@ -183,18 +143,15 @@ namespace TSMapEditor.Rendering
         /// </summary>
         public int GetHeight()
         {
-            if (TMPImages == null)
+            if (SubTileCount == 0)
                 return 0;
 
             int top = int.MaxValue;
             int bottom = int.MinValue;
 
-            for (int i = 0; i < TMPImages.Length; i++)
+            for (int i = 0; i < SubTileCount; i++)
             {
-                if (TMPImages[i] == null)
-                    continue;
-
-                var tmpData = TMPImages[i].TmpImage;
+                var tmpData = GetSubTile(i)?.TmpImage;
                 if (tmpData == null)
                     continue;
 
@@ -209,10 +166,10 @@ namespace TSMapEditor.Rendering
                 if (cellBottom > bottom)
                     bottom = cellBottom;
 
-                if (TMPImages[i].TmpImage.HasExtraData())
+                if (tmpData.HasExtraData())
                 {
                     int extraCellTop = tmpData.YExtra - heightOffset;
-                    int extraCellBottom = extraCellTop + TMPImages[i].ExtraSourceRectangle.Height;
+                    int extraCellBottom = extraCellTop + (int)tmpData.ExtraHeight;
 
                     if (extraCellTop < top)
                         top = extraCellTop;
@@ -222,6 +179,9 @@ namespace TSMapEditor.Rendering
                 }
             }
 
+            if (top == int.MaxValue)
+                return 0;
+
             return bottom - top;
         }
 
@@ -229,19 +189,14 @@ namespace TSMapEditor.Rendering
         {
             int height = GetHeight();
 
-            // return 0;
-
             int yOffset = 0;
 
             int maxTopCoord = int.MaxValue;
             int maxBottomCoord = int.MinValue;
 
-            for (int i = 0; i < TMPImages.Length; i++)
+            for (int i = 0; i < SubTileCount; i++)
             {
-                if (TMPImages[i] == null)
-                    continue;
-
-                var tmpData = TMPImages[i].TmpImage;
+                var tmpData = GetSubTile(i)?.TmpImage;
                 if (tmpData == null)
                     continue;
 
@@ -256,21 +211,18 @@ namespace TSMapEditor.Rendering
                     maxBottomCoord = cellBottomCoord;
             }
 
-            for (int i = 0; i < TMPImages.Length; i++)
+            for (int i = 0; i < SubTileCount; i++)
             {
-                if (TMPImages[i] == null)
-                    continue;
-
-                var tmpData = TMPImages[i].TmpImage;
+                var tmpData = GetSubTile(i)?.TmpImage;
                 if (tmpData == null)
                     continue;
 
-                if (TMPImages[i].TmpImage.HasExtraData())
+                if (tmpData.HasExtraData())
                 {
                     int heightOffset = Constants.CellHeight * tmpData.Height;
 
-                    int extraTopCoord = TMPImages[i].TmpImage.YExtra - heightOffset;
-                    int extraBottomCoord = TMPImages[i].TmpImage.YExtra + TMPImages[i].ExtraSourceRectangle.Height - heightOffset;
+                    int extraTopCoord = tmpData.YExtra - heightOffset;
+                    int extraBottomCoord = tmpData.YExtra + (int)tmpData.ExtraHeight - heightOffset;
 
                     if (extraTopCoord < maxTopCoord)
                         maxTopCoord = extraTopCoord;
@@ -279,6 +231,9 @@ namespace TSMapEditor.Rendering
                         maxBottomCoord = extraBottomCoord;
                 }
             }
+
+            if (maxTopCoord == int.MaxValue)
+                return 0;
 
             if (maxTopCoord < 0)
                 yOffset = -maxTopCoord;

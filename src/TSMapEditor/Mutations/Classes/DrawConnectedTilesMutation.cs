@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.GameMath;
 using TSMapEditor.Misc;
 using TSMapEditor.Models;
-using TSMapEditor.Rendering;
 using TSMapEditor.UI;
 
 namespace TSMapEditor.Mutations.Classes
@@ -236,9 +236,9 @@ namespace TSMapEditor.Mutations.Classes
             if (tile == null)
                 return;
 
-            for (int i = 0; i < tile.TMPImages.Length; i++)
+            for (int i = 0; i < tile.SubTileCount; i++)
             {
-                MGTMPImage image = tile.TMPImages[i];
+                ISubTileImage image = tile.GetSubTile(i);
                 if (image == null)
                     continue;
 

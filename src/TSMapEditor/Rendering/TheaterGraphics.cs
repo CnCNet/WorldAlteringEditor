@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using TSMapEditor.CCEngine;
+using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Rendering.Batching;
@@ -328,7 +329,7 @@ namespace TSMapEditor.Rendering
     /// <summary>
     /// Graphical layer for the theater.
     /// </summary>
-    public class TheaterGraphics : ITheater
+    public class TheaterGraphics : ITheater, ITheaterTileData
     {
         private const string SHP_FILE_EXTENSION = ".SHP";
         private const string VXL_FILE_EXTENSION = ".VXL";
@@ -355,16 +356,17 @@ namespace TSMapEditor.Rendering
 
         private List<GraphicsPreparationClass> graphicsPreparationObjects = new List<GraphicsPreparationClass>();
         private List<Texture2D> spriteSheets = new List<Texture2D>();
-        private List<TileImage[]> terrainGraphicsList = new List<TileImage[]>();
-        private List<TileImage[]> mmTerrainGraphicsList = new List<TileImage[]>();
+        private List<MGTileImage[]> terrainGraphicsList = new List<MGTileImage[]>();
+        private List<MGTileImage[]> mmTerrainGraphicsList = new List<MGTileImage[]>();
         private List<bool> hasMMGraphics = new List<bool>();
 
         public int TileCount => terrainGraphicsList.Count;
 
-        public TileImage GetTileGraphics(int id) => terrainGraphicsList[id][random.Next(terrainGraphicsList[id].Length)];
-        public TileImage GetTileGraphics(int id, int variantId) => terrainGraphicsList[id][variantId];
-        public TileImage GetMarbleMadnessTileGraphics(int id) => mmTerrainGraphicsList[id][0];
+        public MGTileImage GetTileGraphics(int id) => terrainGraphicsList[id][random.Next(terrainGraphicsList[id].Length)];
+        public MGTileImage GetTileGraphics(int id, int variantId) => terrainGraphicsList[id][variantId];
+        public MGTileImage GetMarbleMadnessTileGraphics(int id) => mmTerrainGraphicsList[id][0];
         public bool HasSeparateMarbleMadnessTileGraphics(int id) => hasMMGraphics[id];
+        public TileImage GetTileImage(int id) => terrainGraphicsList[id][0];
 
         public ITileImage GetTile(int id) => GetTileGraphics(id);
 
@@ -577,7 +579,7 @@ namespace TSMapEditor.Rendering
 
                 for (int i = 0; i < tileSet.TilesInSet; i++)
                 {
-                    var tileGraphics = new List<TileImage>();
+                    var tileGraphics = new List<MGTileImage>();
 
                     // Handle graphics variation (clear00.tem, clear00a.tem, clear00b.tem etc.)
                     for (int v = 0; v < 'g' - 'a'; v++)
@@ -605,7 +607,7 @@ namespace TSMapEditor.Rendering
                         {
                             if (v == 0)
                             {
-                                tileGraphics.Add(new TileImage(0, 0, tsId, i, currentTileIndex, Array.Empty<MGTMPImage>()));
+                                tileGraphics.Add(new MGTileImage(0, 0, tsId, i, currentTileIndex, Array.Empty<MGSubTileImage>()));
                                 break;
                             }
                             else
@@ -618,7 +620,7 @@ namespace TSMapEditor.Rendering
                         tmpFile.ParseFromBuffer(data);
 
                         // Gather individual sub-tiles for this variation of the full tile
-                        var tmpImages = new List<MGTMPImage>();
+                        var tmpImages = new List<MGSubTileImage>();
                         for (int img = 0; img < tmpFile.ImageCount; img++)
                         {
                             var tmpImage = tmpFile.GetImage(img);
@@ -629,12 +631,12 @@ namespace TSMapEditor.Rendering
                                 continue;
                             }
 
-                            var monoGameTmpImage = new MGTMPImage(tmpImage, graphicsPreparationObject, TheaterPalette, tsId);
+                            var monoGameTmpImage = new MGSubTileImage(tmpImage, graphicsPreparationObject, TheaterPalette, tsId);
                             tmpImages.Add(monoGameTmpImage);
                         }
 
                         // Add this variation to list of variations for this tile
-                        tileGraphics.Add(new TileImage(tmpFile.CellsX, tmpFile.CellsY, tsId, i, currentTileIndex, tmpImages.ToArray()));
+                        tileGraphics.Add(new MGTileImage(tmpFile.CellsX, tmpFile.CellsY, tsId, i, currentTileIndex, tmpImages.ToArray()));
                     }
 
                     tileSet.LoadedTileCount++;
@@ -652,7 +654,7 @@ namespace TSMapEditor.Rendering
             // Afterwards, we are done!
             graphicsPreparationObject.PostProcessAction = (obj, ssobj) => 
             {
-                var mgTmpImage = (MGTMPImage)obj;
+                var mgTmpImage = (MGSubTileImage)obj;
                 mgTmpImage.Texture = ssobj.Texture;
 
                 mgTmpImage.SourceRectangle = mgTmpImage.SourceRectangle with { Y = mgTmpImage.SourceRectangle.Y + ssobj.YOffset };
@@ -1752,7 +1754,7 @@ namespace TSMapEditor.Rendering
 
         public int GetTileSetId(int uniqueTileIndex)
         {
-            return GetTileGraphics(uniqueTileIndex).TileSetId;
+            return GetTileImage(uniqueTileIndex).TileSetId;
         }
     }
 }

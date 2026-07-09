@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using TSMapEditor.GameMath;
@@ -23,13 +23,13 @@ namespace TSMapEditor.Models
         /// The cached image for this tile.
         /// This should be cleared when the tile's terrain is changed.
         /// </summary>
-        public TileImage TileImage { get; set; }
+        public MGTileImage TileImage { get; set; }
         public TerrainObject TerrainObject { get; set; }
         public List<Structure> Structures { get; set; } = new List<Structure>();
         public List<Unit> Vehicles { get; set; } = new List<Unit>();
         public List<Aircraft> Aircraft { get; set; } = new List<Aircraft>();
         public Infantry[] Infantry { get; set; } = new Infantry[SubCellCount];
-        public TileImage PreviewTileImage { get; private set; }
+        public MGTileImage PreviewTileImage { get; private set; }
         public int PreviewSubTileIndex { get; private set; }
         public int PreviewLevel { get; private set; } = -1;
 
@@ -70,7 +70,7 @@ namespace TSMapEditor.Models
             return Level;
         }
 
-        public void ApplyPreview(TileImage previewTileImage, int previewSubTileIndex, int previewLevel, Lighting lighting, LightingPreviewMode lightingPreviewMode, bool lightDisabledLightSources)
+        public void ApplyPreview(MGTileImage previewTileImage, int previewSubTileIndex, int previewLevel, Lighting lighting, LightingPreviewMode lightingPreviewMode, bool lightDisabledLightSources)
         {
             PreviewTileImage = previewTileImage;
             PreviewSubTileIndex = previewSubTileIndex;
@@ -485,9 +485,9 @@ namespace TSMapEditor.Models
 
         public bool MatchesLandType(LandType landType)
         {
-            if (TileImage == null || TileImage.TMPImages == null) return false;
+            if (TileImage == null) return false;
 
-            var subCellImage = SubTileIndex < TileImage.TMPImages.Length ? TileImage.TMPImages[SubTileIndex] : null;
+            var subCellImage = SubTileIndex < TileImage.SubTileCount ? TileImage.GetSubTile(SubTileIndex) : null;
             var terrainType = subCellImage?.TmpImage?.TerrainType;
             return terrainType == Helpers.LandTypeToInt(landType);
         }

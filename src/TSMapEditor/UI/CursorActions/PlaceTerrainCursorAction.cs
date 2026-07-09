@@ -1,4 +1,4 @@
-﻿using Rampastring.XNAUI.Input;
+using Rampastring.XNAUI.Input;
 using System;
 using System.Collections.Generic;
 using TSMapEditor.GameMath;
@@ -19,8 +19,8 @@ namespace TSMapEditor.UI.CursorActions
 
         public override bool HandlesKeyboardInput => true;
 
-        private TileImage _tile;
-        public TileImage Tile
+        private MGTileImage _tile;
+        public MGTileImage Tile
         {
             get => _tile;
             set
@@ -180,7 +180,7 @@ namespace TSMapEditor.UI.CursorActions
             // Only use a 1x1 brush size for this (meaning no brush at all)
             // so users can use larger brush sizes to "paint height"
 
-            for (int i = 0; i < Tile.TMPImages.Length; i++)
+            for (int i = 0; i < Tile.SubTileCount; i++)
             {
                 Point2D? subTileOffset = Tile.GetSubTileCoordOffset(i);
 
@@ -211,7 +211,7 @@ namespace TSMapEditor.UI.CursorActions
             // Then apply the preview data
             brush.DoForBrushSize(offset =>
             {
-                for (int i = 0; i < Tile.TMPImages.Length; i++)
+                for (int i = 0; i < Tile.SubTileCount; i++)
                 {
                     Point2D? subTileOffset = Tile.GetSubTileCoordOffset(i);
 

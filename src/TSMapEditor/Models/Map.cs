@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using TSMapEditor.CCEngine;
+using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Initialization;

@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
-using TSMapEditor.Rendering;
 using TSMapEditor.UI;
 
 namespace TSMapEditor.Mutations.Classes
@@ -51,8 +51,8 @@ namespace TSMapEditor.Mutations.Classes
                     // Don't allow placing tiberium on impassable tiles, it's a common mapping error
                     // that leads to harvesters getting stuck
 
-                    TileImage tileGraphics = MutationTarget.TheaterGraphics.GetTileGraphics(tile.TileIndex);
-                    MGTMPImage subCellImage = tileGraphics.TMPImages[tile.SubTileIndex];
+                    ITileImage tileGraphics = MutationTarget.Map.TheaterInstance.GetTile(tile.TileIndex);
+                    ISubTileImage subCellImage = tileGraphics.GetSubTile(tile.SubTileIndex);
                     if (Helpers.IsLandTypeImpassable(subCellImage.TmpImage.TerrainType, true))
                         return;
                 }

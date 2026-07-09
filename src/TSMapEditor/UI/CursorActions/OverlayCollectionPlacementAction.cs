@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations;
 using TSMapEditor.Mutations.Classes;
-using TSMapEditor.Rendering;
 
 namespace TSMapEditor.UI.CursorActions
 {

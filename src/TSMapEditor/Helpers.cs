@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
@@ -8,12 +8,12 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using TSMapEditor.CCEngine;
+using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.Extensions;
 using TSMapEditor.GameMath;
 using TSMapEditor.Misc;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
-using TSMapEditor.Rendering;
 
 namespace TSMapEditor
 {
@@ -577,12 +577,12 @@ namespace TSMapEditor
         /// </summary>
         /// <param name="targetTile">Target map tile.</param>
         /// <param name="map">Map instance.</param>
-        /// <param name="theaterGraphics">Theater graphics instance.</param>
+        /// <param name="theaterTileData">Theater tile data instance.</param>
         /// <returns>Collection of map tile coordinates.</returns>
-        public static IEnumerable<Point2D> GetFillAreaTiles(MapTile targetTile, Map map, TheaterGraphics theaterGraphics)
+        public static IEnumerable<Point2D> GetFillAreaTiles(MapTile targetTile, Map map, ITheaterTileData theaterTileData)
         {
-            TileImage tileGraphics = theaterGraphics.GetTileGraphics(targetTile.TileIndex);
-            MGTMPImage subCellImage = tileGraphics.TMPImages[targetTile.SubTileIndex];
+            TileImage tileGraphics = theaterTileData.GetTileImage(targetTile.TileIndex);
+            ISubTileImage subCellImage = tileGraphics.GetSubTile(targetTile.SubTileIndex);
 
             byte terrainType = subCellImage.TmpImage.TerrainType;
             int tileSetId = tileGraphics.TileSetId;
@@ -618,14 +618,14 @@ namespace TSMapEditor
                     continue;
                 }
 
-                tileGraphics = theaterGraphics.GetTileGraphics(cell.TileIndex);
+                tileGraphics = theaterTileData.GetTileImage(cell.TileIndex);
                 if (tileGraphics.TileSetId != tileSetId)
                 {
                     tilesToSkip.Add(coords.GetHashCode());
                     continue;
                 }
 
-                subCellImage = tileGraphics.TMPImages[cell.SubTileIndex];
+                subCellImage = tileGraphics.GetSubTile(cell.SubTileIndex);
                 if (subCellImage.TmpImage.TerrainType != terrainType)
                 {
                     tilesToSkip.Add(coords.GetHashCode());

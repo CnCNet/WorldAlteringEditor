@@ -1,22 +1,15 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TSMapEditor.CCEngine;
+using TSMapEditor.CCEngine.TileData;
 
 namespace TSMapEditor.Rendering
 {
     /// <summary>
-    /// Interface for a single cell of a tile; sub-tile of a full TMP.
-    /// </summary>
-    public interface ISubTileImage
-    {
-        TmpImage TmpImage { get; }
-    }
-
-    /// <summary>
     /// A MonoGame-drawable TMP image.
     /// Contains graphics and information for a single cell (sub-tile of a full TMP).
     /// </summary>
-    public class MGTMPImage : ISubTileImage
+    public class MGSubTileImage : ISubTileImage
     {
         /// <summary>
         /// Creates a new MonoGame TMP image and copies its color data to a sprite sheet preparation object.
@@ -25,7 +18,7 @@ namespace TSMapEditor.Rendering
         /// <param name="megaTexturePreparation">Mega texture preparation object.</param>
         /// <param name="palette">The palette to use for this image.</param>
         /// <param name="tileSetId">Index of the tile set of this image within all TileSets. Only tracked for convenience.</param>
-        public MGTMPImage(TmpImage tmpImage, GraphicsPreparationClass graphicsPreparationClass, XNAPalette palette, int tileSetId)
+        public MGSubTileImage(TmpImage tmpImage, GraphicsPreparationClass graphicsPreparationClass, XNAPalette palette, int tileSetId)
         {
             if (tmpImage != null)
             {

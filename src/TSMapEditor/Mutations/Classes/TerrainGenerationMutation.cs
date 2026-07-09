@@ -4,10 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TSMapEditor.CCEngine;
+using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
-using TSMapEditor.Rendering;
 using TSMapEditor.UI;
 
 namespace TSMapEditor.Mutations.Classes

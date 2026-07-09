@@ -713,7 +713,7 @@ namespace TSMapEditor.Rendering
                 }
             }
 
-            TileImage tileImage;
+            MGTileImage tileImage;
             int subTileIndex;
             int level;
             if (tile.PreviewTileImage != null)
@@ -736,13 +736,13 @@ namespace TSMapEditor.Rendering
             int drawX = drawPointWithoutCellHeight.X;
             int drawY = drawPointWithoutCellHeight.Y;
 
-            if (subTileIndex >= tileImage.TMPImages.Length)
+            if (subTileIndex >= tileImage.SubTileCount)
             {
                 // Renderer.DrawString(subTileIndex.ToString(), 0, new Vector2(drawPoint.X, drawPoint.Y), Color.Red);
                 return;
             }
 
-            MGTMPImage tmpImage = tileImage.TMPImages[subTileIndex];
+            MGSubTileImage tmpImage = tileImage.TMPImages[subTileIndex];
 
             if (tmpImage == null || tmpImage.Texture == null)
             {

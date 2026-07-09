@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
-using TSMapEditor.Rendering;
 using TSMapEditor.UI;
 
 namespace TSMapEditor.Mutations.Classes
@@ -33,7 +33,7 @@ namespace TSMapEditor.Mutations.Classes
         {
             int maxY = 1;
 
-            for (int i = 0; i < tile.TMPImages.Length; i++)
+            for (int i = 0; i < tile.SubTileCount; i++)
             {
                 Point2D? subTileOffset = tile.GetSubTileCoordOffset(i);
 
@@ -52,7 +52,7 @@ namespace TSMapEditor.Mutations.Classes
         {
             int maxEast = 1;
 
-            for (int i = 0; i < tile.TMPImages.Length; i++)
+            for (int i = 0; i < tile.SubTileCount; i++)
             {
                 Point2D? subTileOffset = tile.GetSubTileCoordOffset(i);
 
@@ -72,7 +72,7 @@ namespace TSMapEditor.Mutations.Classes
         {
             int maxWest = 1;
 
-            for (int i = 0; i < tile.TMPImages.Length; i++)
+            for (int i = 0; i < tile.SubTileCount; i++)
             {
                 Point2D? subTileOffset = tile.GetSubTileCoordOffset(i);
 
@@ -130,7 +130,7 @@ namespace TSMapEditor.Mutations.Classes
             var originalData = new List<OriginalCellTerrainData>();
 
             // Process cells within tile foundation
-            for (int i = 0; i < tile.TMPImages.Length; i++)
+            for (int i = 0; i < tile.SubTileCount; i++)
             {
                 Point2D? subTileOffset = tile.GetSubTileCoordOffset(i);
 

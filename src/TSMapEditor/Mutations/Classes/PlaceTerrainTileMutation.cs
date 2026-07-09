@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
-using TSMapEditor.Rendering;
 using TSMapEditor.UI;
 
 namespace TSMapEditor.Mutations.Classes
@@ -39,9 +39,9 @@ namespace TSMapEditor.Mutations.Classes
 
         private void AddUndoDataForTile(Point2D brushOffset)
         {
-            for (int i = 0; i < Tile.TMPImages.Length; i++)
+            for (int i = 0; i < Tile.SubTileCount; i++)
             {
-                MGTMPImage image = Tile.TMPImages[i];
+                ISubTileImage image = Tile.GetSubTile(i);
 
                 if (image == null)
                     continue;
@@ -60,7 +60,7 @@ namespace TSMapEditor.Mutations.Classes
 
         public override void Perform()
         {
-            undoData = new List<OriginalCellTerrainData>(Tile.TMPImages.Length * BrushSize.Width * BrushSize.Height);
+            undoData = new List<OriginalCellTerrainData>(Tile.SubTileCount * BrushSize.Width * BrushSize.Height);
 
             int totalWidth = Tile.Width * BrushSize.Width;
             int totalHeight = Tile.Height * BrushSize.Height;
@@ -74,7 +74,7 @@ namespace TSMapEditor.Mutations.Classes
             // First, look up the lowest point within the tile area for origin level
             // Only use a 1x1 brush size for this (meaning no brush at all)
             // so users can use larger brush sizes to "paint height"
-            for (int i = 0; i < Tile.TMPImages.Length; i++)
+            for (int i = 0; i < Tile.SubTileCount; i++)
             {
                 Point2D? subTileOffset = Tile.GetSubTileCoordOffset(i);
 
@@ -105,7 +105,7 @@ namespace TSMapEditor.Mutations.Classes
             // Place the terrain
             BrushSize.DoForBrushSize(offset =>
             {
-                for (int i = 0; i < Tile.TMPImages.Length; i++)
+                for (int i = 0; i < Tile.SubTileCount; i++)
                 {
                     Point2D? subTileOffset = Tile.GetSubTileCoordOffset(i);
 

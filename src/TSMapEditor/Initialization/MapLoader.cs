@@ -69,13 +69,13 @@ namespace TSMapEditor.Initialization
             Logger.Log("Pre-load map checkup complete.");
         }
 
-        public static void PostCheckMap(IMap map, TheaterGraphics theaterGraphics)
+        public static void PostCheckMap(IMap map, ITheater theater)
         {
             Logger.Log("Performing post-load map checkup.");
 
             map.DoForAllValidTiles(t =>
             {
-                if (t.TileIndex >= theaterGraphics.TileCount)
+                if (t.TileIndex >= theater.TileCount)
                 {
                     AddMapLoadError(string.Format(Translate("MapLoader.PostCheckMap.InvalidTileIndex",
                     "Invalid tile index {0} for cell at {1} - setting it to 0"), t.TileIndex, t.CoordsToPoint()));
@@ -84,8 +84,8 @@ namespace TSMapEditor.Initialization
                     return;
                 }
 
-                var tile = theaterGraphics.GetTile(t.TileIndex);
-                var tileSet = theaterGraphics.Theater.TileSets[tile.TileSetId];
+                var tile = theater.GetTile(t.TileIndex);
+                var tileSet = theater.Theater.TileSets[tile.TileSetId];
                 int maxSubTileIndex = tile.SubTileCount - 1;
                 if (t.SubTileIndex > maxSubTileIndex)
                 {

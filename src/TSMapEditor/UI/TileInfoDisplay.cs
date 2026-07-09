@@ -1,10 +1,11 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using TSMapEditor.CCEngine;
+using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
 using TSMapEditor.Rendering;
@@ -89,14 +90,14 @@ namespace TSMapEditor.UI
 
             textRenderer.AddTextPart(new XNATextPart(MapTile.X + ", " + MapTile.Y + Environment.NewLine, Constants.UIDefaultFont, baseTextColor));
 
-            TileImage tileGraphics = theaterGraphics.GetTileGraphics(MapTile.TileIndex);
+            MGTileImage tileGraphics = theaterGraphics.GetTileGraphics(MapTile.TileIndex);
             TileSet tileSet = theaterGraphics.Theater.TileSets[tileGraphics.TileSetId];
             textRenderer.AddTextPart(new XNATextPart(Translate(this, "TileSet", "TileSet: "), Constants.UIDefaultFont, subtleTextColor));
             textRenderer.AddTextPart(new XNATextPart(tileSet.TranslatedName + " (" + tileGraphics.TileSetId + ")", Constants.UIDefaultFont, baseTextColor));
             textRenderer.AddTextPart(new XNATextPart(Translate(this, "TileNumber", "Tile #: "), Constants.UIDefaultFont, subtleTextColor));
             textRenderer.AddTextPart(new XNATextPart((MapTile.TileIndex - tileSet.StartTileIndex).ToString(CultureInfo.InvariantCulture), Constants.UIDefaultFont, baseTextColor));
 
-            MGTMPImage subCellImage = MapTile.SubTileIndex < tileGraphics.TMPImages.Length ? tileGraphics.TMPImages[MapTile.SubTileIndex] : null;
+            ISubTileImage subCellImage = MapTile.SubTileIndex < tileGraphics.SubTileCount ? tileGraphics.GetSubTile(MapTile.SubTileIndex) : null;
             string terrainType = subCellImage != null && subCellImage.TmpImage != null ? Helpers.LandTypeToString(subCellImage.TmpImage.TerrainType) : Translate(this, "Unknown", "Unknown");
 
             textRenderer.AddTextLine(new XNATextPart(Translate(this, "TerrainType", "Terrain Type: "), Constants.UIDefaultFont, subtleTextColor));

@@ -229,7 +229,7 @@ namespace TSMapEditor.UI.TopBar
                 btn.Width = btnClearTerrain.Width;
                 btn.Height = btnClearTerrain.Height;
                 var tileGraphics = theaterGraphics.GetTileGraphics(autoLATGround.GroundTileSet.StartTileIndex);
-                btn.ExtraTexture = tileGraphics != null && tileGraphics.TMPImages.Length > 0 ? tileGraphics.TMPImages[0].TextureFromTmpImage_RGBA(GraphicsDevice) : null;
+                btn.ExtraTexture = tileGraphics != null && tileGraphics.SubTileCount > 0 ? tileGraphics.TMPImages[0].TextureFromTmpImage_RGBA(GraphicsDevice) : null;
                 btn.Tag = autoLATGround;
                 btn.LeftClick += (s, e) => EnterLATPlacementMode(autoLATGround.GroundTileSet.StartTileIndex);
                 latPanel.AddChild(btn);

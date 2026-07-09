@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using TSMapEditor.CCEngine;
+using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Rendering;
