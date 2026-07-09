@@ -7,6 +7,129 @@ using TSMapEditor.Rendering;
 
 namespace TSMapEditor.CCEngine.TileData
 {
+    class OverlayFrameInformation
+    {
+        private const string SHP_FILE_EXTENSION = ".SHP";
+        private const string PNG_FILE_EXTENSION = ".PNG";
+
+        public OverlayFrameInformation(Theater theater, CCFileManager fileManager, IReadOnlyList<OverlayType> overlayTypes)
+        {
+            this.theater = theater;
+            this.fileManager = fileManager;
+
+            ReadOverlayFrameCounts(overlayTypes);
+        }
+
+        private readonly Theater theater;
+        private readonly CCFileManager fileManager;
+        private readonly Dictionary<int, int> overlayFrameCounts = new Dictionary<int, int>();
+
+        public int GetOverlayFrameCount(OverlayType overlayType)
+        {
+            if (overlayType == null)
+                throw new ArgumentNullException(nameof(overlayType));
+
+            if (!overlayFrameCounts.TryGetValue(overlayType.Index, out int frameCount))
+                throw new KeyNotFoundException($"Overlay frame count for {overlayType.ININame} has not been loaded.");
+
+            return frameCount;
+        }
+
+        public void ReadOverlayFrameCounts(IReadOnlyList<OverlayType> overlayTypes)
+        {
+            if (overlayTypes == null)
+                throw new ArgumentNullException(nameof(overlayTypes));
+
+            Logger.Log("Loading overlay frame counts.");
+
+            overlayFrameCounts.Clear();
+
+            for (int i = 0; i < overlayTypes.Count; i++)
+            {
+                OverlayType overlayType = overlayTypes[i];
+
+                string imageName = GetOverlayImageName(overlayType);
+
+                byte[] pngData = fileManager.LoadFile(imageName + PNG_FILE_EXTENSION);
+                if (pngData != null)
+                {
+                    overlayFrameCounts[overlayType.Index] = GetLogicalOverlayFrameCount(1, 0);
+                    continue;
+                }
+
+                (string shpFileName, byte[] shpData) = LoadOverlayShpData(overlayType, imageName);
+                if (shpData == null)
+                {
+                    overlayFrameCounts[overlayType.Index] = 0;
+                    continue;
+                }
+
+                var shpFile = new ShpFile(shpFileName);
+                shpFile.ParseFromBuffer(shpData);
+
+                overlayFrameCounts[overlayType.Index] = GetLogicalOverlayFrameCount(shpFile);
+            }
+
+            Logger.Log("Finished loading overlay frame counts.");
+        }
+
+        private static string GetOverlayImageName(OverlayType overlayType)
+        {
+            string imageName = overlayType.ININame;
+
+            if (overlayType.ArtConfig.Image != null)
+                imageName = overlayType.ArtConfig.Image;
+            else if (overlayType.Image != null)
+                imageName = overlayType.Image;
+
+            return imageName;
+        }
+
+        private (string FileName, byte[] Data) LoadOverlayShpData(OverlayType overlayType, string imageName)
+        {
+            if (overlayType.ArtConfig.NewTheater)
+            {
+                string shpFileName = imageName + SHP_FILE_EXTENSION;
+                string newTheaterImageName = shpFileName.Substring(0, 1) + theater.NewTheaterBuildingLetter + shpFileName.Substring(2);
+                byte[] shpData = fileManager.LoadFile(newTheaterImageName);
+
+                if (shpData != null)
+                    return (newTheaterImageName, shpData);
+
+                newTheaterImageName = shpFileName.Substring(0, 1) + Constants.NewTheaterGenericLetter + shpFileName.Substring(2);
+                shpData = fileManager.LoadFile(newTheaterImageName);
+                return (newTheaterImageName, shpData);
+            }
+
+            string fileExtension = overlayType.ArtConfig.Theater ? theater.FileExtension : SHP_FILE_EXTENSION;
+            string finalShpName = imageName + fileExtension;
+            return (finalShpName, fileManager.LoadFile(finalShpName));
+        }
+
+        private static int GetLogicalOverlayFrameCount(ShpFile shpFile)
+        {
+            int frameCount = shpFile.FrameCount;
+            int lastValidFrame = -1;
+
+            for (int i = 0; i < frameCount; i++)
+            {
+                ShpFrameInfo frameInfo = shpFile.GetShpFrameInfo(i);
+                if (frameInfo != null && frameInfo.DataOffset != 0)
+                    lastValidFrame = i;
+            }
+
+            return GetLogicalOverlayFrameCount(frameCount, lastValidFrame);
+        }
+
+        private static int GetLogicalOverlayFrameCount(int frameCount, int lastValidFrame)
+        {
+            if (lastValidFrame == frameCount - 1)
+                return frameCount / 2;
+
+            return lastValidFrame + 1;
+        }
+    }
+
     public interface ITheaterTileData
     {
         TileImage GetTileImage(int id);
@@ -20,12 +143,13 @@ namespace TSMapEditor.CCEngine.TileData
         private readonly CCFileManager fileManager;
         private readonly List<UntexturedTileImage[]> terrainTileDataList = new List<UntexturedTileImage[]>();
 
-        public TheaterTileData(Theater theater, CCFileManager fileManager)
+        public TheaterTileData(Theater theater, CCFileManager fileManager, Rules rules)
         {
             Theater = theater ?? throw new ArgumentNullException(nameof(theater));
             this.fileManager = fileManager ?? throw new ArgumentNullException(nameof(fileManager));
 
             ReadTileData();
+            overlayFrameInformation = new OverlayFrameInformation(theater, fileManager, rules.OverlayTypes);
         }
 
         public Theater Theater { get; }
@@ -38,8 +162,11 @@ namespace TSMapEditor.CCEngine.TileData
 
         public int GetTileSetId(int uniqueTileIndex) => GetTileImage(uniqueTileIndex).TileSetId;
 
-        public int GetOverlayFrameCount(OverlayType overlayType)
-            => throw new NotSupportedException($"{nameof(TheaterTileData)} does not load overlay graphics.");
+        public int GetOverlayFrameCount(OverlayType overlayType) => overlayFrameInformation.GetOverlayFrameCount(overlayType);
+
+
+        private readonly OverlayFrameInformation overlayFrameInformation;
+
 
         private void ReadTileData()
         {
