@@ -1,4 +1,6 @@
-﻿using TSMapEditor.GameMath;
+﻿using TSMapEditor.CCEngine;
+using TSMapEditor.GameMath;
+using TSMapEditor.Models.Enums;
 using TSMapEditor.Mutations.Classes.HeightMutations;
 
 namespace TSMapEditor.UI.CursorActions.HeightActions
@@ -45,11 +47,11 @@ namespace TSMapEditor.UI.CursorActions.HeightActions
                 return;
             }
 
-            // Don't act on non-morphable terrain
-            if (!Map.IsCellMorphable(cell))
-            {
-                return;
-            }
+            // Note: the hovered cell itself is intentionally NOT required to be morphable.
+            // When flattening ground up to a cliff, the cursor naturally rests on the cliff
+            // cells themselves (especially for back-facing cliffs), and the brush area still
+            // covers flattenable ground next to them. Non-morphable cells are filtered
+            // per-cell below and in the mutation.
 
             // Check the area of the brush on whether it has any cells that do not match
             // the height of the origin cell.
@@ -64,19 +66,27 @@ namespace TSMapEditor.UI.CursorActions.HeightActions
 
             bool perform = false;
 
-            for (int y = beginY; y <= endY; y++)
+            for (int y = beginY; y <= endY && !perform; y++)
             {
                 for (int x = beginX; x <= endX; x++)
                 {
                     var targetCellCoords = new Point2D(x, y);
                     var targetCell = Map.GetTile(targetCellCoords);
 
-                    if (targetCell != null && targetCell.Level != desiredHeightLevel)
-                    {
-                        // Don't act on non-morphable terrain
-                        if (!Map.IsCellMorphable(cell))
-                            continue;
+                    // Don't act on non-morphable terrain
+                    if (targetCell == null || !Map.IsCellMorphable(targetCell))
+                        continue;
 
+                    var tmpImage = Map.TheaterInstance.GetTile(targetCell.TileIndex).GetSubTile(targetCell.SubTileIndex).TmpImage;
+                    LandType landType = (LandType)tmpImage.TerrainType;
+                    if (landType == LandType.Rock || landType == LandType.Water)
+                        continue;
+
+                    // A cell needs flattening if it is at a different level, or if it is a ramp
+                    // (a ramp's Level is its lowest corner, so a ridge of ramps can all be "at"
+                    // the desired level yet still need flattening).
+                    if (targetCell.Level != desiredHeightLevel || tmpImage.RampType != RampType.None)
+                    {
                         perform = true;
                         break;
                     }

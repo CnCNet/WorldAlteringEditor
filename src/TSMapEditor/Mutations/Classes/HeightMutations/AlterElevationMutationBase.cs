@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using TSMapEditor.CCEngine;
 using TSMapEditor.GameMath;
@@ -20,24 +20,15 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
         protected readonly BrushSize BrushSize;
         protected readonly TileSet RampTileSet;
 
-        protected List<Point2D> cellsToProcess = new List<Point2D>();
-        protected List<Point2D> processedCellsThisIteration = new List<Point2D>();
-        protected List<Point2D> totalProcessedCells = new List<Point2D>();
         protected List<AlterGroundElevationUndoData> undoData = new List<AlterGroundElevationUndoData>();
 
         protected static readonly Point2D[] SurroundingTiles = new Point2D[] { new Point2D(-1, 0), new Point2D(1, 0), new Point2D(0, -1), new Point2D(0, 1),
                                                                              new Point2D(-1, -1), new Point2D(-1, 1), new Point2D(1, -1), new Point2D(1, 1) };
 
-        protected bool IsCellMorphable(MapTile cell)
-        {
-            return Map.IsCellMorphable(cell);
-        }
+        protected bool IsCellMorphable(MapTile cell) => Map.IsCellMorphable(cell);
 
         protected void Clear()
         {
-            cellsToProcess.Clear();
-            processedCellsThisIteration.Clear();
-            totalProcessedCells.Clear();
             undoData.Clear();
         }
 
@@ -57,112 +48,85 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             undoData.Add(new AlterGroundElevationUndoData(cellCoords, cell.TileIndex, cell.SubTileIndex, cell.Level));
         }
 
-        protected void RegisterCell(Point2D cellCoords)
+        /// <summary>
+        /// Runs a corner-field smoothing pass that sets each targeted cell to a uniform
+        /// height and then smooths the surrounding terrain, applying ramps where needed.
+        /// Returns the list of cells that were changed, or null if the edit was rejected
+        /// because it would have had to alter terrain anchored by an immutable cell, in
+        /// which case nothing on the map was changed.
+        /// </summary>
+        protected List<MapTile> SmoothFlat(List<Point2D> targetedCells, int newLevel, HeightFloodMode mode, bool allowSteep)
+            => SmoothFlat(targetedCells, null, newLevel, mode, allowSteep);
+
+        /// <summary>
+        /// As <see cref="SmoothFlat(List{Point2D}, int, HeightFloodMode, bool)"/>, but with a
+        /// second set of cells that are only seeded if they legally can be. A required cell that
+        /// cannot be seeded (it would move a corner anchored by immutable terrain) rejects the
+        /// whole edit; an optional cell that cannot be seeded is simply skipped.
+        /// </summary>
+        protected List<MapTile> SmoothFlat(List<Point2D> requiredCells, List<Point2D> optionalCells, int newLevel, HeightFloodMode mode, bool allowSteep)
         {
-            if (processedCellsThisIteration.Contains(cellCoords) || cellsToProcess.Contains(cellCoords) || totalProcessedCells.Contains(cellCoords))
-                return;
+            var allCells = new List<Point2D>(requiredCells);
+            if (optionalCells != null)
+                allCells.AddRange(optionalCells);
 
-            cellsToProcess.Add(cellCoords);
-        }
+            if (allCells.Count == 0)
+                return null;
 
-        protected void MarkCellAsProcessed(Point2D cellCoords)
-        {
-            processedCellsThisIteration.Add(cellCoords);
-            cellsToProcess.Remove(cellCoords);
+            GetCellBounds(allCells, out int minX, out int minY, out int maxX, out int maxY);
 
-            if (!totalProcessedCells.Contains(cellCoords))
-                totalProcessedCells.Add(cellCoords);
+            var field = new CornerHeightField(Map, minX, minY, maxX, maxY);
+            field.Build();
+
+            foreach (var cellCoords in requiredCells)
+            {
+                if (!field.TrySeedFlat(cellCoords, newLevel))
+                    return null;
+            }
+
+            if (optionalCells != null)
+            {
+                foreach (var cellCoords in optionalCells)
+                {
+                    if (field.CanSeedFlat(cellCoords, newLevel))
+                        field.TrySeedFlat(cellCoords, newLevel);
+                }
+            }
+
+            return RunSmoothing(field, mode, allowSteep);
         }
 
         /// <summary>
-        /// Main function for ground height level alteration.
-        /// Prior to this, a derived class has already raised or lowered
-        /// some target cells. Now we need to figure out what kinds of changes
-        /// to the map are necessary for these altered height levels to look smooth.
-        /// 
-        /// Algorithm goes as follows:
-        /// 
-        /// 1) Check surrounding cells for height differences of 2 levels, if found then
-        ///    raise the relevant cells to lower the difference to only 1 level.
-        ///    Repeat this process recursively until there are no cells to change.
-        /// 
-        /// 2) Apply some miscellaneous cell height fixes, the game does not have ramps for
-        ///    every potential case.
-        /// 
-        /// 3) Check the affected cells and their neighbours for necessary ramp changes.
+        /// Floods, writes back and refreshes lighting for an already-built and already-seeded
+        /// field. Returns the changed cells, or null if the edit was rejected.
         /// </summary>
-        protected void Process()
+        protected List<MapTile> RunSmoothing(CornerHeightField field, HeightFloodMode mode, bool allowSteep)
         {
-            ProcessCells();
+            if (!field.Flood(mode, allowSteep))
+                return null;
 
-            CellHeightFixes();
+            var changedCells = field.WriteBack(allowSteep, AddCellToUndoData);
 
-            ApplyRamps();
-
-            RefreshLighting();
+            foreach (var cell in changedCells)
+                RefreshCellLighting(cell);
 
             MutationTarget.InvalidateMap();
+            return changedCells;
         }
 
-        protected void ProcessCells()
+        private static void GetCellBounds(List<Point2D> cells, out int minX, out int minY, out int maxX, out int maxY)
         {
-            while (cellsToProcess.Count > 0)
+            minX = int.MaxValue;
+            minY = int.MaxValue;
+            maxX = int.MinValue;
+            maxY = int.MinValue;
+
+            foreach (var cell in cells)
             {
-                var cellsCopy = new List<Point2D>(cellsToProcess);
-                cellsToProcess.Clear();
-                processedCellsThisIteration.Clear();
-
-                foreach (var cell in cellsCopy)
-                    CheckCell(cell);
-            }
-        }
-
-        protected abstract void CheckCell(Point2D cellCoords);
-
-        protected abstract TransitionRampInfo[] GetTransitionRampInfos();
-
-        protected abstract TransitionRampInfo[] GetHeightFixers();
-
-        protected abstract void CellHeightFixes();
-
-        protected abstract void ApplyRamps();
-
-        protected void CellHeightFix_DifferentHeightDiffsOnStraightLine(Point2D cellCoords, Point2D offset1, Point2D offset2)
-        {
-            var cell = Map.GetTile(cellCoords);
-            if (cell == null)
-                return;
-
-            if (!IsCellMorphable(cell))
-                return;
-
-            int totalLevelDifference = 0;
-
-            Point2D otherCellCoords = cellCoords + offset1;
-            var otherCell = Map.GetTile(otherCellCoords);
-            if (otherCell != null && IsCellMorphable(otherCell))
-                totalLevelDifference += otherCell.Level - cell.Level;
-
-            otherCellCoords = cellCoords + offset2;
-            otherCell = Map.GetTile(otherCellCoords);
-            if (otherCell != null && IsCellMorphable(otherCell))
-                totalLevelDifference += otherCell.Level - cell.Level;
-
-            if (totalLevelDifference >= 3)
-            {
-                AddCellToUndoData(cell.CoordsToPoint());
-                cell.ChangeTileIndex(0, 0);
-                cell.Level++;
-            }
-        }
-
-        private void RefreshLighting()
-        {
-            for (int i = 0; i < totalProcessedCells.Count; i++)
-            {
-                var cellCoords = totalProcessedCells[i];
-                var cell = Map.GetTile(cellCoords);
-                RefreshCellLighting(cell);
+                if (cell.X < minX) minX = cell.X;
+                if (cell.Y < minY) minY = cell.Y;
+                if (cell.X > maxX) maxX = cell.X;
+                if (cell.Y > maxY) maxY = cell.Y;
             }
         }
 
