@@ -14,6 +14,19 @@ using TSMapEditor.Rendering;
 namespace TSMapEditor.Initialization
 {
     /// <summary>
+    /// The symmetry strategy used when placing player start locations and distributing
+    /// resource fields, so that every player has a comparably fair position.
+    /// </summary>
+    public enum SymmetryMode
+    {
+        /// <summary>N-fold rotational symmetry around the map center (points evenly spaced on a circle/ellipse).</summary>
+        Rotational,
+
+        /// <summary>Left/right axis-mirror symmetry across a vertical line through the map center.</summary>
+        Mirror
+    }
+
+    /// <summary>
     /// Parameters for headless, non-interactive random map generation.
     /// </summary>
     public class HeadlessRmgOptions
@@ -43,6 +56,12 @@ namespace TSMapEditor.Initialization
         /// this should drive resource density or a specific terrain generator preset.
         /// </summary>
         public string GameMode { get; set; }
+
+        /// <summary>
+        /// Symmetry mode used for player start placement and resource distribution.
+        /// Defaults to <see cref="SymmetryMode.Rotational"/>.
+        /// </summary>
+        public SymmetryMode Symmetry { get; set; } = SymmetryMode.Rotational;
 
         /// <summary>Path (including file name) that the generated .map file should be written to.</summary>
         public string OutputPath { get; set; }
@@ -107,6 +126,12 @@ namespace TSMapEditor.Initialization
                         break;
                     case "gamemode":
                         options.GameMode = value;
+                        break;
+                    case "symmetry":
+                        if (value.Equals("mirror", StringComparison.OrdinalIgnoreCase))
+                            options.Symmetry = SymmetryMode.Mirror;
+                        else if (value.Equals("rotational", StringComparison.OrdinalIgnoreCase))
+                            options.Symmetry = SymmetryMode.Rotational;
                         break;
                     case "output":
                         options.OutputPath = value;
@@ -202,13 +227,13 @@ namespace TSMapEditor.Initialization
                 var mutationTarget = new HeadlessMutationTarget(map);
 
                 GenerateTerrain(map, mutationTarget, theater, random);
-                PlaceResources(map, random);
-                PlacePlayerStarts(map, options.PlayerCount);
+                PlaceResources(map, random, options.PlayerCount, options.Symmetry);
+                PlacePlayerStarts(map, options.PlayerCount, options.Symmetry);
 
                 map.AutoSave(options.OutputPath);
 
                 Logger.Log($"Headless RMG: generated {options.Width}x{options.Height} {options.Theater} map " +
-                    $"with {options.PlayerCount} player starts (seed {seed}, gamemode {options.GameMode ?? "(none)"}) -> {options.OutputPath}");
+                    $"with {options.PlayerCount} player starts ({options.Symmetry} symmetry, seed {seed}, gamemode {options.GameMode ?? "(none)"}) -> {options.OutputPath}");
 
                 return null;
             }
@@ -289,11 +314,14 @@ namespace TSMapEditor.Initialization
         }
 
         /// <summary>
-        /// Scatters basic Tiberium/ore/gem resource fields across the playable area.
-        /// This is a simple proof-of-concept distribution (random patches), not a
-        /// balance-tuned resource layout.
+        /// Scatters Tiberium/ore/gem resource fields across the playable area with
+        /// per-player-wedge balance: patch centers are generated only within one
+        /// "fundamental domain" (a single rotational wedge, or one side of the mirror axis)
+        /// and then replicated via the same symmetry transform used for player start
+        /// placement, so every player's fair share of the map gets an equal number of
+        /// resource patches of the same size/type. Patch count scales with playable area.
         /// </summary>
-        private static void PlaceResources(Map map, Random random)
+        private static void PlaceResources(Map map, Random random, int playerCount, SymmetryMode symmetry)
         {
             var tiberiumOverlays = map.Rules.OverlayTypes.Where(o => o.Tiberium).ToList();
             if (tiberiumOverlays.Count == 0)
@@ -302,71 +330,161 @@ namespace TSMapEditor.Initialization
                 return;
             }
 
-            var cells = GetPlayableCells(map);
+            var (centerX, centerY, radiusX, radiusY) = GetSymmetryEllipse(map);
 
-            const double patchChance = 0.02; // chance per cell to seed a resource patch
-            const int patchRadius = 3;
+            // Replica count per generated patch: one per player under rotational symmetry
+            // (one patch per wedge = exactly one per player), or two under mirror symmetry
+            // (one patch and its mirror image, independent of player count).
+            int replicas = symmetry == SymmetryMode.Mirror ? 2 : playerCount;
 
-            foreach (var cellCoords in cells)
+            int playableArea = map.LocalSize.Width * map.LocalSize.Height;
+            const int cellsPerPatchAttemptPerWedge = 900; // arbitrary proof-of-concept density
+            int patchesPerWedge = Math.Max(1, (playableArea / replicas) / cellsPerPatchAttemptPerWedge);
+
+            for (int p = 0; p < patchesPerWedge; p++)
             {
-                if (random.NextDouble() > patchChance)
-                    continue;
+                double angleDeg;
+                if (symmetry == SymmetryMode.Rotational)
+                {
+                    // Sample within the first wedge only; replicas below rotate it to the rest.
+                    double wedgeDeg = 360.0 / playerCount;
+                    angleDeg = -90 + random.NextDouble() * wedgeDeg;
+                }
+                else
+                {
+                    // Sample within the right half only; the single mirror replica covers the left half.
+                    angleDeg = -90 + random.NextDouble() * 180;
+                }
+
+                double radiusFraction = 0.15 + random.NextDouble() * 0.7; // avoid the very center and the map edge
+                double baseAngle = angleDeg * Math.PI / 180.0;
 
                 var overlayType = tiberiumOverlays[random.Next(tiberiumOverlays.Count)];
+                int patchRadius = 2 + random.Next(3); // 2..4
 
-                for (int y = -patchRadius; y <= patchRadius; y++)
+                for (int r = 0; r < replicas; r++)
                 {
-                    for (int x = -patchRadius; x <= patchRadius; x++)
+                    double px, py;
+
+                    if (symmetry == SymmetryMode.Rotational)
                     {
-                        if (x * x + y * y > patchRadius * patchRadius)
-                            continue;
-
-                        if (random.NextDouble() > 0.6)
-                            continue;
-
-                        var targetCoords = cellCoords + new Point2D(x, y);
-                        var tile = map.GetTile(targetCoords);
-                        if (tile == null || tile.Overlay != null)
-                            continue;
-
-                        if (tile.MatchesLandType(Models.Enums.LandType.Water) || tile.MatchesLandType(Models.Enums.LandType.Road))
-                            continue;
-
-                        tile.Overlay = new Overlay()
-                        {
-                            OverlayType = overlayType,
-                            FrameIndex = 0,
-                            Position = targetCoords
-                        };
+                        double rotatedAngle = baseAngle + r * (2 * Math.PI / playerCount);
+                        px = centerX + radiusX * radiusFraction * Math.Cos(rotatedAngle);
+                        py = centerY + radiusY * radiusFraction * Math.Sin(rotatedAngle);
                     }
+                    else
+                    {
+                        double bx = centerX + radiusX * radiusFraction * Math.Cos(baseAngle);
+                        double by = centerY + radiusY * radiusFraction * Math.Sin(baseAngle);
+                        px = r == 0 ? bx : centerX - (bx - centerX); // r == 1: mirror across the vertical axis
+                        py = by;
+                    }
+
+                    var patchCenter = new Point2D((int)Math.Round(px), (int)Math.Round(py));
+                    PlacePatch(map, random, patchCenter, patchRadius, overlayType);
+                }
+            }
+        }
+
+        private static void PlacePatch(Map map, Random random, Point2D center, int patchRadius, OverlayType overlayType)
+        {
+            for (int y = -patchRadius; y <= patchRadius; y++)
+            {
+                for (int x = -patchRadius; x <= patchRadius; x++)
+                {
+                    if (x * x + y * y > patchRadius * patchRadius)
+                        continue;
+
+                    if (random.NextDouble() > 0.6)
+                        continue;
+
+                    var targetCoords = center + new Point2D(x, y);
+                    var tile = map.GetTile(targetCoords);
+                    if (tile == null || tile.Overlay != null)
+                        continue;
+
+                    if (tile.MatchesLandType(Models.Enums.LandType.Water) || tile.MatchesLandType(Models.Enums.LandType.Road))
+                        continue;
+
+                    tile.Overlay = new Overlay()
+                    {
+                        OverlayType = overlayType,
+                        FrameIndex = 0,
+                        Position = targetCoords
+                    };
                 }
             }
         }
 
         /// <summary>
-        /// Places <paramref name="playerCount"/> player-start waypoints (identifiers 0..N-1)
-        /// arranged with rotational symmetry around the map center, so every player has an
-        /// equally fair starting position.
+        /// Returns the center point and ellipse radii (as a fraction of the map's local/playable
+        /// size) used as the basis for both player start placement and resource-patch replication,
+        /// so both follow the exact same geometric symmetry.
         /// </summary>
-        private static void PlacePlayerStarts(Map map, int playerCount)
+        private static (double centerX, double centerY, double radiusX, double radiusY) GetSymmetryEllipse(Map map)
         {
             double centerX = map.LocalSize.X + map.LocalSize.Width / 2.0;
             double centerY = map.LocalSize.Y + map.LocalSize.Height / 2.0;
 
-            // Use a radius that comfortably fits inside the playable area for all player counts.
+            // Use a radius that comfortably fits inside the playable area.
             double radiusX = map.LocalSize.Width / 2.0 * 0.75;
             double radiusY = map.LocalSize.Height / 2.0 * 0.75;
 
-            for (int i = 0; i < playerCount; i++)
+            return (centerX, centerY, radiusX, radiusY);
+        }
+
+        /// <summary>
+        /// Places <paramref name="playerCount"/> player-start waypoints (identifiers 0..N-1),
+        /// arranged according to <paramref name="symmetry"/> so every player has an equally
+        /// fair starting position: either N-fold rotational symmetry around the map center, or
+        /// left/right mirror symmetry across a vertical axis through the map center.
+        /// </summary>
+        private static void PlacePlayerStarts(Map map, int playerCount, SymmetryMode symmetry)
+        {
+            var (centerX, centerY, radiusX, radiusY) = GetSymmetryEllipse(map);
+
+            var positions = new List<Point2D>();
+
+            if (symmetry == SymmetryMode.Rotational)
             {
-                double angle = (2 * Math.PI * i / playerCount) - (Math.PI / 2); // start at top, go clockwise
-                int x = (int)Math.Round(centerX + radiusX * Math.Cos(angle));
-                int y = (int)Math.Round(centerY + radiusY * Math.Sin(angle));
+                for (int i = 0; i < playerCount; i++)
+                {
+                    double angle = (2 * Math.PI * i / playerCount) - (Math.PI / 2); // start at top, go clockwise
+                    positions.Add(ClampToLocalSize(map,
+                        (int)Math.Round(centerX + radiusX * Math.Cos(angle)),
+                        (int)Math.Round(centerY + radiusY * Math.Sin(angle))));
+                }
+            }
+            else
+            {
+                // Pair players up across a vertical mirror axis through the map center.
+                // For an odd player count, the final player is placed on the axis itself.
+                int pairCount = playerCount / 2;
+                bool hasAxisPlayer = playerCount % 2 == 1;
 
-                x = Math.Clamp(x, map.LocalSize.X, map.LocalSize.X + map.LocalSize.Width - 1);
-                y = Math.Clamp(y, map.LocalSize.Y, map.LocalSize.Y + map.LocalSize.Height - 1);
+                for (int i = 0; i < pairCount; i++)
+                {
+                    double t = pairCount == 1 ? 0.5 : (double)i / (pairCount - 1);
+                    double angleDeg = -70 + t * 140; // spread across the right half, avoiding the axis extremes
+                    double angle = angleDeg * Math.PI / 180.0;
 
-                var position = new Point2D(x, y);
+                    double rightX = centerX + radiusX * Math.Cos(angle);
+                    double y = centerY + radiusY * Math.Sin(angle);
+                    double leftX = centerX - (rightX - centerX);
+
+                    positions.Add(ClampToLocalSize(map, (int)Math.Round(rightX), (int)Math.Round(y)));
+                    positions.Add(ClampToLocalSize(map, (int)Math.Round(leftX), (int)Math.Round(y)));
+                }
+
+                if (hasAxisPlayer)
+                {
+                    positions.Add(ClampToLocalSize(map, (int)Math.Round(centerX), (int)Math.Round(centerY + radiusY)));
+                }
+            }
+
+            for (int i = 0; i < positions.Count; i++)
+            {
+                var position = positions[i];
 
                 // Make sure we're not placing the start waypoint on top of an existing one
                 // (can happen on very small maps with many players); nudge outward if so.
@@ -378,6 +496,13 @@ namespace TSMapEditor.Initialization
 
                 map.AddWaypoint(new Waypoint() { Identifier = i, Position = position });
             }
+        }
+
+        private static Point2D ClampToLocalSize(Map map, int x, int y)
+        {
+            x = Math.Clamp(x, map.LocalSize.X, map.LocalSize.X + map.LocalSize.Width - 1);
+            y = Math.Clamp(y, map.LocalSize.Y, map.LocalSize.Y + map.LocalSize.Height - 1);
+            return new Point2D(x, y);
         }
 
         private static Point2D FindNearestFreeCell(Map map, Point2D origin)
