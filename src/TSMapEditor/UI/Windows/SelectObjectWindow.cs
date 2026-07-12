@@ -15,7 +15,7 @@ namespace TSMapEditor.UI.Windows
 
         public event EventHandler ObjectSelected;
 
-        protected EditorSuggestionTextBox tbSearch;
+        protected EditorListBoxSearchTextBox tbSearch;
         protected EditorListBox lbObjectList;
 
         /// <summary>
@@ -44,10 +44,11 @@ namespace TSMapEditor.UI.Windows
                 Parent.UpdateOrder = UpdateOrder;
             }
 
-            tbSearch = FindChild<EditorSuggestionTextBox>(nameof(tbSearch));
+            tbSearch = FindChild<EditorListBoxSearchTextBox>(nameof(tbSearch));
             UIHelpers.AddSearchTipsBoxToControl(tbSearch);
 
             lbObjectList = FindChild<EditorListBox>(nameof(lbObjectList));
+            tbSearch.ListBox = lbObjectList;
 
             lbObjectList.AllowRightClickUnselect = false;
             lbObjectList.DoubleLeftClick += (s, e) => ConfirmSelection();
@@ -56,7 +57,6 @@ namespace TSMapEditor.UI.Windows
 
             FindChild<EditorButton>("btnSelect").LeftClick += (s, e) => ConfirmSelection();
 
-            tbSearch.TextChanged += TbSearch_TextChanged;
             tbSearch.EnterPressed += (s, e) => { ConfirmSelection(); };
 
             // Make pressing X not save changes
@@ -82,37 +82,6 @@ namespace TSMapEditor.UI.Windows
         {
             Keyboard.OnKeyDown -= Keyboard_OnKeyDown;
             base.Kill();
-        }
-
-        private void TbSearch_TextChanged(object sender, EventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(tbSearch.Text) || tbSearch.Text == tbSearch.Suggestion)
-            {
-                foreach (var item in lbObjectList.Items)
-                {
-                    if (!item.Visible)
-                        lbObjectList.ViewTop = 0;
-
-                    item.Visible = true;
-                }
-            }
-            else
-            {
-                lbObjectList.ViewTop = 0;
-
-                lbObjectList.SelectedIndex = -1;
-
-                for (int i = 0; i < lbObjectList.Items.Count; i++)
-                {
-                    var item = lbObjectList.Items[i];
-                    item.Visible = item.Text.Contains(tbSearch.Text, StringComparison.OrdinalIgnoreCase);
-
-                    if (item.Visible && lbObjectList.SelectedIndex == -1)
-                        lbObjectList.SelectedIndex = i;
-                }
-            }
-
-            lbObjectList.RefreshScrollbar();
         }
 
         private void SelectObjectWindow_EnabledChanged(object sender, EventArgs e)

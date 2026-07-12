@@ -15,6 +15,7 @@ namespace TSMapEditor.UI.Controls
             AddControl(typeof(EditorTextBox));
             AddControl(typeof(EditorNumberTextBox));
             AddControl(typeof(EditorSuggestionTextBox));
+            AddControl(typeof(EditorListBoxSearchTextBox));
             AddControl(typeof(EditorPopUpSelector));
             AddControl(typeof(EditorLinkLabel));
             AddControl(typeof(SortButton));
