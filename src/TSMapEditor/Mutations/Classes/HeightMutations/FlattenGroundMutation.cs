@@ -35,8 +35,13 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
         {
             Clear();
 
-            int xSize = BrushSize.Width;
-            int ySize = BrushSize.Height;
+            // Like raising and lowering, the brush size is the footprint of the whole flattened
+            // region including its ramp transition, so the flat area is exactly (Width - 2) x
+            // (Height - 2): 3x3 -> 1x1, 4x4 -> 2x2, etc. This keeps all the height tools consistent.
+            int xSize = BrushSize.Width - 2;
+            int ySize = BrushSize.Height - 2;
+            if (xSize < 0) xSize = 0;
+            if (ySize < 0) ySize = 0;
 
             int beginY = OriginCell.Y - (ySize - 1) / 2;
             int endY = OriginCell.Y + ySize / 2;

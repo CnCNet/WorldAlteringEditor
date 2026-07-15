@@ -110,7 +110,7 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             heights = new int[pointWidth, pointHeight];
             rigid = new bool[pointWidth, pointHeight];
             done = new bool[pointWidth, pointHeight];
-            hasOwner = new bool[pointWidth, pointHeight];
+            hasHeight = new bool[pointWidth, pointHeight];
         }
 
         private readonly Map map;
@@ -124,7 +124,7 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
         private readonly int[,] heights;
         private readonly bool[,] rigid;
         private readonly bool[,] done;
-        private readonly bool[,] hasOwner;
+        private readonly bool[,] hasHeight;
 
         private readonly Queue<Point2D> worklist = new Queue<Point2D>();
 
@@ -141,22 +141,16 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
                     int cellY = originY + iy;
 
                     // A corner takes its height from a single owning cell (the cell whose
-                    // NW corner this point is). This keeps the field well-defined even on
-                    // hand-edited maps where neighbours disagree on a shared corner.
-                    var owner = map.GetTile(cellX, cellY);
-                    if (owner == null)
-                    {
-                        hasOwner[ix, iy] = false;
-                        heights[ix, iy] = 0;
-                    }
-                    else
-                    {
-                        hasOwner[ix, iy] = true;
-                        heights[ix, iy] = owner.Level + RampCornerHeights[GetRampIndex(owner)][0];
-                    }
+                    // NW corner this point is), or, at the map's edge where that cell is off the
+                    // map, from the nearest cell that does touch the corner. This keeps the field
+                    // well-defined even on hand-edited maps where neighbours disagree, and lets
+                    // ground be levelled right up to the edge of the map.
+                    hasHeight[ix, iy] = TryGetCornerHeight(cellX, cellY, out int cornerHeight);
+                    heights[ix, iy] = cornerHeight;
 
-                    // A corner is rigid if any of the up-to-four cells touching it cannot
-                    // be morphed (or is off the map).
+                    // A corner is rigid if any of the up-to-four cells touching it is a real,
+                    // non-morphable cell (e.g. a cliff). Off-map (null) neighbours are not rigid:
+                    // the empty space past the map edge is a free boundary, not immutable terrain.
                     rigid[ix, iy] = IsCellRigid(cellX, cellY) || IsCellRigid(cellX - 1, cellY) ||
                                     IsCellRigid(cellX - 1, cellY - 1) || IsCellRigid(cellX, cellY - 1);
 
@@ -241,8 +235,8 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             int ix = px - originX;
             int iy = py - originY;
 
-            // Off-map / outside-diamond corners are a free boundary; there is nothing to seed.
-            if (!hasOwner[ix, iy])
+            // Corners touched by no cell at all (deep off the map) have no height; nothing to seed.
+            if (!hasHeight[ix, iy])
                 return true;
 
             if (!rigid[ix, iy])
@@ -266,7 +260,7 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             int ix = px - originX;
             int iy = py - originY;
 
-            if (!hasOwner[ix, iy])
+            if (!hasHeight[ix, iy])
                 return;
 
             heights[ix, iy] = height;
@@ -287,8 +281,8 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             int ix = px - originX;
             int iy = py - originY;
 
-            // Off-map / outside-diamond corners are a free boundary; there is nothing to seed.
-            if (!hasOwner[ix, iy])
+            // Corners touched by no cell at all (deep off the map) have no height; nothing to seed.
+            if (!hasHeight[ix, iy])
                 return true;
 
             heights[ix, iy] = newHeight;
@@ -310,7 +304,7 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
             int ix = px - originX;
             int iy = py - originY;
 
-            if (!hasOwner[ix, iy])
+            if (!hasHeight[ix, iy])
                 return true;
 
             if (rigid[ix, iy] && heights[ix, iy] != newHeight)
@@ -368,9 +362,9 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
                         int nix = nx - originX;
                         int niy = ny - originY;
 
-                        // Corners with no owning cell (off the map / outside the iso diamond)
-                        // are a free boundary, not a constraint: they neither move nor reject.
-                        if (!hasOwner[nix, niy])
+                        // Corners touched by no cell at all (deep off the map) have no height and
+                        // do not participate in smoothing.
+                        if (!hasHeight[nix, niy])
                             continue;
 
                         bool diagonal = dx != 0 && dy != 0;
@@ -494,7 +488,7 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
                 for (int cellX = originX; cellX <= lastCellX; cellX++)
                 {
                     bool anyDone = false;
-                    bool allOwned = true;
+                    bool allKnown = true;
                     int min = int.MaxValue;
                     int max = int.MinValue;
                     int c0 = 0, c1 = 0, c2 = 0, c3 = 0;
@@ -506,8 +500,8 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
 
                         if (done[ix, iy])
                             anyDone = true;
-                        if (!hasOwner[ix, iy])
-                            allOwned = false;
+                        if (!hasHeight[ix, iy])
+                            allKnown = false;
 
                         int h = heights[ix, iy];
                         switch (i)
@@ -522,7 +516,7 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
                         if (h > max) max = h;
                     }
 
-                    if (!anyDone || !allOwned)
+                    if (!anyDone || !allKnown)
                         continue;
 
                     if (max - min > maxSpread)
@@ -573,7 +567,31 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
         private bool IsCellRigid(int cellX, int cellY)
         {
             var cell = map.GetTile(cellX, cellY);
-            return cell == null || !map.IsCellMorphable(cell);
+            return cell != null && !map.IsCellMorphable(cell);
+        }
+
+        /// <summary>
+        /// Gets the height a corner point should have, sampled from a cell touching it: the
+        /// owning cell (whose NW corner this is) if it exists, otherwise the nearest other
+        /// touching cell (used at the map edge). Returns false only when no cell touches the
+        /// corner at all (deep off the map), in which case it is a non-participating boundary.
+        /// The cell touching the corner at corner-index k sits at (px, py) - CornerOffsets[k]
+        /// and contributes its own corner k's height.
+        /// </summary>
+        private bool TryGetCornerHeight(int px, int py, out int height)
+        {
+            for (int k = 0; k < CornerOffsets.Length; k++)
+            {
+                var cell = map.GetTile(px - CornerOffsets[k].X, py - CornerOffsets[k].Y);
+                if (cell != null)
+                {
+                    height = cell.Level + RampCornerHeights[GetRampIndex(cell)][k];
+                    return true;
+                }
+            }
+
+            height = 0;
+            return false;
         }
 
         private int GetRampIndex(MapTile cell)

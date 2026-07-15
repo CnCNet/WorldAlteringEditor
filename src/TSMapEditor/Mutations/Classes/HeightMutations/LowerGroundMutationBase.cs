@@ -38,8 +38,14 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
                     return;
             }
 
-            int xSize = BrushSize.Width;
-            int ySize = BrushSize.Height;
+            // Like raising, the brush size is the footprint of the whole crater including its
+            // ramp ring, so the flat bottom is exactly (Width - 2) x (Height - 2): 3x3 -> 1x1,
+            // 4x4 -> 2x2, etc. This keeps lowering symmetric with raising and keeps craters
+            // (e.g. the veinhole pit) the size of the brush rather than a ring larger.
+            int xSize = BrushSize.Width - 2;
+            int ySize = BrushSize.Height - 2;
+            if (xSize < 0) xSize = 0; // a 1-wide brush (used to lower a ramp) still targets one cell
+            if (ySize < 0) ySize = 0;
 
             int beginY = OriginCell.Y - (ySize - 1) / 2;
             int endY = OriginCell.Y + ySize / 2;

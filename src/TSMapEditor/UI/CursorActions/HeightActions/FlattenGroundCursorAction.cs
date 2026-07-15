@@ -56,8 +56,11 @@ namespace TSMapEditor.UI.CursorActions.HeightActions
             // Check the area of the brush on whether it has any cells that do not match
             // the height of the origin cell.
 
-            int xSize = CursorActionTarget.BrushSize.Width;
-            int ySize = CursorActionTarget.BrushSize.Height;
+            // Match the footprint the mutation actually flattens (exactly Width-2 by Height-2).
+            int xSize = CursorActionTarget.BrushSize.Width - 2;
+            int ySize = CursorActionTarget.BrushSize.Height - 2;
+            if (xSize < 0) xSize = 0;
+            if (ySize < 0) ySize = 0;
 
             int beginY = cellCoords.Y - (ySize - 1) / 2;
             int endY = cellCoords.Y + ySize / 2;

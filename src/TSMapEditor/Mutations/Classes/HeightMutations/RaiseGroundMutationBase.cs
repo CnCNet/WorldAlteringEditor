@@ -53,12 +53,16 @@ namespace TSMapEditor.Mutations.Classes.HeightMutations
                     return;
             }
 
+            // The brush size is the footprint of the whole feature including its ramp ring, so
+            // the flat top is exactly (Width - 2) x (Height - 2): 3x3 -> 1x1, 4x4 -> 2x2, etc.
             int xSize = BrushSize.Width - 2;
             int ySize = BrushSize.Height - 2;
+            if (xSize < 0) xSize = 0; // a 1-wide brush (used to raise a ramp) still targets one cell
+            if (ySize < 0) ySize = 0;
 
-            int beginY = OriginCell.Y - ySize / 2;
+            int beginY = OriginCell.Y - (ySize - 1) / 2;
             int endY = OriginCell.Y + ySize / 2;
-            int beginX = OriginCell.X - xSize / 2;
+            int beginX = OriginCell.X - (xSize - 1) / 2;
             int endX = OriginCell.X + xSize / 2;
 
             // Gather the cells we want to raise. We only raise ground that was on the same
