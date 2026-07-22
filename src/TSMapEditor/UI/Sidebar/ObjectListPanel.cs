@@ -334,11 +334,23 @@ namespace TSMapEditor.UI.Sidebar
         {
             ddOwner.SelectedIndexChanged -= DdOwner_SelectedIndexChanged;
 
+            ddOwner.Items.ForEach(ddi => ((House)ddi.Tag).ININameChanged -= House_ININameChanged);
+
             ddOwner.Items.Clear();
-            Map.GetHouses().ForEach(h => ddOwner.AddItem(h.ININame, Helpers.GetHouseUITextColor(h)));
+            Map.GetHouses().ForEach(house =>
+            {
+                ddOwner.AddItem(new XNADropDownItem() { Text = house.ININame, TextColor = Helpers.GetHouseUITextColor(house), Tag = house });
+                house.ININameChanged += House_ININameChanged;
+            });
+
             ddOwner.SelectedIndex = Map.GetHouses().FindIndex(h => h == EditorState.ObjectOwner);
 
             ddOwner.SelectedIndexChanged += DdOwner_SelectedIndexChanged;
+        }
+
+        private void House_ININameChanged(object sender, EventArgs e)
+        {
+            RefreshHouseList();
         }
 
         private void EditorState_ObjectOwnerChanged(object sender, EventArgs e)

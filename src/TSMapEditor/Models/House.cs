@@ -67,8 +67,24 @@ namespace TSMapEditor.Models
             HouseType = houseType;
         }
 
+        public event EventHandler ININameChanged;
+
+        private string _iniName;
+
         [INI(false)]
-        public string ININame { get; set; }
+        public string ININame
+        {
+            get => _iniName;
+            set
+            {
+                if (_iniName != value)
+                {
+                    _iniName = value;
+                    ININameChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
+        }
+
         public HouseType HouseType { get; set; }
 
         public int IQ { get; set; }
