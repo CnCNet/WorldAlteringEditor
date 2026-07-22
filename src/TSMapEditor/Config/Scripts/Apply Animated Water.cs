@@ -11,6 +11,7 @@ using TSMapEditor.CCEngine;
 using TSMapEditor.Rendering;
 using TSMapEditor.GameMath;
 using TSMapEditor.Misc;
+using TSMapEditor.CCEngine.TileData;
 
 namespace WAEScript
 {
