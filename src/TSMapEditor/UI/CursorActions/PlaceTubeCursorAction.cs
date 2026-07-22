@@ -111,21 +111,25 @@ namespace TSMapEditor.UI.CursorActions
 
                 e.Handled = true;
             }
-            else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.C && tube != null && tube.Directions.Count > 0)
+            else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.C)
             {
-                ConfirmTube();
+                if (tube != null && tube.Directions.Count > 0)
+                    ConfirmTube();
 
                 e.Handled = true;
             }
-            else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.B && tube != null && tube.Directions.Count > 0)
+            else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.B)
             {
-                TubeRefreshHelper.MapViewRefreshTube(tube, CursorActionTarget.MutationTarget);
-                tube.Directions.RemoveAt(tube.Directions.Count - 1);
+                if (tube != null && tube.Directions.Count > 0)
+                {
+                    TubeRefreshHelper.MapViewRefreshTube(tube, CursorActionTarget.MutationTarget);
+                    tube.Directions.RemoveAt(tube.Directions.Count - 1);
 
-                if (points.Count > 0)
-                    points.RemoveAt(points.Count - 1);
+                    if (points.Count > 0)
+                        points.RemoveAt(points.Count - 1);
 
-                RefreshTube();
+                    RefreshTube();
+                }
 
                 e.Handled = true;
             }
