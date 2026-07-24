@@ -1614,10 +1614,9 @@ namespace TSMapEditor.Rendering
 
         public void Draw(bool isActive, TechnoBase technoUnderCursor, MapTile tileUnderCursor, CursorAction cursorAction)
         {
-            if (isActive && tileUnderCursor != null && cursorAction != null)
-            {
-                cursorAction.PreMapDraw(tileUnderCursor.CoordsToPoint());
-            }
+            // Note: the cursor action's PreMapDraw is invoked by MapUI.Draw before this method,
+            // so that TechnoUnderCursor assignments made by placement previews are
+            // visible to DrawPerFrameTransparentElements below.
 
             if (mapInvalidated || cameraMoved)
             {
