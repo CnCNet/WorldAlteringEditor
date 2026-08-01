@@ -113,7 +113,8 @@ public class MapFootInfo : MapTechnoInfo
 public class CellInfo
 {
     public CellInfo(int x, int y, string tileSetName, int tileIndex, int tileIndexInTileSet, int subTileIndex, int height,
-        MapObjectInfo terrainObjectInfo, MapOverlayInfo overlayInfo, List<MapBuildingInfo> buildingInfos, List<MapFootInfo> footInfos)
+        MapObjectInfo terrainObjectInfo, MapOverlayInfo overlayInfo, List<MapBuildingInfo> buildingInfos, List<MapFootInfo> footInfos,
+        List<MapWaypointInfo> waypointInfos)
     {
         X = x;
         Y = y;
@@ -126,6 +127,7 @@ public class CellInfo
         OverlayInfo = overlayInfo;
         BuildingInfos = buildingInfos;
         FootInfos = footInfos;
+        WaypointInfos = waypointInfos;
     }
 
     public int X { get; }
@@ -139,6 +141,7 @@ public class CellInfo
     public MapOverlayInfo OverlayInfo { get; }
     public List<MapBuildingInfo> BuildingInfos { get; }
     public List<MapFootInfo> FootInfos { get; }
+    public List<MapWaypointInfo> WaypointInfos { get; }
 
     public static CellInfo FromMapCell(Map map, MapTile mapTile)
     {
@@ -152,10 +155,21 @@ public class CellInfo
         var vehicleInfos = mapTile.Vehicles.Select(v => (MapFootInfo)FromTechno(map, v));
         var infantryInfos = mapTile.Infantry.Where(i => i != null).Select(i => (MapFootInfo)FromTechno(map, i));
         var aircraftInfos = mapTile.Aircraft.Select(a => (MapFootInfo)FromTechno(map, a));
+        var waypointInfos = mapTile.Waypoints.OrderBy(waypoint => waypoint.Identifier).Select(FromWaypoint).ToList();
 
         return new CellInfo(mapTile.X, mapTile.Y, tileSet.SetName, mapTile.TileIndex, mapTile.TileIndex - tileSet.StartTileIndex,
             mapTile.SubTileIndex, mapTile.Level, terrainObjectInfo, overlayInfo, buildingInfos,
-            vehicleInfos.Concat(infantryInfos).Concat(aircraftInfos).ToList());
+            vehicleInfos.Concat(infantryInfos).Concat(aircraftInfos).ToList(), waypointInfos);
+    }
+
+    public static MapWaypointInfo FromWaypoint(Waypoint waypoint)
+    {
+        return new MapWaypointInfo(
+            waypoint.Identifier,
+            waypoint.Position.X,
+            waypoint.Position.Y,
+            waypoint.EditorColor,
+            waypoint.Identifier >= 0 && waypoint.Identifier < Constants.MultiplayerMaxPlayers);
     }
 
     public static MapTechnoInfo FromTechno(Map map, TechnoBase techno)
@@ -511,6 +525,21 @@ public class MapFacade
             .ToList();
     }
 
+    public List<MapWaypointInfo> GetWaypoints(int? identifier = null)
+    {
+        if (identifier.HasValue && (identifier.Value < 0 || identifier.Value >= Constants.MaxWaypoint))
+        {
+            throw new MapFacadeValidationException(
+                $"Waypoint identifier must be from 0 through {Constants.MaxWaypoint - 1}.");
+        }
+
+        return map.Waypoints
+            .Where(waypoint => !identifier.HasValue || waypoint.Identifier == identifier.Value)
+            .OrderBy(waypoint => waypoint.Identifier)
+            .Select(CellInfo.FromWaypoint)
+            .ToList();
+    }
+
     public List<MapTileSetInfo> GetTileSets(string nameFilter = null)
     {
         string normalizedFilter = nameFilter?.Trim();
@@ -746,6 +775,30 @@ public class MapFacade
         return new MapEditResult(
             mutationManager.Revision,
             affectedMapTiles.Select(mapTile => CellInfo.FromMapCell(map, mapTile)).ToList());
+    }
+
+    public MapEditResult PlaceWaypoint(int identifier, int x, int y, string editorColor)
+    {
+        if (identifier < 0 || identifier >= Constants.MaxWaypoint)
+        {
+            throw new MapFacadeValidationException(
+                $"Waypoint identifier must be from 0 through {Constants.MaxWaypoint - 1}.");
+        }
+
+        if (map.Waypoints.Exists(waypoint => waypoint.Identifier == identifier))
+            throw new MapFacadeValidationException($"Waypoint {identifier} already exists on the map.");
+
+        var cellCoords = new Point2D(x, y);
+        var mapTile = map.GetTile(cellCoords);
+        if (mapTile == null)
+            throw new MapFacadeValidationException($"Cell ({x}, {y}) is outside the map.");
+
+        string resolvedEditorColor = ResolveWaypointColor(editorColor);
+        mutationManager.PerformMutation(new PlaceWaypointMutation(mutationTarget, cellCoords, identifier, resolvedEditorColor));
+
+        return new MapEditResult(
+            mutationManager.Revision,
+            new List<CellInfo> { CellInfo.FromMapCell(map, mapTile) });
     }
 
     public MapEditResult PlaceTerrainObject(string terrainTypeName, int x, int y)
@@ -1339,6 +1392,27 @@ public class MapFacade
 
         return map.GetHouses().Find(house => string.Equals(house.ININame, ownerName, StringComparison.OrdinalIgnoreCase)) ??
             throw new MapFacadeValidationException($"House '{ownerName}' does not exist on the map.");
+    }
+
+    private static string ResolveWaypointColor(string editorColor)
+    {
+        if (editorColor == null)
+            return null;
+
+        if (string.IsNullOrWhiteSpace(editorColor))
+            throw new MapFacadeValidationException("A waypoint editor color cannot be empty.");
+
+        int colorIndex = Array.FindIndex(
+            Waypoint.SupportedColors,
+            supportedColor => string.Equals(supportedColor.Name, editorColor.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        if (colorIndex < 0)
+        {
+            throw new MapFacadeValidationException(
+                $"Waypoint editor color '{editorColor}' is not supported. Valid colors are: {string.Join(", ", Waypoint.SupportedColors.Select(color => color.Name))}.");
+        }
+
+        return Waypoint.SupportedColors[colorIndex].Name;
     }
 
     private static string ResolveMission(string missionName)

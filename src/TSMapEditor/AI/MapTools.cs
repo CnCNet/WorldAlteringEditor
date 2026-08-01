@@ -120,6 +120,24 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetHouses(nameFilter), cancellationToken);
     }
 
+    [McpServerTool(Name = "get_waypoints", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns waypoints placed on the current map, ordered by identifier. Waypoints 0 through 7 are multiplayer starting locations. Waypoints are also included in inspect_map_region cell results.")]
+    public async Task<List<MapWaypointInfo>> GetWaypoints(
+        [Description("Optional exact waypoint identifier. Omit it to return every waypoint on the map.")] int? identifier = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetWaypoints)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(() => mapFacade.GetWaypoints(identifier), cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
     [McpServerTool(Name = "get_tile_sets", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns tile sets that are available for placement in the current map's theater.")]
     public Task<List<MapTileSetInfo>> GetTileSets(
@@ -171,7 +189,7 @@ public sealed class MapTools
     }
 
     [McpServerTool(Name = "inspect_map_region", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Returns terrain, overlays, and placed map objects from a rectangular region of the open map.")]
+    [Description("Returns terrain, overlays, waypoints, and placed map objects from a rectangular region of the open map.")]
     public Task<List<CellInfo>> InspectMapRegion(
         [Description("X coordinate of the region's top-left cell.")] int x,
         [Description("Y coordinate of the region's top-left cell.")] int y,
@@ -299,6 +317,29 @@ public sealed class MapTools
         {
             return await gameThreadDispatcher.InvokeAsync(
                 () => mapFacade.PlaceConnectedOverlay(connectedOverlayName, x, y, width, height),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "place_waypoint", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Places a uniquely numbered waypoint on a map cell. Waypoints 0 through 7 are multiplayer starting locations. Multiple differently numbered waypoints may share a cell. The operation is one undo entry and one revision bump.")]
+    public async Task<MapEditResult> PlaceWaypoint(
+        [Description("Unique waypoint identifier. Valid values are determined by the editor's configured waypoint limit; 0 through 7 denote multiplayer starting locations.")] int identifier,
+        [Description("X coordinate of the destination cell.")] int x,
+        [Description("Y coordinate of the destination cell.")] int y,
+        [Description("Optional editor-only display color. Supported values include Teal, Green, Dark Green, Lime Green, Yellow, Orange, Red, Blood Red, Pink, Cherry, Purple, Sky Blue, Blue, Brown, and Metalic.")] string editorColor = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceWaypoint)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.PlaceWaypoint(identifier, x, y, editorColor),
                 cancellationToken);
         }
         catch (MapFacadeValidationException ex)
