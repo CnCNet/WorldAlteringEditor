@@ -54,10 +54,16 @@ namespace TSMapEditor.Mutations.Classes
     /// </summary>
     class PlaceConnectedOverlayMutation : ConnectedOverlayMutationBase, ICheckableMutation
     {
-        public PlaceConnectedOverlayMutation(IMutationTarget mutationTarget, ConnectedOverlayType connectedOverlayType, Point2D cellCoords) : base(mutationTarget, connectedOverlayType)
+        public PlaceConnectedOverlayMutation(IMutationTarget mutationTarget, ConnectedOverlayType connectedOverlayType, Point2D cellCoords)
+            : this(mutationTarget, connectedOverlayType, cellCoords, mutationTarget.BrushSize)
+        {
+        }
+
+        public PlaceConnectedOverlayMutation(IMutationTarget mutationTarget, ConnectedOverlayType connectedOverlayType, Point2D cellCoords, BrushSize brush)
+            : base(mutationTarget, connectedOverlayType)
         {
             this.cellCoords = cellCoords;
-            brush = mutationTarget.BrushSize;
+            this.brush = brush ?? throw new ArgumentNullException(nameof(brush));
         }
 
         private readonly BrushSize brush;

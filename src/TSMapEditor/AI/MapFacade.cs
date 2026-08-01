@@ -350,6 +350,62 @@ public class MapFacade
             .ToList();
     }
 
+    public List<MapOverlayTypeInfo> GetOverlayTypes(string nameFilter = null)
+    {
+        string normalizedFilter = nameFilter?.Trim();
+
+        return map.Rules.OverlayTypes
+            .Where(overlayType => overlayType.EditorVisible && overlayType.IsValidForTheater(map.LoadedTheaterName))
+            .Select(overlayType => new MapOverlayTypeInfo(
+                overlayType.ININame,
+                overlayType.GetEditorDisplayName(),
+                GetEffectiveEditorCategory(overlayType),
+                GetPlaceableOverlayFrameCount(overlayType),
+                overlayType.Tiberium,
+                overlayType.Wall,
+                overlayType.WaterBound,
+                overlayType.IsVeins,
+                overlayType.IsVeinholeMonster,
+                map.EditorConfig.ConnectedOverlays
+                    .Where(connectedOverlay => connectedOverlay.Frames.TrueForAll(frame => frame.OverlayType.IsValidForTheater(map.LoadedTheaterName)))
+                    .Where(connectedOverlay => connectedOverlay.Frames.Exists(frame => frame.OverlayType == overlayType))
+                    .Select(connectedOverlay => connectedOverlay.Name)
+                    .ToList()))
+            .Where(typeInfo => string.IsNullOrWhiteSpace(normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.ININame, normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.UIName, normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.EditorCategory, normalizedFilter) ||
+                typeInfo.ConnectedOverlayNames.Exists(name => ContainsIgnoringCase(name, normalizedFilter)))
+            .OrderBy(typeInfo => typeInfo.EditorCategory)
+            .ThenBy(typeInfo => typeInfo.UIName)
+            .ThenBy(typeInfo => typeInfo.ININame)
+            .ToList();
+    }
+
+    public List<MapConnectedOverlayTypeInfo> GetConnectedOverlayTypes(string nameFilter = null)
+    {
+        string normalizedFilter = nameFilter?.Trim();
+
+        return map.EditorConfig.ConnectedOverlays
+            .Where(connectedOverlay => connectedOverlay.Frames.TrueForAll(frame => frame.OverlayType.IsValidForTheater(map.LoadedTheaterName)))
+            .Select(connectedOverlay => new MapConnectedOverlayTypeInfo(
+                connectedOverlay.Name,
+                connectedOverlay.UIName,
+                connectedOverlay.ConnectionMask,
+                connectedOverlay.RelatedOverlays.Select(relatedOverlay => relatedOverlay.Name).ToList(),
+                connectedOverlay.Frames
+                    .Select(frame => new MapConnectedOverlayFrameInfo(frame.OverlayType.ININame, frame.FrameIndex, frame.ConnectsTo))
+                    .ToList()))
+            .Where(typeInfo => string.IsNullOrWhiteSpace(normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.Name, normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.UIName, normalizedFilter) ||
+                typeInfo.RelatedOverlayNames.Exists(name => ContainsIgnoringCase(name, normalizedFilter)) ||
+                typeInfo.Frames.Exists(frame => ContainsIgnoringCase(frame.OverlayININame, normalizedFilter)))
+            .OrderBy(typeInfo => typeInfo.UIName)
+            .ThenBy(typeInfo => typeInfo.Name)
+            .ToList();
+    }
+
     public List<MapBuildingTypeInfo> GetBuildingTypes(string nameFilter = null)
     {
         string normalizedFilter = nameFilter?.Trim();
@@ -619,6 +675,73 @@ public class MapFacade
 
         var mutation = new PlaceOverlayMutation(mutationTarget, null, null, new Point2D(x, y), new BrushSize(width, height));
         mutationManager.PerformMutation(mutation);
+
+        return new MapEditResult(
+            mutationManager.Revision,
+            affectedMapTiles.Select(mapTile => CellInfo.FromMapCell(map, mapTile)).ToList());
+    }
+
+    public MapEditResult PlaceOverlay(string overlayTypeName, int x, int y, int width, int height, int? frameIndex)
+    {
+        if (string.IsNullOrWhiteSpace(overlayTypeName))
+            throw new MapFacadeValidationException("An overlay type INI name must be provided.");
+
+        var overlayType = map.Rules.OverlayTypes.Find(candidate => string.Equals(candidate.ININame, overlayTypeName, StringComparison.OrdinalIgnoreCase));
+
+        if (overlayType == null)
+            throw new MapFacadeValidationException($"Overlay type '{overlayTypeName}' does not exist in the loaded rules.");
+        if (!overlayType.EditorVisible)
+            throw new MapFacadeValidationException($"Overlay type '{overlayType.ININame}' is not available for placement in the editor.");
+        if (!overlayType.IsValidForTheater(map.LoadedTheaterName))
+            throw new MapFacadeValidationException($"Overlay type '{overlayType.ININame}' is not valid for theater '{map.LoadedTheaterName}'.");
+
+        ValidateOverlayFrame(overlayType, frameIndex ?? 0);
+
+        var targetMapTiles = GetValidatedMapTilesInArea(x, y, width, height, "overlay placement");
+
+        var affectedMapTiles = targetMapTiles
+            .SelectMany(mapTile => GetMapTileAndSurroundings(mapTile.CoordsToPoint()))
+            .Distinct()
+            .ToList();
+
+        var mutation = new PlaceOverlayMutation(mutationTarget, overlayType, frameIndex, new Point2D(x, y), new BrushSize(width, height));
+
+        if (!mutation.ShouldPerform())
+            throw new MapFacadeValidationException($"The requested area already contains overlay '{overlayType.ININame}' with the requested frame settings.");
+
+        mutationManager.PerformMutation(mutation);
+
+        return new MapEditResult(
+            mutationManager.Revision,
+            affectedMapTiles.Select(mapTile => CellInfo.FromMapCell(map, mapTile)).ToList());
+    }
+
+    public MapEditResult PlaceConnectedOverlay(string connectedOverlayName, int x, int y, int width, int height)
+    {
+        if (string.IsNullOrWhiteSpace(connectedOverlayName))
+            throw new MapFacadeValidationException("A connected overlay type name must be provided.");
+
+        var connectedOverlay = map.EditorConfig.ConnectedOverlays.Find(
+            candidate => string.Equals(candidate.Name, connectedOverlayName, StringComparison.OrdinalIgnoreCase));
+        if (connectedOverlay == null)
+            throw new MapFacadeValidationException($"Connected overlay type '{connectedOverlayName}' does not exist in the editor configuration.");
+        if (!connectedOverlay.Frames.TrueForAll(frame => frame.OverlayType.IsValidForTheater(map.LoadedTheaterName)))
+            throw new MapFacadeValidationException($"Connected overlay type '{connectedOverlay.Name}' is not valid for theater '{map.LoadedTheaterName}'.");
+
+        foreach (var connectedOverlayFrame in connectedOverlay.Frames)
+            ValidateOverlayFrame(connectedOverlayFrame.OverlayType, connectedOverlayFrame.FrameIndex);
+
+        var targetMapTiles = GetValidatedMapTilesInArea(x, y, width, height, "connected overlay placement");
+        var affectedMapTiles = targetMapTiles
+            .SelectMany(mapTile => GetMapTileAndSurroundings(mapTile.CoordsToPoint()))
+            .Distinct()
+            .ToList();
+
+        mutationManager.PerformMutation(new PlaceConnectedOverlayMutation(
+            mutationTarget,
+            connectedOverlay,
+            new Point2D(x, y),
+            new BrushSize(width, height)));
 
         return new MapEditResult(
             mutationManager.Revision,
@@ -1149,6 +1272,64 @@ public class MapFacade
                     yield return mapTile;
             }
         }
+    }
+
+    private List<MapTile> GetValidatedMapTilesInArea(int x, int y, int width, int height, string operationName)
+    {
+        if (width <= 0 || height <= 0)
+            throw new MapFacadeValidationException($"The {operationName} width and height must both be greater than zero.");
+
+        if (width > MaxMapOperationDimension || height > MaxMapOperationDimension || (long)width * height > MaxMapOperationCellCount)
+        {
+            throw new MapFacadeValidationException(
+                $"The {operationName} area is too large. Each dimension may be at most {MaxMapOperationDimension} cells and the total area may be at most {MaxMapOperationCellCount} cells.");
+        }
+
+        var mapTiles = new List<MapTile>(width * height);
+        for (int yOffset = 0; yOffset < height; yOffset++)
+        {
+            for (int xOffset = 0; xOffset < width; xOffset++)
+            {
+                int targetX = x + xOffset;
+                int targetY = y + yOffset;
+                var mapTile = map.GetTile(targetX, targetY);
+                if (mapTile == null)
+                    throw new MapFacadeValidationException($"The {operationName} area includes cell ({targetX}, {targetY}), which is outside the map.");
+
+                mapTiles.Add(mapTile);
+            }
+        }
+
+        return mapTiles;
+    }
+
+    private int GetPlaceableOverlayFrameCount(OverlayType overlayType)
+    {
+        var overlayTextures = mutationTarget.TheaterGraphics.OverlayTextures;
+        if (overlayTextures == null || overlayType.Index < 0 || overlayType.Index >= overlayTextures.Length)
+            return 0;
+
+        if (overlayTextures[overlayType.Index] == null)
+            return 0;
+
+        return mutationTarget.TheaterGraphics.GetOverlayFrameCount(overlayType);
+    }
+
+    private void ValidateOverlayFrame(OverlayType overlayType, int frameIndex)
+    {
+        int placeableFrameCount = GetPlaceableOverlayFrameCount(overlayType);
+        if (placeableFrameCount == 0)
+            throw new MapFacadeValidationException($"Overlay type '{overlayType.ININame}' has no graphics for the current theater.");
+
+        if (frameIndex < 0 || frameIndex >= placeableFrameCount)
+        {
+            throw new MapFacadeValidationException(
+                $"Overlay type '{overlayType.ININame}' has {placeableFrameCount} placeable frames; frameIndex must be from 0 through {placeableFrameCount - 1}. " +
+                "Higher raw SHP frame indexes are reserved for engine-managed shadows and cannot be placed directly.");
+        }
+
+        if (mutationTarget.TheaterGraphics.OverlayTextures[overlayType.Index].GetFrame(frameIndex) == null)
+            throw new MapFacadeValidationException($"Frame {frameIndex} of overlay type '{overlayType.ININame}' has no valid graphics.");
     }
 
     private House ResolveHouse(string ownerName)

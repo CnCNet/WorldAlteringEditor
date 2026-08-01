@@ -50,6 +50,26 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetTerrainTypes(nameFilter), cancellationToken);
     }
 
+    [McpServerTool(Name = "get_overlay_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns regular overlay types that are visible in the editor and valid for the current map's theater, including placeable frame counts and connected-overlay memberships. frameCount counts placeable artwork only; higher raw SHP frames, conventionally the upper half, are engine-managed shadow data.")]
+    public Task<List<MapOverlayTypeInfo>> GetOverlayTypes(
+        [Description("Optional case-insensitive filter matched against INI name, UI name, editor category, and connected-overlay name.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetOverlayTypes)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetOverlayTypes(nameFilter), cancellationToken);
+    }
+
+    [McpServerTool(Name = "get_connected_overlay_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns WAE connected-overlay configurations valid for the current map's theater, including their connection masks and underlying overlay frames. Use place_connected_overlay for automatic connections, or place_overlay with this frame data for exact manual placement.")]
+    public Task<List<MapConnectedOverlayTypeInfo>> GetConnectedOverlayTypes(
+        [Description("Optional case-insensitive filter matched against configuration name, UI name, related configuration names, and underlying overlay INI names.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetConnectedOverlayTypes)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetConnectedOverlayTypes(nameFilter), cancellationToken);
+    }
+
     [McpServerTool(Name = "get_building_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns building types that are visible in the editor and valid for the current map's theater, including foundation dimensions.")]
     public Task<List<MapBuildingTypeInfo>> GetBuildingTypes(
@@ -230,6 +250,55 @@ public sealed class MapTools
         {
             return await gameThreadDispatcher.InvokeAsync(
                 () => mapFacade.EraseOverlay(x, y, width, height),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "place_overlay", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Places a regular overlay in a rectangular map area, replacing existing overlay. Omit frameIndex to use frame 0 and let WAE automatically smooth Tiberium; specify a placeable artwork frame for exact manual placement. Raw SHP frames at or above the frameCount returned by get_overlay_types are engine-managed shadows and are rejected. The operation is one undo entry and one revision bump.")]
+    public async Task<MapEditResult> PlaceOverlay(
+        [Description("INI name of an overlay type returned by get_overlay_types.")] string overlayTypeName,
+        [Description("X coordinate of the area's top-left cell.")] int x,
+        [Description("Y coordinate of the area's top-left cell.")] int y,
+        [Description("Area width in cells. Defaults to 1.")] int width = 1,
+        [Description("Area height in cells. Defaults to 1.")] int height = 1,
+        [Description("Optional zero-based placeable artwork frame index, which must be lower than frameCount from get_overlay_types. The upper raw SHP half contains engine-managed shadow frames and cannot be placed. Omit it for WAE's normal placement behavior and automatic Tiberium smoothing.")] int? frameIndex = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceOverlay)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.PlaceOverlay(overlayTypeName, x, y, width, height, frameIndex),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "place_connected_overlay", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Places a WAE connected-overlay configuration in a rectangular map area, replacing existing overlay and automatically selecting frames and reconnecting neighboring members. The operation is one undo entry and one revision bump.")]
+    public async Task<MapEditResult> PlaceConnectedOverlay(
+        [Description("Connected-overlay configuration name returned by get_connected_overlay_types.")] string connectedOverlayName,
+        [Description("X coordinate of the area's top-left cell.")] int x,
+        [Description("Y coordinate of the area's top-left cell.")] int y,
+        [Description("Area width in cells. Defaults to 1.")] int width = 1,
+        [Description("Area height in cells. Defaults to 1.")] int height = 1,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceConnectedOverlay)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.PlaceConnectedOverlay(connectedOverlayName, x, y, width, height),
                 cancellationToken);
         }
         catch (MapFacadeValidationException ex)
