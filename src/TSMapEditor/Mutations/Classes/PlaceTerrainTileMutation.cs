@@ -12,19 +12,27 @@ namespace TSMapEditor.Mutations.Classes
     /// </summary>
     public class PlaceTerrainTileMutation : Mutation, ICheckableMutation
     {
-        public PlaceTerrainTileMutation(IMutationTarget mutationTarget, Point2D targetCellCoords, TileImage tile, int heightOffset) : base(mutationTarget)
+        public PlaceTerrainTileMutation(IMutationTarget mutationTarget, Point2D targetCellCoords, ITileImage tile, int heightOffset)
+            : this(mutationTarget, targetCellCoords, tile, heightOffset, mutationTarget.BrushSize, mutationTarget.AutoLATEnabled, mutationTarget.OnlyPaintOnClearGround)
+        {
+        }
+
+        public PlaceTerrainTileMutation(IMutationTarget mutationTarget, Point2D targetCellCoords, ITileImage tile, int heightOffset,
+            BrushSize brushSize, bool autoLATEnabled, bool onlyPaintOnClearGround) : base(mutationTarget)
         {
             TargetCellCoords = targetCellCoords;
             Tile = tile;
             HeightOffset = heightOffset;
-            BrushSize = mutationTarget.BrushSize;
-            OnlyPaintOnClearGround = mutationTarget.OnlyPaintOnClearGround;
+            BrushSize = brushSize;
+            AutoLATEnabled = autoLATEnabled;
+            OnlyPaintOnClearGround = onlyPaintOnClearGround;
         }
 
         public Point2D TargetCellCoords { get; }
-        public TileImage Tile { get; }
+        public ITileImage Tile { get; }
         public int HeightOffset { get; }
         public BrushSize BrushSize { get; }
+        public bool AutoLATEnabled { get; }
         public bool OnlyPaintOnClearGround { get; }
 
         private List<OriginalCellTerrainData> undoData;
@@ -68,7 +76,7 @@ namespace TSMapEditor.Mutations.Classes
             int totalHeight = Tile.Height * BrushSize.Height;
 
             // Get un-do data
-            DoForArea(AddUndoDataForTile, MutationTarget.AutoLATEnabled);
+            DoForArea(AddUndoDataForTile, AutoLATEnabled);
 
             MapTile originCell = MutationTarget.Map.GetTile(TargetCellCoords);
             int originLevel = -1;
@@ -128,7 +136,7 @@ namespace TSMapEditor.Mutations.Classes
             });
 
             // Apply autoLAT if necessary
-            if (MutationTarget.AutoLATEnabled)
+            if (AutoLATEnabled)
             {
                 ApplyAutoLATForTilePlacement(Tile, BrushSize, TargetCellCoords);
             }

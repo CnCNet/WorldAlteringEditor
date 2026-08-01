@@ -50,6 +50,16 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetTerrainTypes(nameFilter), cancellationToken);
     }
 
+    [McpServerTool(Name = "get_tile_sets", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns tile sets that are available for placement in the current map's theater.")]
+    public Task<List<MapTileSetInfo>> GetTileSets(
+        [Description("Optional case-insensitive filter matched against tile set name and UI name.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetTileSets)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetTileSets(nameFilter), cancellationToken);
+    }
+
     [McpServerTool(Name = "inspect_map_region", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns terrain, terrain objects, and overlays from a rectangular region of the open map.")]
     public Task<List<CellInfo>> InspectMapRegion(
@@ -86,6 +96,55 @@ public sealed class MapTools
         {
             return await gameThreadDispatcher.InvokeAsync(
                 () => mapFacade.PlaceTerrainObject(terrainTypeName, x, y),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "place_terrain_tile", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Places a full terrain tile by tile set and tile-set-relative index. Supports configured brush sizes and optional AutoLAT. Existing terrain in the footprint may be replaced, and the edit is added to undo history.")]
+    public async Task<MapEditResult> PlaceTerrainTile(
+        [Description("Internal name of the tile set returned by get_tile_sets.")] string tileSetName,
+        [Description("Zero-based tile index relative to the start of the tile set.")] int tileIndexInTileSet,
+        [Description("X coordinate of the placement's top-left cell.")] int x,
+        [Description("Y coordinate of the placement's top-left cell.")] int y,
+        [Description("Width of the configured brush in repeated full tiles. Defaults to 1.")] int brushWidth = 1,
+        [Description("Height of the configured brush in repeated full tiles. Defaults to 1.")] int brushHeight = 1,
+        [Description("Whether to automatically create LAT transitions around the placed terrain. Defaults to true.")] bool autoLAT = true,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceTerrainTile)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.PlaceTerrainTile(tileSetName, tileIndexInTileSet, x, y, brushWidth, brushHeight, autoLAT),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "set_cell_terrain", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Directly sets the absolute tile index and sub-tile index of one cell. This is a low-level operation that does not apply a brush or AutoLAT, and it is added to undo history.")]
+    public async Task<MapEditResult> SetCellTerrain(
+        [Description("X coordinate of the cell.")] int x,
+        [Description("Y coordinate of the cell.")] int y,
+        [Description("Absolute tile index in the loaded theater.")] int tileIndex,
+        [Description("Sub-tile index within the selected full tile.")] int subTileIndex,
+        CancellationToken cancellationToken)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(SetCellTerrain)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.SetCellTerrain(x, y, tileIndex, subTileIndex),
                 cancellationToken);
         }
         catch (MapFacadeValidationException ex)

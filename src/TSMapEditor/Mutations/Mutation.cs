@@ -218,7 +218,7 @@ namespace TSMapEditor.Mutations
             return (baseTileSet, altBaseTileSet);
         }
 
-        protected void ApplyAutoLATForTilePlacement(TileImage tile, BrushSize brushSize, Point2D targetCellCoords)
+        protected void ApplyAutoLATForTilePlacement(ITileImage tile, BrushSize brushSize, Point2D targetCellCoords)
         {
             // Get potential base tilesets of the placed LAT (if we're placing LAT)
             // This allows placing certain LATs on top of other LATs (example: snowy dirt on snow, when snow is also placed on grass)
