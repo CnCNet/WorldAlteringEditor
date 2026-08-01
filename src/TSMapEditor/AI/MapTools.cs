@@ -50,6 +50,26 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetTerrainTypes(nameFilter), cancellationToken);
     }
 
+    [McpServerTool(Name = "get_building_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns building types that are visible in the editor and valid for the current map's theater, including foundation dimensions.")]
+    public Task<List<MapBuildingTypeInfo>> GetBuildingTypes(
+        [Description("Optional case-insensitive filter matched against INI name, UI name, and editor category.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetBuildingTypes)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetBuildingTypes(nameFilter), cancellationToken);
+    }
+
+    [McpServerTool(Name = "get_houses", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns houses that can own player-controllable objects on the current map.")]
+    public Task<List<MapHouseInfo>> GetHouses(
+        [Description("Optional case-insensitive filter matched against house name, house type, and color.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetHouses)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetHouses(nameFilter), cancellationToken);
+    }
+
     [McpServerTool(Name = "get_tile_sets", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns tile sets that are available for placement in the current map's theater.")]
     public Task<List<MapTileSetInfo>> GetTileSets(
@@ -61,7 +81,7 @@ public sealed class MapTools
     }
 
     [McpServerTool(Name = "inspect_map_region", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Returns terrain, terrain objects, and overlays from a rectangular region of the open map.")]
+    [Description("Returns terrain, overlays, and placed map objects from a rectangular region of the open map.")]
     public Task<List<CellInfo>> InspectMapRegion(
         [Description("X coordinate of the region's top-left cell.")] int x,
         [Description("Y coordinate of the region's top-left cell.")] int y,
@@ -96,6 +116,30 @@ public sealed class MapTools
         {
             return await gameThreadDispatcher.InvokeAsync(
                 () => mapFacade.PlaceTerrainObject(terrainTypeName, x, y),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "place_building", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Places a building with an explicit owner at the given foundation origin. By default, placement fails if its foundation overlaps another building. The edit is added to undo history.")]
+    public async Task<MapEditResult> PlaceBuilding(
+        [Description("INI name of the building type returned by get_building_types.")] string buildingTypeName,
+        [Description("INI name of the owner returned by get_houses.")] string ownerName,
+        [Description("X coordinate of the building foundation origin.")] int x,
+        [Description("Y coordinate of the building foundation origin.")] int y,
+        [Description("Whether to allow the building foundation to overlap other buildings. Defaults to false.")] bool allowOverlap = false,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceBuilding)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.PlaceBuilding(buildingTypeName, ownerName, x, y, allowOverlap),
                 cancellationToken);
         }
         catch (MapFacadeValidationException ex)

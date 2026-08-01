@@ -167,6 +167,36 @@ public class MapObjectTypeInfo
     public string EditorCategory { get; }
 }
 
+public class MapBuildingTypeInfo : MapObjectTypeInfo
+{
+    public MapBuildingTypeInfo(string iniName, string uiName, string editorCategory, int foundationWidth,
+        int foundationHeight, int foundationCellCount)
+        : base(iniName, uiName, editorCategory)
+    {
+        FoundationWidth = foundationWidth;
+        FoundationHeight = foundationHeight;
+        FoundationCellCount = foundationCellCount;
+    }
+
+    public int FoundationWidth { get; }
+    public int FoundationHeight { get; }
+    public int FoundationCellCount { get; }
+}
+
+public class MapHouseInfo
+{
+    public MapHouseInfo(string iniName, string houseTypeName, string color)
+    {
+        ININame = iniName;
+        HouseTypeName = houseTypeName;
+        Color = color;
+    }
+
+    public string ININame { get; }
+    public string HouseTypeName { get; }
+    public string Color { get; }
+}
+
 public class MapTileSetInfo
 {
     public MapTileSetInfo(int index, string setName, string uiName, int startTileIndex, int tileCount, bool only1x1)
@@ -252,6 +282,49 @@ public class MapFacade
             .ToList();
     }
 
+    public List<MapBuildingTypeInfo> GetBuildingTypes(string nameFilter = null)
+    {
+        string normalizedFilter = nameFilter?.Trim();
+
+        return map.Rules.BuildingTypes
+            .Where(buildingType => buildingType.EditorVisible && buildingType.IsValidForTheater(map.LoadedTheaterName))
+            .Select(buildingType =>
+            {
+                var foundation = buildingType.ArtConfig.Foundation;
+                bool usesOriginOnly = foundation.Width == 0 || foundation.Height == 0;
+
+                return new MapBuildingTypeInfo(
+                    buildingType.ININame,
+                    buildingType.GetEditorDisplayName(),
+                    GetEffectiveEditorCategory(buildingType),
+                    usesOriginOnly ? 1 : foundation.Width,
+                    usesOriginOnly ? 1 : foundation.Height,
+                    usesOriginOnly ? 1 : (foundation.FoundationCells?.Length ?? 0));
+            })
+            .Where(typeInfo => string.IsNullOrWhiteSpace(normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.ININame, normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.UIName, normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.EditorCategory, normalizedFilter))
+            .OrderBy(typeInfo => typeInfo.EditorCategory)
+            .ThenBy(typeInfo => typeInfo.UIName)
+            .ThenBy(typeInfo => typeInfo.ININame)
+            .ToList();
+    }
+
+    public List<MapHouseInfo> GetHouses(string nameFilter = null)
+    {
+        string normalizedFilter = nameFilter?.Trim();
+
+        return map.GetHouses()
+            .Select(house => new MapHouseInfo(house.ININame, house.HouseType?.ININame, house.Color))
+            .Where(houseInfo => string.IsNullOrWhiteSpace(normalizedFilter) ||
+                ContainsIgnoringCase(houseInfo.ININame, normalizedFilter) ||
+                ContainsIgnoringCase(houseInfo.HouseTypeName, normalizedFilter) ||
+                ContainsIgnoringCase(houseInfo.Color, normalizedFilter))
+            .OrderBy(houseInfo => houseInfo.ININame)
+            .ToList();
+    }
+
     public List<MapTileSetInfo> GetTileSets(string nameFilter = null)
     {
         string normalizedFilter = nameFilter?.Trim();
@@ -332,6 +405,74 @@ public class MapFacade
         return new MapEditResult(
             mutationManager.Revision,
             new List<CellInfo> { CellInfo.FromMapCell(map.TheaterInstance, mapTile) });
+    }
+
+    public MapEditResult PlaceBuilding(string buildingTypeName, string ownerName, int x, int y, bool allowOverlap)
+    {
+        if (string.IsNullOrWhiteSpace(buildingTypeName))
+            throw new MapFacadeValidationException("A building type INI name must be provided.");
+
+        if (string.IsNullOrWhiteSpace(ownerName))
+            throw new MapFacadeValidationException("An owner house name must be provided.");
+
+        var buildingType = map.Rules.BuildingTypes.Find(
+            bt => string.Equals(bt.ININame, buildingTypeName, StringComparison.OrdinalIgnoreCase));
+        if (buildingType == null)
+            throw new MapFacadeValidationException($"Building type '{buildingTypeName}' does not exist in the loaded rules.");
+
+        if (!buildingType.EditorVisible)
+            throw new MapFacadeValidationException($"Building type '{buildingType.ININame}' is not available for placement in the editor.");
+
+        if (!buildingType.IsValidForTheater(map.LoadedTheaterName))
+            throw new MapFacadeValidationException($"Building type '{buildingType.ININame}' is not valid for theater '{map.LoadedTheaterName}'.");
+
+        var owner = map.GetHouses().Find(
+            house => string.Equals(house.ININame, ownerName, StringComparison.OrdinalIgnoreCase));
+        if (owner == null)
+            throw new MapFacadeValidationException($"House '{ownerName}' does not exist on the map.");
+
+        var cellCoords = new Point2D(x, y);
+        if (!map.IsCoordWithinMap(cellCoords) || map.GetTile(cellCoords) == null)
+            throw new MapFacadeValidationException($"Cell ({x}, {y}) is outside the map.");
+
+        var structure = new Structure(buildingType)
+        {
+            Owner = owner,
+            Position = cellCoords
+        };
+
+        var foundationCells = new List<MapTile>();
+        Point2D? invalidFoundationCoords = null;
+        buildingType.ArtConfig.DoForFoundationCoordsOrOrigin(offset =>
+        {
+            var foundationCoords = cellCoords + offset;
+            var foundationCell = map.IsCoordWithinMap(foundationCoords) ? map.GetTile(foundationCoords) : null;
+            if (foundationCell == null)
+            {
+                invalidFoundationCoords ??= foundationCoords;
+                return;
+            }
+
+            foundationCells.Add(foundationCell);
+        });
+
+        if (invalidFoundationCoords.HasValue)
+        {
+            throw new MapFacadeValidationException(
+                $"The building foundation extends outside the map at ({invalidFoundationCoords.Value.X}, {invalidFoundationCoords.Value.Y}).");
+        }
+
+        if (!map.CanPlaceObjectAt(structure, cellCoords, false, allowOverlap))
+        {
+            throw new MapFacadeValidationException(
+                $"Building '{buildingType.ININame}' cannot be placed at ({x}, {y}) because its foundation overlaps another building.");
+        }
+
+        mutationManager.PerformMutation(new PlaceBuildingMutation(mutationTarget, buildingType, cellCoords, owner));
+
+        return new MapEditResult(
+            mutationManager.Revision,
+            foundationCells.Select(cell => CellInfo.FromMapCell(map.TheaterInstance, cell)).ToList());
     }
 
     public MapEditResult PlaceTerrainTile(string tileSetName, int tileIndexInTileSet, int x, int y,
@@ -463,6 +604,15 @@ public class MapFacade
     private static bool IsTileSetPlaceable(TileSet tileSet)
     {
         return tileSet.AllowToPlace && tileSet.LoadedTileCount > 0 && tileSet.NonMarbleMadness < 0;
+    }
+
+    private static string GetEffectiveEditorCategory(GameObjectType gameObjectType)
+    {
+        string editorCategory = gameObjectType.EditorCategory;
+        if (string.IsNullOrWhiteSpace(editorCategory) && gameObjectType is TechnoType technoType)
+            editorCategory = technoType.Owner;
+
+        return string.IsNullOrWhiteSpace(editorCategory) ? "Uncategorized" : editorCategory;
     }
 
     private static bool ContainsIgnoringCase(string value, string searchValue)
