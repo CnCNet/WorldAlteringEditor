@@ -194,6 +194,50 @@ public sealed class MapTools
         }
     }
 
+    [McpServerTool(Name = "delete_objects", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Atomically deletes explicitly referenced technos and terrain objects. The entire batch is one undo entry and one revision bump.")]
+    public async Task<MapEditResult> DeleteObjects(
+        [Description("Optional techno object ID references returned by get_technos or inspect_map_region.")] List<MapTechnoReference> technos = null,
+        [Description("Optional terrain object coordinate and INI-name references returned by inspect_map_region.")] List<MapTerrainObjectReference> terrainObjects = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(DeleteObjects)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.DeleteObjects(technos, terrainObjects),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "erase_overlay", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Erases all overlay from a rectangular map area. The operation is one undo entry and also updates neighboring Tiberium frames.")]
+    public async Task<MapEditResult> EraseOverlay(
+        [Description("X coordinate of the area's top-left cell.")] int x,
+        [Description("Y coordinate of the area's top-left cell.")] int y,
+        [Description("Area width in cells. Defaults to 1.")] int width = 1,
+        [Description("Area height in cells. Defaults to 1.")] int height = 1,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(EraseOverlay)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.EraseOverlay(x, y, width, height),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
     [McpServerTool(Name = "place_terrain_object", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Places one terrain object, such as a tree, on an empty map cell. The placement is added to the editor's undo history.")]
     public async Task<MapEditResult> PlaceTerrainObject(

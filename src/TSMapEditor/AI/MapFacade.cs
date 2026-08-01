@@ -297,6 +297,9 @@ public sealed class MapFacadeValidationException : Exception
 public class MapFacade
 {
     private const int MaxTechnoQueryResults = 1_000;
+    private const int MaxObjectDeletionCount = 1_000;
+    private const int MaxMapOperationDimension = 256;
+    private const int MaxMapOperationCellCount = 10_000;
 
     private static readonly string[] ValidMissions = new[]
     {
@@ -543,6 +546,85 @@ public class MapFacade
         return new MapEditResult(mutationManager.Revision, affectedCells);
     }
 
+    public MapEditResult DeleteObjects(List<MapTechnoReference> technoReferences, List<MapTerrainObjectReference> terrainObjectReferences)
+    {
+        int technoReferenceCount = technoReferences?.Count ?? 0;
+        int terrainObjectReferenceCount = terrainObjectReferences?.Count ?? 0;
+        int totalReferenceCount = technoReferenceCount + terrainObjectReferenceCount;
+
+        if (totalReferenceCount == 0)
+            throw new MapFacadeValidationException("At least one techno or terrain object reference must be provided.");
+        if (totalReferenceCount > MaxObjectDeletionCount)
+            throw new MapFacadeValidationException($"At most {MaxObjectDeletionCount} objects can be deleted in one call.");
+
+        var objects = new List<GameObject>(totalReferenceCount);
+        if (technoReferences != null)
+        {
+            foreach (var technoReference in technoReferences)
+            {
+                var techno = ResolveTechnoReference(technoReference);
+                if (map.GetTile(techno.Position) == null)
+                    throw new MapFacadeValidationException($"Techno objectId {techno.ObjectId} is outside the valid map area and cannot be deleted through the MCP server.");
+
+                objects.Add(techno);
+            }
+        }
+
+        if (terrainObjectReferences != null)
+        {
+            foreach (var terrainObjectReference in terrainObjectReferences)
+                objects.Add(ResolveTerrainObjectReference(terrainObjectReference));
+        }
+
+        if (objects.Distinct().Count() != objects.Count)
+            throw new MapFacadeValidationException("The object reference lists contain duplicates.");
+
+        var affectedMapTiles = GetAffectedMapTiles(objects);
+        mutationManager.PerformMutation(new DeleteMapObjectsMutation(mutationTarget, objects));
+
+        return new MapEditResult(
+            mutationManager.Revision,
+            affectedMapTiles.Select(mapTile => CellInfo.FromMapCell(map, mapTile)).ToList());
+    }
+
+    public MapEditResult EraseOverlay(int x, int y, int width, int height)
+    {
+        if (width <= 0 || height <= 0)
+            throw new MapFacadeValidationException("The overlay erasure width and height must both be greater than zero.");
+
+        if (width > MaxMapOperationDimension || height > MaxMapOperationDimension || (long)width * height > MaxMapOperationCellCount)
+        {
+            throw new MapFacadeValidationException(
+                $"The overlay erasure area is too large. Each dimension may be at most {MaxMapOperationDimension} cells and the total area may be at most {MaxMapOperationCellCount} cells.");
+        }
+
+        var overlayTiles = new List<MapTile>();
+        for (int yOffset = 0; yOffset < height; yOffset++)
+        {
+            for (int xOffset = 0; xOffset < width; xOffset++)
+            {
+                var mapTile = map.GetTile(x + xOffset, y + yOffset);
+                if (mapTile?.Overlay != null)
+                    overlayTiles.Add(mapTile);
+            }
+        }
+
+        if (overlayTiles.Count == 0)
+            throw new MapFacadeValidationException($"The requested {width}x{height} area at ({x}, {y}) contains no overlay.");
+
+        var affectedMapTiles = overlayTiles
+            .SelectMany(mapTile => GetMapTileAndSurroundings(mapTile.CoordsToPoint()))
+            .Distinct()
+            .ToList();
+
+        var mutation = new PlaceOverlayMutation(mutationTarget, null, null, new Point2D(x, y), new BrushSize(width, height));
+        mutationManager.PerformMutation(mutation);
+
+        return new MapEditResult(
+            mutationManager.Revision,
+            affectedMapTiles.Select(mapTile => CellInfo.FromMapCell(map, mapTile)).ToList());
+    }
+
     public MapEditResult PlaceTerrainObject(string terrainTypeName, int x, int y)
     {
         if (string.IsNullOrWhiteSpace(terrainTypeName))
@@ -734,6 +816,7 @@ public class MapFacade
             Position = cellCoords,
             SubCell = freeSubCell
         };
+
         ApplyFootPlacementProperties(infantry, properties, true, true);
 
         mutationManager.PerformMutation(new PlaceInfantryMutation(mutationTarget, infantry));
@@ -774,6 +857,7 @@ public class MapFacade
             Owner = owner,
             Position = cellCoords
         };
+
         ApplyFootPlacementProperties(vehicle, properties, true, false);
 
         if (!map.CanPlaceObjectAt(vehicle, cellCoords, false, allowOverlap))
@@ -1002,6 +1086,69 @@ public class MapFacade
             .FirstOrDefault(candidate => candidate.ObjectId == technoReference.ObjectId);
 
         return techno ?? throw new MapFacadeValidationException($"Techno objectId {technoReference.ObjectId} does not exist on the current map.");
+    }
+
+    private TerrainObject ResolveTerrainObjectReference(MapTerrainObjectReference terrainObjectReference)
+    {
+        if (terrainObjectReference == null)
+            throw new MapFacadeValidationException("A terrain object reference cannot be null.");
+
+        if (string.IsNullOrWhiteSpace(terrainObjectReference.ININame))
+            throw new MapFacadeValidationException("A terrain object reference must include an INI name.");
+
+        var mapTile = map.GetTile(terrainObjectReference.X, terrainObjectReference.Y);
+        if (mapTile == null)
+            throw new MapFacadeValidationException($"Cell ({terrainObjectReference.X}, {terrainObjectReference.Y}) is outside the map.");
+
+        var terrainObject = mapTile.TerrainObject;
+        if (terrainObject == null)
+            throw new MapFacadeValidationException($"Cell ({terrainObjectReference.X}, {terrainObjectReference.Y}) does not contain a terrain object.");
+
+        if (!string.Equals(terrainObject.TerrainType.ININame, terrainObjectReference.ININame, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new MapFacadeValidationException(
+                $"Cell ({terrainObjectReference.X}, {terrainObjectReference.Y}) contains terrain object '{terrainObject.TerrainType.ININame}', not '{terrainObjectReference.ININame}'.");
+        }
+
+        return terrainObject;
+    }
+
+    private List<MapTile> GetAffectedMapTiles(List<GameObject> objects)
+    {
+        var affectedMapTiles = new List<MapTile>();
+        foreach (var mapObject in objects)
+        {
+            if (mapObject is Structure structure)
+            {
+                structure.ObjectType.ArtConfig.DoForFoundationCoordsOrOrigin(offset =>
+                {
+                    var mapTile = map.GetTile(structure.Position + offset);
+                    if (mapTile != null)
+                        affectedMapTiles.Add(mapTile);
+                });
+            }
+            else
+            {
+                var mapTile = map.GetTile(mapObject.Position);
+                if (mapTile != null)
+                    affectedMapTiles.Add(mapTile);
+            }
+        }
+
+        return affectedMapTiles.Distinct().ToList();
+    }
+
+    private IEnumerable<MapTile> GetMapTileAndSurroundings(Point2D cellCoords)
+    {
+        for (int yOffset = -1; yOffset <= 1; yOffset++)
+        {
+            for (int xOffset = -1; xOffset <= 1; xOffset++)
+            {
+                var mapTile = map.GetTile(cellCoords + new Point2D(xOffset, yOffset));
+                if (mapTile != null)
+                    yield return mapTile;
+            }
+        }
     }
 
     private House ResolveHouse(string ownerName)

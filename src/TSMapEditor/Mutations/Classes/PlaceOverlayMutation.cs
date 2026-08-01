@@ -11,12 +11,17 @@ namespace TSMapEditor.Mutations.Classes
     /// </summary>
     class PlaceOverlayMutation : Mutation, ICheckableMutation
     {
-        public PlaceOverlayMutation(IMutationTarget mutationTarget, OverlayType overlayType, int? forcedFrameIndex, Point2D cellCoords) : base(mutationTarget)
+        public PlaceOverlayMutation(IMutationTarget mutationTarget, OverlayType overlayType, int? forcedFrameIndex, Point2D cellCoords)
+            : this(mutationTarget, overlayType, forcedFrameIndex, cellCoords, mutationTarget.BrushSize)
+        {
+        }
+
+        public PlaceOverlayMutation(IMutationTarget mutationTarget, OverlayType overlayType, int? forcedFrameIndex, Point2D cellCoords, BrushSize brush) : base(mutationTarget)
         {
             this.overlayType = overlayType;
             this.forcedFrameIndex = forcedFrameIndex;
             this.cellCoords = cellCoords;
-            brush = mutationTarget.BrushSize;
+            this.brush = brush ?? throw new ArgumentNullException(nameof(brush));
         }
 
         private readonly OverlayType overlayType;
