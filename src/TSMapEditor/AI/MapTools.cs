@@ -60,6 +60,36 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetBuildingTypes(nameFilter), cancellationToken);
     }
 
+    [McpServerTool(Name = "get_aircraft_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns aircraft types that are visible in the editor and valid for the current map's theater.")]
+    public Task<List<MapObjectTypeInfo>> GetAircraftTypes(
+        [Description("Optional case-insensitive filter matched against INI name, UI name, and editor category.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetAircraftTypes)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetAircraftTypes(nameFilter), cancellationToken);
+    }
+
+    [McpServerTool(Name = "get_infantry_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns infantry types that are visible in the editor and valid for the current map's theater.")]
+    public Task<List<MapObjectTypeInfo>> GetInfantryTypes(
+        [Description("Optional case-insensitive filter matched against INI name, UI name, and editor category.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetInfantryTypes)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetInfantryTypes(nameFilter), cancellationToken);
+    }
+
+    [McpServerTool(Name = "get_vehicle_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns vehicle types that are visible in the editor and valid for the current map's theater.")]
+    public Task<List<MapObjectTypeInfo>> GetVehicleTypes(
+        [Description("Optional case-insensitive filter matched against INI name, UI name, and editor category.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetVehicleTypes)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetVehicleTypes(nameFilter), cancellationToken);
+    }
+
     [McpServerTool(Name = "get_houses", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns houses that can own player-controllable objects on the current map.")]
     public Task<List<MapHouseInfo>> GetHouses(
@@ -125,13 +155,14 @@ public sealed class MapTools
     }
 
     [McpServerTool(Name = "place_building", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Places a building with an explicit owner at the given foundation origin. By default, placement fails if its foundation overlaps another building. The edit is added to undo history.")]
+    [Description("Places a building with an explicit owner and optional initial properties at the given foundation origin. By default, placement fails if its foundation overlaps another building. The edit is added to undo history.")]
     public async Task<MapEditResult> PlaceBuilding(
         [Description("INI name of the building type returned by get_building_types.")] string buildingTypeName,
         [Description("INI name of the owner returned by get_houses.")] string ownerName,
         [Description("X coordinate of the building foundation origin.")] int x,
         [Description("Y coordinate of the building foundation origin.")] int y,
         [Description("Whether to allow the building foundation to overlap other buildings. Defaults to false.")] bool allowOverlap = false,
+        [Description("Optional initial building properties. Omitted properties retain the editor's placement defaults.")] MapBuildingPlacementProperties properties = null,
         CancellationToken cancellationToken = default)
     {
         Logger.Log($"{nameof(MapTools)}.{nameof(PlaceBuilding)}");
@@ -139,7 +170,81 @@ public sealed class MapTools
         try
         {
             return await gameThreadDispatcher.InvokeAsync(
-                () => mapFacade.PlaceBuilding(buildingTypeName, ownerName, x, y, allowOverlap),
+                () => mapFacade.PlaceBuilding(buildingTypeName, ownerName, x, y, allowOverlap, properties),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "place_aircraft", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Places aircraft with an explicit owner and optional initial properties at the given cell. By default, placement fails if the cell already contains aircraft. The edit is added to undo history.")]
+    public async Task<MapEditResult> PlaceAircraft(
+        [Description("INI name of the aircraft type returned by get_aircraft_types.")] string aircraftTypeName,
+        [Description("INI name of the owner returned by get_houses.")] string ownerName,
+        [Description("X coordinate of the destination cell.")] int x,
+        [Description("Y coordinate of the destination cell.")] int y,
+        [Description("Whether to allow the aircraft to overlap other aircraft. Defaults to false.")] bool allowOverlap = false,
+        [Description("Optional initial aircraft properties. onBridge and subCell are not valid for aircraft. Omitted properties retain the editor's placement defaults.")] MapFootPlacementProperties properties = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceAircraft)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.PlaceAircraft(aircraftTypeName, ownerName, x, y, allowOverlap, properties),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "place_infantry", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Places infantry with an explicit owner and optional initial properties at the given cell. A specific usable subcell can be requested; otherwise the first free one is used. The edit is added to undo history.")]
+    public async Task<MapEditResult> PlaceInfantry(
+        [Description("INI name of the infantry type returned by get_infantry_types.")] string infantryTypeName,
+        [Description("INI name of the owner returned by get_houses.")] string ownerName,
+        [Description("X coordinate of the destination cell.")] int x,
+        [Description("Y coordinate of the destination cell.")] int y,
+        [Description("Optional initial infantry properties. Omitted properties retain the editor's placement defaults.")] MapFootPlacementProperties properties = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceInfantry)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.PlaceInfantry(infantryTypeName, ownerName, x, y, properties),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "place_vehicle", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Places a vehicle with an explicit owner and optional initial properties at the given cell. By default, placement fails if the cell already contains a vehicle. The edit is added to undo history.")]
+    public async Task<MapEditResult> PlaceVehicle(
+        [Description("INI name of the vehicle type returned by get_vehicle_types.")] string vehicleTypeName,
+        [Description("INI name of the owner returned by get_houses.")] string ownerName,
+        [Description("X coordinate of the destination cell.")] int x,
+        [Description("Y coordinate of the destination cell.")] int y,
+        [Description("Whether to allow the vehicle to overlap other vehicles. Defaults to false.")] bool allowOverlap = false,
+        [Description("Optional initial vehicle properties. subCell is not valid for vehicles. Omitted properties retain the editor's placement defaults.")] MapFootPlacementProperties properties = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceVehicle)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.PlaceVehicle(vehicleTypeName, ownerName, x, y, allowOverlap, properties),
                 cancellationToken);
         }
         catch (MapFacadeValidationException ex)

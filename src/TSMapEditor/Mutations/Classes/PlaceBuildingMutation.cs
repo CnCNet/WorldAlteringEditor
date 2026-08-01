@@ -23,9 +23,18 @@ namespace TSMapEditor.Mutations.Classes
             this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
         }
 
+        public PlaceBuildingMutation(IMutationTarget mutationTarget, Structure structure) : base(mutationTarget)
+        {
+            preconfiguredStructure = structure ?? throw new ArgumentNullException(nameof(structure));
+            buildingType = structure.ObjectType;
+            cellCoords = structure.Position;
+            owner = structure.Owner ?? throw new ArgumentException("The building must have an owner.", nameof(structure));
+        }
+
         private readonly BuildingType buildingType;
         private readonly Point2D cellCoords;
         private readonly House owner;
+        private readonly Structure preconfiguredStructure;
 
         private Structure placedBuilding;
 
@@ -40,10 +49,12 @@ namespace TSMapEditor.Mutations.Classes
         {
             var cell = MutationTarget.Map.GetTileOrFail(cellCoords);
 
-            var structure = new Structure(buildingType);
-            structure.Owner = owner;
-            structure.Position = cellCoords;
-            structure.AIRepairable = structure.ObjectType.Repairable && structure.Owner.DefaultRepairableStructures;
+            var structure = preconfiguredStructure ?? new Structure(buildingType)
+            {
+                Owner = owner,
+                Position = cellCoords,
+                AIRepairable = buildingType.Repairable && owner.DefaultRepairableStructures
+            };
             MutationTarget.Map.PlaceBuilding(structure);
             MutationTarget.AddRefreshPoint(cellCoords);
 
