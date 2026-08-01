@@ -1,10 +1,13 @@
 using Microsoft.Xna.Framework;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations;
+using TSMapEditor.Mutations.Classes;
 using TSMapEditor.Rendering;
+using TSMapEditor.UI;
 
 namespace TSMapEditor.AI;
 
@@ -141,19 +144,54 @@ public class MapInfo
     public int Height { get; }
 }
 
+public class MapObjectTypeInfo
+{
+    public MapObjectTypeInfo(string iniName, string uiName, string editorCategory)
+    {
+        ININame = iniName;
+        UIName = uiName;
+        EditorCategory = editorCategory;
+    }
+
+    public string ININame { get; }
+    public string UIName { get; }
+    public string EditorCategory { get; }
+}
+
+public class MapEditResult
+{
+    public MapEditResult(int revision, List<CellInfo> affectedCells)
+    {
+        Revision = revision;
+        AffectedCells = affectedCells;
+    }
+
+    public int Revision { get; }
+    public List<CellInfo> AffectedCells { get; }
+}
+
+public sealed class MapFacadeValidationException : Exception
+{
+    public MapFacadeValidationException(string message) : base(message)
+    {
+    }
+}
+
 /// <summary>
 /// Facade that performs operations on the map for the Model Context Protocol component.
 /// </summary>
 public class MapFacade
 {
-    public MapFacade(Map map, MutationManager mutationManager)
+    public MapFacade(Map map, MutationManager mutationManager, IMutationTarget mutationTarget)
     {
         this.map = map;
         this.mutationManager = mutationManager;
+        this.mutationTarget = mutationTarget;
     }
 
     private readonly Map map;
     private readonly MutationManager mutationManager;
+    private readonly IMutationTarget mutationTarget;
 
     public MapInfo GetMapInfo()
     {
@@ -163,6 +201,26 @@ public class MapFacade
     public int GetMapRevision()
     {
         return mutationManager.Revision;
+    }
+
+    public List<MapObjectTypeInfo> GetTerrainTypes(string nameFilter = null)
+    {
+        string normalizedFilter = nameFilter?.Trim();
+
+        return map.Rules.TerrainTypes
+            .Where(terrainType => terrainType.EditorVisible && terrainType.IsValidForTheater(map.LoadedTheaterName))
+            .Select(terrainType => new MapObjectTypeInfo(
+                terrainType.ININame,
+                terrainType.GetEditorDisplayName(),
+                terrainType.EditorCategory))
+            .Where(typeInfo => string.IsNullOrWhiteSpace(normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.ININame, normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.UIName, normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.EditorCategory, normalizedFilter))
+            .OrderBy(typeInfo => typeInfo.EditorCategory)
+            .ThenBy(typeInfo => typeInfo.UIName)
+            .ThenBy(typeInfo => typeInfo.ININame)
+            .ToList();
     }
 
     public List<CellInfo> InspectRegion(Rectangle rectangle)
@@ -175,16 +233,59 @@ public class MapFacade
             {
                 Point2D coords = new Point2D(x, y);
                 if (!map.IsCoordWithinMap(coords))
-                {
                     continue;
-                }
 
                 var mapCell = map.GetTile(coords);
+                if (mapCell == null)
+                    continue;
 
                 returnValue.Add(CellInfo.FromMapCell(map.TheaterInstance, mapCell));
             }
         }
 
         return returnValue;
+    }
+
+    public MapEditResult PlaceTerrainObject(string terrainTypeName, int x, int y)
+    {
+        if (string.IsNullOrWhiteSpace(terrainTypeName))
+            throw new MapFacadeValidationException("A terrain object type INI name must be provided.");
+
+        var cellCoords = new Point2D(x, y);
+        if (!map.IsCoordWithinMap(cellCoords))
+            throw new MapFacadeValidationException($"Cell ({x}, {y}) is outside the map.");
+
+        var mapTile = map.GetTile(cellCoords);
+        if (mapTile == null)
+            throw new MapFacadeValidationException($"Cell ({x}, {y}) is outside the map.");
+
+        var terrainType = map.Rules.TerrainTypes.Find(
+            tt => string.Equals(tt.ININame, terrainTypeName, StringComparison.OrdinalIgnoreCase));
+        if (terrainType == null)
+            throw new MapFacadeValidationException($"Terrain object type '{terrainTypeName}' does not exist in the loaded rules.");
+
+        if (!terrainType.EditorVisible)
+            throw new MapFacadeValidationException($"Terrain object type '{terrainType.ININame}' is not available for placement in the editor.");
+
+        if (!terrainType.IsValidForTheater(map.LoadedTheaterName))
+            throw new MapFacadeValidationException($"Terrain object type '{terrainType.ININame}' is not valid for theater '{map.LoadedTheaterName}'.");
+
+        if (mapTile.TerrainObject != null)
+            throw new MapFacadeValidationException($"Cell ({x}, {y}) already contains terrain object '{mapTile.TerrainObject.TerrainType.ININame}'.");
+
+        var mutation = new PlaceTerrainObjectMutation(mutationTarget, terrainType, cellCoords);
+        if (!mutation.ShouldPerform())
+            throw new MapFacadeValidationException($"Terrain object '{terrainType.ININame}' cannot be placed at ({x}, {y}).");
+
+        mutationManager.PerformMutation(mutation);
+
+        return new MapEditResult(
+            mutationManager.Revision,
+            new List<CellInfo> { CellInfo.FromMapCell(map.TheaterInstance, mapTile) });
+    }
+
+    private static bool ContainsIgnoringCase(string value, string searchValue)
+    {
+        return value?.IndexOf(searchValue, StringComparison.OrdinalIgnoreCase) >= 0;
     }
 }

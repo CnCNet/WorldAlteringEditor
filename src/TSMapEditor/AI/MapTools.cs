@@ -40,6 +40,16 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(mapFacade.GetMapRevision, cancellationToken);
     }
 
+    [McpServerTool(Name = "get_terrain_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns terrain object types that are visible in the editor and valid for the current map's theater.")]
+    public Task<List<MapObjectTypeInfo>> GetTerrainTypes(
+        [Description("Optional case-insensitive filter matched against INI name, UI name, and editor category.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetTerrainTypes)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetTerrainTypes(nameFilter), cancellationToken);
+    }
+
     [McpServerTool(Name = "inspect_map_region", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns terrain, terrain objects, and overlays from a rectangular region of the open map.")]
     public Task<List<CellInfo>> InspectMapRegion(
@@ -60,5 +70,27 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(
             () => mapFacade.InspectRegion(new Rectangle(x, y, width, height)),
             cancellationToken);
+    }
+
+    [McpServerTool(Name = "place_terrain_object", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Places one terrain object, such as a tree, on an empty map cell. The placement is added to the editor's undo history.")]
+    public async Task<MapEditResult> PlaceTerrainObject(
+        [Description("INI name of the terrain object type to place.")] string terrainTypeName,
+        [Description("X coordinate of the destination cell.")] int x,
+        [Description("Y coordinate of the destination cell.")] int y,
+        CancellationToken cancellationToken)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceTerrainObject)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.PlaceTerrainObject(terrainTypeName, x, y),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
     }
 }
