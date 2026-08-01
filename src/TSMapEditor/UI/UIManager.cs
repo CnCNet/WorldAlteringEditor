@@ -4,6 +4,7 @@ using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Linq;
+using TSMapEditor.AI;
 using TSMapEditor.Misc;
 using TSMapEditor.Models;
 using TSMapEditor.Mutations;
@@ -78,6 +79,7 @@ namespace TSMapEditor.UI
         private WindowController windowController;
 
         private MutationManager mutationManager;
+        private MCPServer mcpServer;
 
         private NotificationManager notificationManager;
 
@@ -203,6 +205,39 @@ namespace TSMapEditor.UI
             KeyboardCommands.Instance.ToggleFullscreen.Triggered += ToggleFullscreen_Triggered;
 
             SetInitialDisplayMode();
+            StartMCPServer();
+        }
+
+        private void StartMCPServer()
+        {
+            try
+            {
+                mcpServer = new MCPServer(WindowManager, new MapFacade(map, mutationManager));
+                mcpServer.StartAsync().GetAwaiter().GetResult();
+                Logger.Log($"MCP server listening at {MCPServer.ServerUrl}{MCPServer.MCPPath}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Failed to start the MCP server. Returned error: " + ex.Message);
+                StopMCPServer();
+            }
+        }
+
+        private void StopMCPServer()
+        {
+            if (mcpServer == null)
+                return;
+
+            try
+            {
+                mcpServer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Failed to stop the MCP server cleanly. Returned error: " + ex.Message);
+            }
+
+            mcpServer = null;
         }
 
         private void SetInitialDisplayMode()
@@ -319,6 +354,7 @@ namespace TSMapEditor.UI
 
         private void WindowManager_GameClosing(object sender, EventArgs e)
         {
+            StopMCPServer();
             mapFileWatcher.StopWatching();
             TranslatorSetup.DumpMissingValues();
         }
@@ -514,6 +550,8 @@ namespace TSMapEditor.UI
         private void ClearResources()
         {
             // We need to free memory of everything that we've ever created
+
+            StopMCPServer();
 
             map.Rules.TutorialLines.ShutdownFSW();
             windowController.OpenMapWindow.OnFileSelected -= OpenMapWindow_OnFileSelected;

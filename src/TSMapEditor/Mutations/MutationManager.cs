@@ -10,6 +10,8 @@ namespace TSMapEditor.Mutations
         public List<IMutation> UndoList { get; } = new List<IMutation>();
         public List<IMutation> RedoList { get; } = new List<IMutation>();
 
+        public int Revision { get; private set; }
+
         /// <summary>
         /// Performs a new mutation on the map.
         /// </summary>
@@ -19,6 +21,7 @@ namespace TSMapEditor.Mutations
             mutation.Perform();
             RedoList.Clear();
             UndoList.Add(mutation);
+            Revision++;
         }
 
         public bool CanUndo() => UndoList.Count > 0;
@@ -63,6 +66,7 @@ namespace TSMapEditor.Mutations
             UndoList[lastUndoIndex].Undo();
             RedoList.Add(UndoList[lastUndoIndex]);
             UndoList.RemoveAt(lastUndoIndex);
+            Revision++;
         }
 
         public bool CanRedo() => RedoList.Count > 0;
@@ -79,6 +83,7 @@ namespace TSMapEditor.Mutations
             RedoList[lastRedoIndex].Perform();
             UndoList.Add(RedoList[lastRedoIndex]);
             RedoList.RemoveAt(lastRedoIndex);
+            Revision++;
         }
 
         public void ClearUndoAndRedoLists()
