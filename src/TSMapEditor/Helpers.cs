@@ -848,6 +848,11 @@ namespace TSMapEditor
             }
         }
 
+        public static string SubCellToTranslatedString(SubCell subCell)
+        {
+            return Translate("SubCell." + subCell.ToString(), subCell.ToString());
+        }
+
         /// <summary>
         /// Shared helper function used by Triggers, TaskForces, Scripts, TeamTypes, and AI Triggers.
         /// Used to generate the name of the instance during the cloning process of those entities.

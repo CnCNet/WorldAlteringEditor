@@ -321,7 +321,7 @@ namespace TSMapEditor.Models
 
         public override Structure Clone()
         {
-            var clone = MemberwiseClone() as Structure;
+            var clone = (Structure)base.Clone();
 
             clone.Upgrades = Upgrades.ToArray();
 

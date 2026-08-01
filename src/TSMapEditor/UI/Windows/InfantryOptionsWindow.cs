@@ -108,7 +108,7 @@ namespace TSMapEditor.UI.Windows
 
         private void RefreshValues()
         {
-            string subCellString = Translate("SubCell." + infantry.SubCell.ToString(), infantry.SubCell.ToString());
+            string subCellString = Helpers.SubCellToTranslatedString(infantry.SubCell);
 
             lblSelectedInfantryValue.Text = string.Format(Translate(this, nameof(lblSelectedInfantryValue) + ".Format", "{0}, sub cell: {1}"), infantry.ObjectType.GetEditorDisplayName(), subCellString);
             trbStrength.Value = infantry.HP;

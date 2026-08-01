@@ -42,9 +42,24 @@ namespace TSMapEditor.Models
         }
 
         public virtual House Owner { get; set; }
+
+        /// <summary>
+        /// Unique object ID for this instance.
+        /// Assigned when the object is placed on map.
+        /// When zero or negative, this object should not be considered as placed on the map.
+        /// </summary>
+        public int ObjectId { get; set; }
+
         public int HP { get; set; }
         public virtual byte Facing { get; set; }
         public Tag AttachedTag { get; set; }
+
+        public override AbstractObject Clone()
+        {
+            var clone = (TechnoBase)base.Clone();
+            clone.ObjectId = 0;
+            return clone;
+        }
 
         public abstract double GetWeaponRange();
         public abstract double GetGuardRange();

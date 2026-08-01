@@ -110,6 +110,46 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetTileSets(nameFilter), cancellationToken);
     }
 
+    [McpServerTool(Name = "get_technos", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns unique buildings, vehicles, infantry, and aircraft from the current map with stable object IDs for use with modify_technos.")]
+    public async Task<MapTechnoQueryResult> GetTechnos(
+        [Description("Optional kind filter: Building, Unit or Vehicle, Infantry, or Aircraft.")] string rtti = null,
+        [Description("Optional case-insensitive partial INI type-name filter.")] string typeNameFilter = null,
+        [Description("Optional case-insensitive partial owner-name filter.")] string ownerNameFilter = null,
+        [Description("Optional X coordinate of a rectangular query area. Must be supplied together with y, width, and height.")] int? x = null,
+        [Description("Optional Y coordinate of a rectangular query area. Must be supplied together with x, width, and height.")] int? y = null,
+        [Description("Optional query-area width. Must be supplied together with x, y, and height.")] int? width = null,
+        [Description("Optional query-area height. Must be supplied together with x, y, and width.")] int? height = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetTechnos)}");
+
+        Rectangle? area = null;
+        bool hasAnyAreaValue = x.HasValue || y.HasValue || width.HasValue || height.HasValue;
+        if (hasAnyAreaValue)
+        {
+            if (!x.HasValue || !y.HasValue || !width.HasValue || !height.HasValue)
+                throw new McpException("x, y, width, and height must all be supplied when filtering technos by area.");
+            if (width.Value <= 0 || height.Value <= 0)
+                throw new McpException("The techno query area width and height must both be greater than zero.");
+            if (width.Value > MaxRegionDimension || height.Value > MaxRegionDimension || (long)width.Value * height.Value > MaxRegionCellCount)
+                throw new McpException($"The techno query area is too large. Each dimension may be at most {MaxRegionDimension} cells and the total area may be at most {MaxRegionCellCount} cells.");
+
+            area = new Rectangle(x.Value, y.Value, width.Value, height.Value);
+        }
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.GetTechnos(rtti, typeNameFilter, ownerNameFilter, area),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
     [McpServerTool(Name = "inspect_map_region", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns terrain, overlays, and placed map objects from a rectangular region of the open map.")]
     public Task<List<CellInfo>> InspectMapRegion(
@@ -130,6 +170,28 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(
             () => mapFacade.InspectRegion(new Rectangle(x, y, width, height)),
             cancellationToken);
+    }
+
+    [McpServerTool(Name = "modify_technos", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Atomically modifies properties of explicitly referenced technos. The entire batch is one undo entry and one revision bump.")]
+    public async Task<MapEditResult> ModifyTechnos(
+        [Description("One or more object ID references returned by get_technos or inspect_map_region.")] List<MapTechnoReference> technos,
+        [Description("Properties to apply to every selected techno. Properties that do not apply to every selected kind cause the entire call to fail.")] MapTechnoModificationProperties properties,
+        [Description("Optional map revision returned by get_technos. When supplied, modification fails if the map has changed; omit it to allow concurrent human edits.")] int? expectedRevision = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(ModifyTechnos)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.ModifyTechnos(technos, properties, expectedRevision),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
     }
 
     [McpServerTool(Name = "place_terrain_object", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]

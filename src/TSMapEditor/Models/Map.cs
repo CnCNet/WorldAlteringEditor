@@ -116,6 +116,8 @@ namespace TSMapEditor.Models
         public List<Unit> Units { get; private set; } = new List<Unit>();
         public List<Structure> Structures { get; private set; } = new List<Structure>();
 
+        private int nextTechnoObjectId = 1;
+
         /// <summary>
         /// The list of standard house types loaded from EditorRules.ini, or Rules.ini as a fallback.
         /// Relevant only when the map itself has no house types specified.
@@ -948,6 +950,8 @@ namespace TSMapEditor.Models
 
         public void PlaceBuilding(Structure structure)
         {
+            EnsureTechnoObjectId(structure);
+
             structure.ObjectType.ArtConfig.DoForFoundationCoordsOrOrigin(offset =>
             {
                 var cell = GetTile(structure.Position + offset);
@@ -1002,11 +1006,12 @@ namespace TSMapEditor.Models
             PlaceBuilding(structure);
         }
 
-        public void PlaceUnit(Unit unit)
+        public void PlaceUnit(Unit unit, bool allowOutOfBounds = false)
         {
-            var cell = GetTile(unit.Position);
+            var cell = allowOutOfBounds ? GetTile(unit.Position) : GetTileOrFail(unit.Position);
 
-            cell.Vehicles.Add(unit);
+            EnsureTechnoObjectId(unit);
+            cell?.Vehicles.Add(unit);
             Units.Add(unit);
         }
 
@@ -1032,13 +1037,15 @@ namespace TSMapEditor.Models
             PlaceUnit(unit);
         }
 
-        public void PlaceInfantry(Infantry infantry)
+        public void PlaceInfantry(Infantry infantry, bool allowOutOfBounds = false)
         {
-            var cell = GetTile(infantry.Position);
-            if (cell.Infantry[(int)infantry.SubCell] != null)
+            var cell = allowOutOfBounds ? GetTile(infantry.Position) : GetTileOrFail(infantry.Position);
+            if (cell != null && cell.Infantry[(int)infantry.SubCell] != null)
                 throw new InvalidOperationException("Cannot place infantry on an occupied sub-cell spot!");
 
-            cell.Infantry[(int)infantry.SubCell] = infantry;
+            EnsureTechnoObjectId(infantry);
+            if (cell != null)
+                cell.Infantry[(int)infantry.SubCell] = infantry;
             Infantry.Add(infantry);
         }
 
@@ -1067,11 +1074,12 @@ namespace TSMapEditor.Models
             PlaceInfantry(infantry);
         }
 
-        public void PlaceAircraft(Aircraft aircraft)
+        public void PlaceAircraft(Aircraft aircraft, bool allowOutOfBounds = false)
         {
-            var cell = GetTile(aircraft.Position);
+            var cell = allowOutOfBounds ? GetTile(aircraft.Position) : GetTileOrFail(aircraft.Position);
 
-            cell.Aircraft.Add(aircraft);
+            EnsureTechnoObjectId(aircraft);
+            cell?.Aircraft.Add(aircraft);
             Aircraft.Add(aircraft);
         }
 
@@ -1095,6 +1103,15 @@ namespace TSMapEditor.Models
             RemoveAircraft(aircraft);
             aircraft.Position = newCoords;
             PlaceAircraft(aircraft);
+        }
+
+        private void EnsureTechnoObjectId(TechnoBase techno)
+        {
+            if (techno.ObjectId == 0)
+            {
+                techno.ObjectId = nextTechnoObjectId + 1;
+                nextTechnoObjectId++;
+            }
         }
 
         public void AddTerrainObject(TerrainObject terrainObject)

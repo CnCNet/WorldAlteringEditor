@@ -396,29 +396,8 @@ namespace TSMapEditor.Initialization
 
                 FindAttachedTag(map, building, attachedTag);
 
-                bool isClear = false;
-
-                void ApplyFoundationCell(Point2D cellCoords)
-                {
-                    var tile = map.GetTile(cellCoords);
-                    if (tile != null)
-                    {
-                        tile.Structures.Add(building);
-                    }
-                }
-
-                bool IsFoundationCellOnMap(Point2D cellCoords) => map.GetTile(cellCoords) != null;
-
                 // Check that the building's origin cell is within the map. If it is not, we should not add the building to the map at all.
-                if (IsFoundationCellOnMap(building.Position))
-                {
-                    isClear = true;
-
-                    // Go through foundation cells and register the building to all tiles that are valid on its foundation.
-                    buildingType.ArtConfig.DoForFoundationCoordsOrOrigin(offset => ApplyFoundationCell(building.Position + offset));
-                }
-
-                if (!isClear)
+                if (map.GetTile(building.Position) == null)
                 {
                     AddMapLoadError(string.Format(Translate("MapLoader.CheckFoundationCell.TileOutOfBounds",
                         "Building {0} has been placed outside of the map at {1}. Skipping adding it to map."),
@@ -426,9 +405,7 @@ namespace TSMapEditor.Initialization
                     continue;
                 }
 
-                map.Structures.Add(building);
-
-                building.LightTiles(map.Tiles);
+                map.PlaceBuilding(building);
             }
 
             map.Structures.ForEach(s => s.UpdatePowerUpAnims());
@@ -489,13 +466,9 @@ namespace TSMapEditor.Initialization
 
                 FindAttachedTag(map, aircraft, attachedTag);
 
-                map.Aircraft.Add(aircraft);
                 var tile = map.GetTile(x, y);
-                if (tile != null)
-                {
-                    tile.Aircraft.Add(aircraft);
-                }
-                else
+                map.PlaceAircraft(aircraft, allowOutOfBounds: true);
+                if (tile == null)
                 {
                     AddMapLoadError(string.Format(Translate("MapLoader.ReadAircraft.AircraftOutsideOfMap",
                         "Warning: The map has an aircraft \"{0}\" ({1}) placed outside of the valid map area at {2}, {3}."),
@@ -563,13 +536,9 @@ namespace TSMapEditor.Initialization
 
                 FindAttachedTag(map, unit, attachedTag);
 
-                map.Units.Add(unit);
                 var tile = map.GetTile(x, y);
-                if (tile != null)
-                {
-                    tile.Vehicles.Add(unit);
-                }
-                else
+                map.PlaceUnit(unit, allowOutOfBounds: true);
+                if (tile == null)
                 {
                     AddMapLoadError(string.Format(Translate("MapLoader.ReadUnits.UnitOutsideOfMap",
                         "Warning: The map has a unit \"{0}\" ({1}) placed outside of the valid map area at {2}, {3}."),
@@ -646,18 +615,27 @@ namespace TSMapEditor.Initialization
 
                 FindAttachedTag(map, infantry, attachedTag);
 
-                map.Infantry.Add(infantry);
                 var tile = map.GetTile(x, y);
-                if (tile != null)
-                {
-                    tile.Infantry[(int)subCell] = infantry;
-                }
-                else
+
+                if (tile == null)
                 {
                     AddMapLoadError(string.Format(Translate("MapLoader.ReadInfantry.InfantryOutsideOfMap",
                         "Warning: The map has an infantry \"{0}\" ({1}) placed outside of the valid map area at {2}, {3}."),
                         infantryType.GetEditorDisplayName(), infantryTypeId, x, y));
                 }
+                else
+                {
+                    if (tile.Infantry[(int)subCell] != null)
+                    {
+                        AddMapLoadError(string.Format(Translate("MapLoader.ReadInfantry.MultipleInfantryOnSameSubCell",
+                                                "The map had multiple infantry on the same subcell \"{0}\" at {1}, {2}. Infantry of type \"{3}\" ({4}) was not placed on the map."),
+                                                Helpers.SubCellToTranslatedString(subCell), x, y, infantry.ObjectType.GetEditorDisplayName(), infantry.ObjectType.ININame));
+                        continue;
+                    }
+                }
+
+                map.PlaceInfantry(infantry, allowOutOfBounds: true);
+
             }
 
             Logger.Log("Infantry read successfully.");

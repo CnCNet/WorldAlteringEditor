@@ -42,8 +42,10 @@ public class MapOverlayInfo : MapObjectInfo
 
 public class MapTechnoInfo : MapObjectInfo
 {
-    public MapTechnoInfo(string rtti, int x, int y, string iniName, string owner, byte facing, int hp, string attachedTag, string attachedTagID) : base(rtti, x, y, iniName)
+    public MapTechnoInfo(string rtti, int objectId, int index, int x, int y, string iniName, string owner, byte facing, int hp, string attachedTag, string attachedTagID) : base(rtti, x, y, iniName)
     {
+        ObjectId = objectId;
+        Index = index;
         Owner = owner;
         Facing = facing;
         HP = hp;
@@ -51,6 +53,8 @@ public class MapTechnoInfo : MapObjectInfo
         AttachedTagID = attachedTagID;
     }
 
+    public int ObjectId { get; }
+    public int Index { get; }
     public int HP { get; }
     public string AttachedTag { get; }
     public string AttachedTagID { get; }
@@ -60,9 +64,9 @@ public class MapTechnoInfo : MapObjectInfo
 
 public class MapBuildingInfo : MapTechnoInfo
 {
-    public MapBuildingInfo(string rtti, int x, int y, string iniName, string owner, byte facing, int hp, string attachedTag, string attachedTagID,
+    public MapBuildingInfo(string rtti, int objectId, int index, int x, int y, string iniName, string owner, byte facing, int hp, string attachedTag, string attachedTagID,
         bool aiSellable, bool aiRebuildable, bool powered, bool aiRepairable, bool nominal, int spotlight, List<string> upgrades)
-        : base(rtti, x, y, iniName, owner, facing, hp, attachedTag, attachedTagID)
+        : base(rtti, objectId, index, x, y, iniName, owner, facing, hp, attachedTag, attachedTagID)
     {
         AISellable = aiSellable;
         AIRebuildable = aiRebuildable;
@@ -84,9 +88,9 @@ public class MapBuildingInfo : MapTechnoInfo
 
 public class MapFootInfo : MapTechnoInfo
 {
-    public MapFootInfo(string rtti, int x, int y, string iniName, string owner, byte facing, int hp, string attachedTag, string attachedTagID, string mission,
+    public MapFootInfo(string rtti, int objectId, int index, int x, int y, string iniName, string owner, byte facing, int hp, string attachedTag, string attachedTagID, string mission,
         bool onBridge, int veterancy, int group, bool autocreateNoRecruitable, bool autocreateYesRecruitable, int? subCell)
-        : base(rtti, x, y, iniName, owner, facing, hp, attachedTag, attachedTagID)
+        : base(rtti, objectId, index, x, y, iniName, owner, facing, hp, attachedTag, attachedTagID)
     {
         Mission = mission;
         OnBridge = onBridge;
@@ -136,26 +140,57 @@ public class CellInfo
     public List<MapBuildingInfo> BuildingInfos { get; }
     public List<MapFootInfo> FootInfos { get; }
 
-    public static CellInfo FromMapCell(ITheater theater, MapTile mapTile)
+    public static CellInfo FromMapCell(Map map, MapTile mapTile)
     {
+        ITheater theater = map.TheaterInstance;
         int tileSetIndex = theater.GetTileSetId(mapTile.TileIndex);
         var tileSet = theater.Theater.TileSets[tileSetIndex];
 
         var terrainObjectInfo = mapTile.TerrainObject == null ? null : new MapObjectInfo(RTTIType.Terrain.ToString(), mapTile.TerrainObject.Position.X, mapTile.TerrainObject.Position.Y, mapTile.TerrainObject.TerrainType.ININame);
         var overlayInfo = mapTile.Overlay == null ? null : new MapOverlayInfo(mapTile.Overlay.Position.X, mapTile.Overlay.Position.Y, mapTile.Overlay.OverlayType.ININame, mapTile.Overlay.FrameIndex);
-        var buildingInfos = mapTile.Structures.Select(s => new MapBuildingInfo(s.WhatAmI().ToString(), s.Position.X, s.Position.Y, s.ObjectType.ININame, s.Owner.ININame,
-            s.Facing, s.HP, s.AttachedTag?.Name, s.AttachedTag?.ID, s.AISellable, s.AIRebuildable, s.Powered, s.AIRepairable, s.Nominal, (int)s.Spotlight,
-            s.Upgrades.Select(upgrade => upgrade?.ININame).ToList())).ToList();
-        var vehicleInfos = mapTile.Vehicles.Select(v => new MapFootInfo(v.WhatAmI().ToString(), v.Position.X, v.Position.Y, v.ObjectType.ININame, v.Owner.ININame,
-            v.Facing, v.HP, v.AttachedTag?.Name, v.AttachedTag?.ID, v.Mission, v.High, v.Veterancy, v.Group, v.AutocreateNoRecruitable, v.AutocreateYesRecruitable, null));
-        var infantryInfos = mapTile.Infantry.Where(i => i != null).Select(i => new MapFootInfo(i.WhatAmI().ToString(), i.Position.X, i.Position.Y, i.ObjectType.ININame, i.Owner.ININame,
-            i.Facing, i.HP, i.AttachedTag?.Name, i.AttachedTag?.ID, i.Mission, i.High, i.Veterancy, i.Group, i.AutocreateNoRecruitable, i.AutocreateYesRecruitable, (int)i.SubCell));
-        var aircraftInfos = mapTile.Aircraft.Select(a => new MapFootInfo(a.WhatAmI().ToString(), a.Position.X, a.Position.Y, a.ObjectType.ININame, a.Owner.ININame,
-            a.Facing, a.HP, a.AttachedTag?.Name, a.AttachedTag?.ID, a.Mission, a.High, a.Veterancy, a.Group, a.AutocreateNoRecruitable, a.AutocreateYesRecruitable, null));
+        var buildingInfos = mapTile.Structures.Select(s => (MapBuildingInfo)FromTechno(map, s)).ToList();
+        var vehicleInfos = mapTile.Vehicles.Select(v => (MapFootInfo)FromTechno(map, v));
+        var infantryInfos = mapTile.Infantry.Where(i => i != null).Select(i => (MapFootInfo)FromTechno(map, i));
+        var aircraftInfos = mapTile.Aircraft.Select(a => (MapFootInfo)FromTechno(map, a));
 
         return new CellInfo(mapTile.X, mapTile.Y, tileSet.SetName, mapTile.TileIndex, mapTile.TileIndex - tileSet.StartTileIndex,
             mapTile.SubTileIndex, mapTile.Level, terrainObjectInfo, overlayInfo, buildingInfos,
             vehicleInfos.Concat(infantryInfos).Concat(aircraftInfos).ToList());
+    }
+
+    public static MapTechnoInfo FromTechno(Map map, TechnoBase techno)
+    {
+        if (techno is Structure structure)
+        {
+            return new MapBuildingInfo(structure.WhatAmI().ToString(), structure.ObjectId, map.Structures.IndexOf(structure), structure.Position.X, structure.Position.Y,
+                structure.ObjectType.ININame, structure.Owner.ININame, structure.Facing, structure.HP, structure.AttachedTag?.Name, structure.AttachedTag?.ID,
+                structure.AISellable, structure.AIRebuildable, structure.Powered, structure.AIRepairable, structure.Nominal, (int)structure.Spotlight,
+                structure.Upgrades.Select(upgrade => upgrade?.ININame).ToList());
+        }
+
+        if (techno is Unit unit)
+        {
+            return new MapFootInfo(unit.WhatAmI().ToString(), unit.ObjectId, map.Units.IndexOf(unit), unit.Position.X, unit.Position.Y, unit.ObjectType.ININame, unit.Owner.ININame,
+                unit.Facing, unit.HP, unit.AttachedTag?.Name, unit.AttachedTag?.ID, unit.Mission, unit.High, unit.Veterancy, unit.Group,
+                unit.AutocreateNoRecruitable, unit.AutocreateYesRecruitable, null);
+        }
+
+        if (techno is Infantry infantry)
+        {
+            return new MapFootInfo(infantry.WhatAmI().ToString(), infantry.ObjectId, map.Infantry.IndexOf(infantry), infantry.Position.X, infantry.Position.Y,
+                infantry.ObjectType.ININame, infantry.Owner.ININame, infantry.Facing, infantry.HP, infantry.AttachedTag?.Name, infantry.AttachedTag?.ID,
+                infantry.Mission, infantry.High, infantry.Veterancy, infantry.Group, infantry.AutocreateNoRecruitable, infantry.AutocreateYesRecruitable,
+                (int)infantry.SubCell);
+        }
+
+        if (techno is Aircraft aircraft)
+        {
+            return new MapFootInfo(aircraft.WhatAmI().ToString(), aircraft.ObjectId, map.Aircraft.IndexOf(aircraft), aircraft.Position.X, aircraft.Position.Y,
+                aircraft.ObjectType.ININame, aircraft.Owner.ININame, aircraft.Facing, aircraft.HP, aircraft.AttachedTag?.Name, aircraft.AttachedTag?.ID,
+                aircraft.Mission, aircraft.High, aircraft.Veterancy, aircraft.Group, aircraft.AutocreateNoRecruitable, aircraft.AutocreateYesRecruitable, null);
+        }
+
+        throw new ArgumentException($"Unsupported techno type {techno.WhatAmI()}.", nameof(techno));
     }
 }
 
@@ -261,6 +296,8 @@ public sealed class MapFacadeValidationException : Exception
 /// </summary>
 public class MapFacade
 {
+    private const int MaxTechnoQueryResults = 1_000;
+
     private static readonly string[] ValidMissions = new[]
     {
         "Ambush", "Area Guard", "Attack", "Capture", "Construction", "Enter", "Guard", "Harmless", "Harvest", "Hunt", "Missile", "Move", "Open",
@@ -374,6 +411,33 @@ public class MapFacade
         return GetTechnoTypes(map.Rules.UnitTypes, nameFilter);
     }
 
+    public MapTechnoQueryResult GetTechnos(string rttiFilter, string typeNameFilter, string ownerNameFilter, Rectangle? area)
+    {
+        string normalizedRTTI = NormalizeTechnoRTTI(rttiFilter);
+        IEnumerable<TechnoBase> technos = map.Structures.Cast<TechnoBase>()
+            .Concat(map.Units)
+            .Concat(map.Infantry)
+            .Concat(map.Aircraft);
+
+        if (normalizedRTTI != null)
+            technos = technos.Where(techno => techno.WhatAmI().ToString() == normalizedRTTI);
+        if (!string.IsNullOrWhiteSpace(typeNameFilter))
+            technos = technos.Where(techno => ContainsIgnoringCase(techno.GetObjectType().ININame, typeNameFilter.Trim()));
+        if (!string.IsNullOrWhiteSpace(ownerNameFilter))
+            technos = technos.Where(techno => ContainsIgnoringCase(techno.Owner?.ININame, ownerNameFilter.Trim()));
+        if (area.HasValue)
+            technos = technos.Where(techno => area.Value.Contains(techno.Position.X, techno.Position.Y));
+
+        var result = technos.Select(techno => CellInfo.FromTechno(map, techno)).ToList();
+        if (result.Count > MaxTechnoQueryResults)
+        {
+            throw new MapFacadeValidationException(
+                $"The query matched {result.Count} technos, exceeding the limit of {MaxTechnoQueryResults}. Add type, owner, kind, or area filters.");
+        }
+
+        return new MapTechnoQueryResult(mutationManager.Revision, result);
+    }
+
     public List<MapHouseInfo> GetHouses(string nameFilter = null)
     {
         string normalizedFilter = nameFilter?.Trim();
@@ -425,11 +489,58 @@ public class MapFacade
                 if (mapCell == null)
                     continue;
 
-                returnValue.Add(CellInfo.FromMapCell(map.TheaterInstance, mapCell));
+                returnValue.Add(CellInfo.FromMapCell(map, mapCell));
             }
         }
 
         return returnValue;
+    }
+
+    public MapEditResult ModifyTechnos(List<MapTechnoReference> technoReferences, MapTechnoModificationProperties properties, int? expectedRevision)
+    {
+        if (expectedRevision.HasValue && expectedRevision.Value != mutationManager.Revision)
+        {
+            throw new MapFacadeValidationException(
+                $"The map revision changed from {expectedRevision.Value} to {mutationManager.Revision}. Query the technos again before modifying them, or omit expectedRevision to allow concurrent edits.");
+        }
+
+        if (technoReferences == null || technoReferences.Count == 0)
+            throw new MapFacadeValidationException("At least one techno reference must be provided.");
+        if (technoReferences.Count > MaxTechnoQueryResults)
+            throw new MapFacadeValidationException($"At most {MaxTechnoQueryResults} technos can be modified in one call.");
+        if (properties == null || !HasAnyModification(properties))
+            throw new MapFacadeValidationException("At least one property modification must be provided.");
+
+        ValidateCommonModificationProperties(properties);
+
+        var technos = technoReferences.Select(ResolveTechnoReference).ToList();
+        if (technos.Distinct().Count() != technos.Count)
+            throw new MapFacadeValidationException("The techno reference list contains duplicates.");
+
+        var changes = new List<TechnoPropertyChange>();
+        foreach (var techno in technos)
+        {
+            var oldProperties = TechnoPropertiesSnapshot.Capture(techno);
+            var newProperties = TechnoPropertiesSnapshot.Capture(techno);
+            ApplyModificationProperties(techno, newProperties, properties);
+
+            if (!oldProperties.HasSameValuesAs(newProperties))
+                changes.Add(new TechnoPropertyChange(techno, oldProperties, newProperties));
+        }
+
+        if (changes.Count == 0)
+            throw new MapFacadeValidationException("All selected technos already have the requested property values.");
+
+        mutationManager.PerformMutation(new ModifyTechnosMutation(mutationTarget, changes));
+
+        var affectedCells = technos
+            .Select(techno => map.GetTile(techno.Position))
+            .Where(mapTile => mapTile != null)
+            .Distinct()
+            .Select(mapTile => CellInfo.FromMapCell(map, mapTile))
+            .ToList();
+
+        return new MapEditResult(mutationManager.Revision, affectedCells);
     }
 
     public MapEditResult PlaceTerrainObject(string terrainTypeName, int x, int y)
@@ -466,7 +577,7 @@ public class MapFacade
 
         return new MapEditResult(
             mutationManager.Revision,
-            new List<CellInfo> { CellInfo.FromMapCell(map.TheaterInstance, mapTile) });
+            new List<CellInfo> { CellInfo.FromMapCell(map, mapTile) });
     }
 
     public MapEditResult PlaceBuilding(string buildingTypeName, string ownerName, int x, int y, bool allowOverlap, MapBuildingPlacementProperties properties)
@@ -535,7 +646,7 @@ public class MapFacade
 
         return new MapEditResult(
             mutationManager.Revision,
-            foundationCells.Select(cell => CellInfo.FromMapCell(map.TheaterInstance, cell)).ToList());
+            foundationCells.Select(cell => CellInfo.FromMapCell(map, cell)).ToList());
     }
 
     public MapEditResult PlaceAircraft(string aircraftTypeName, string ownerName, int x, int y, bool allowOverlap, MapFootPlacementProperties properties)
@@ -581,7 +692,7 @@ public class MapFacade
 
         return new MapEditResult(
             mutationManager.Revision,
-            new List<CellInfo> { CellInfo.FromMapCell(map.TheaterInstance, map.GetTile(cellCoords)) });
+            new List<CellInfo> { CellInfo.FromMapCell(map, map.GetTile(cellCoords)) });
     }
 
     public MapEditResult PlaceInfantry(string infantryTypeName, string ownerName, int x, int y, MapFootPlacementProperties properties)
@@ -629,7 +740,7 @@ public class MapFacade
 
         return new MapEditResult(
             mutationManager.Revision,
-            new List<CellInfo> { CellInfo.FromMapCell(map.TheaterInstance, mapTile) });
+            new List<CellInfo> { CellInfo.FromMapCell(map, mapTile) });
     }
 
     public MapEditResult PlaceVehicle(string vehicleTypeName, string ownerName, int x, int y, bool allowOverlap, MapFootPlacementProperties properties)
@@ -674,7 +785,7 @@ public class MapFacade
 
         return new MapEditResult(
             mutationManager.Revision,
-            new List<CellInfo> { CellInfo.FromMapCell(map.TheaterInstance, map.GetTile(cellCoords)) });
+            new List<CellInfo> { CellInfo.FromMapCell(map, map.GetTile(cellCoords)) });
     }
 
     public MapEditResult PlaceTerrainTile(string tileSetName, int tileIndexInTileSet, int x, int y,
@@ -772,7 +883,159 @@ public class MapFacade
 
         return new MapEditResult(
             mutationManager.Revision,
-            new List<CellInfo> { CellInfo.FromMapCell(map.TheaterInstance, mapTile) });
+            new List<CellInfo> { CellInfo.FromMapCell(map, mapTile) });
+    }
+
+    private void ApplyModificationProperties(TechnoBase techno, TechnoPropertiesSnapshot snapshot, MapTechnoModificationProperties properties)
+    {
+        if (properties.Owner != null)
+            snapshot.Owner = ResolveHouse(properties.Owner);
+        if (properties.Health.HasValue)
+            snapshot.Health = properties.Health.Value;
+        if (properties.Facing.HasValue)
+            snapshot.Facing = (byte)properties.Facing.Value;
+        if (properties.AttachedTag != null)
+            snapshot.AttachedTag = ResolveAttachedTag(properties.AttachedTag);
+        else if (properties.ClearAttachedTag)
+            snapshot.AttachedTag = null;
+
+        if (techno is Structure structure)
+        {
+            if (HasFootModification(properties))
+                throw new MapFacadeValidationException("Mobile techno properties cannot be applied to buildings.");
+
+            ApplyBuildingModificationProperties(structure, snapshot, properties);
+            return;
+        }
+
+        if (HasBuildingModification(properties))
+            throw new MapFacadeValidationException("Building properties cannot be applied to Unit, Infantry, or Aircraft objects.");
+        if (techno is Aircraft && properties.OnBridge.HasValue)
+            throw new MapFacadeValidationException("The onBridge property is not valid for aircraft.");
+
+        if (properties.Mission != null)
+            snapshot.Mission = ResolveMission(properties.Mission);
+        if (properties.Veterancy.HasValue)
+            snapshot.Veterancy = properties.Veterancy.Value;
+        if (properties.Group.HasValue)
+            snapshot.Group = properties.Group.Value;
+        if (properties.OnBridge.HasValue)
+            snapshot.OnBridge = properties.OnBridge.Value;
+        if (properties.AutocreateNoRecruitable.HasValue)
+            snapshot.AutocreateNoRecruitable = properties.AutocreateNoRecruitable.Value;
+        if (properties.AutocreateYesRecruitable.HasValue)
+            snapshot.AutocreateYesRecruitable = properties.AutocreateYesRecruitable.Value;
+    }
+
+    private void ApplyBuildingModificationProperties(Structure structure, TechnoPropertiesSnapshot snapshot, MapTechnoModificationProperties properties)
+    {
+        if (properties.AISellable.HasValue)
+            snapshot.AISellable = properties.AISellable.Value;
+        if (properties.AIRebuildable.HasValue)
+            snapshot.AIRebuildable = properties.AIRebuildable.Value;
+        if (properties.Powered.HasValue)
+            snapshot.Powered = properties.Powered.Value;
+        if (properties.AIRepairable.HasValue)
+            snapshot.AIRepairable = properties.AIRepairable.Value;
+        if (properties.Nominal.HasValue)
+            snapshot.Nominal = properties.Nominal.Value;
+        if (properties.Spotlight.HasValue)
+            snapshot.Spotlight = (SpotlightType)properties.Spotlight.Value;
+
+        ApplyBuildingUpgradeModification(structure, snapshot, properties.Upgrade1, properties.ClearUpgrade1, 0);
+        ApplyBuildingUpgradeModification(structure, snapshot, properties.Upgrade2, properties.ClearUpgrade2, 1);
+        ApplyBuildingUpgradeModification(structure, snapshot, properties.Upgrade3, properties.ClearUpgrade3, 2);
+    }
+
+    private void ApplyBuildingUpgradeModification(Structure structure, TechnoPropertiesSnapshot snapshot, string upgradeName, bool clearUpgrade, int upgradeIndex)
+    {
+        if (upgradeName == null && !clearUpgrade)
+            return;
+
+        if (upgradeIndex >= structure.ObjectType.Upgrades)
+        {
+            throw new MapFacadeValidationException(
+                $"Building type '{structure.ObjectType.ININame}' does not support upgrade slot #{upgradeIndex + 1}.");
+        }
+
+        snapshot.Upgrades[upgradeIndex] = clearUpgrade ? null : ResolveBuildingUpgrade(structure.ObjectType, upgradeName, upgradeIndex);
+    }
+
+    private void ValidateCommonModificationProperties(MapTechnoModificationProperties properties)
+    {
+        if (properties.Health.HasValue && (properties.Health.Value < 1 || properties.Health.Value > Constants.ObjectHealthMax))
+            throw new MapFacadeValidationException($"Health must be from 1 through {Constants.ObjectHealthMax}.");
+        if (properties.Facing.HasValue && (properties.Facing.Value < 0 || properties.Facing.Value > Constants.FacingMax))
+            throw new MapFacadeValidationException($"Facing must be from 0 through {Constants.FacingMax}.");
+        if (properties.AttachedTag != null && properties.ClearAttachedTag)
+            throw new MapFacadeValidationException("attachedTag and clearAttachedTag cannot be used together.");
+        if (properties.Veterancy.HasValue && Array.IndexOf(ValidVeterancyLevels, properties.Veterancy.Value) < 0)
+            throw new MapFacadeValidationException("Veterancy must be 0, 50, 100, 150, or 200.");
+        if (properties.Mission != null)
+            ResolveMission(properties.Mission);
+        if (properties.Spotlight.HasValue && !Enum.IsDefined(typeof(SpotlightType), properties.Spotlight.Value))
+            throw new MapFacadeValidationException("Spotlight must be 0, 1, or 2.");
+        if (properties.Upgrade1 != null && properties.ClearUpgrade1)
+            throw new MapFacadeValidationException("upgrade1 and clearUpgrade1 cannot be used together.");
+        if (properties.Upgrade2 != null && properties.ClearUpgrade2)
+            throw new MapFacadeValidationException("upgrade2 and clearUpgrade2 cannot be used together.");
+        if (properties.Upgrade3 != null && properties.ClearUpgrade3)
+            throw new MapFacadeValidationException("upgrade3 and clearUpgrade3 cannot be used together.");
+
+        if (properties.Owner != null)
+            ResolveHouse(properties.Owner);
+        if (properties.AttachedTag != null)
+            ResolveAttachedTag(properties.AttachedTag);
+    }
+
+    private TechnoBase ResolveTechnoReference(MapTechnoReference technoReference)
+    {
+        if (technoReference == null)
+            throw new MapFacadeValidationException("A techno reference cannot be null.");
+        if (technoReference.ObjectId <= 0)
+            throw new MapFacadeValidationException("A techno reference objectId must be greater than zero.");
+
+        TechnoBase techno = map.Structures.Cast<TechnoBase>()
+            .Concat(map.Units)
+            .Concat(map.Infantry)
+            .Concat(map.Aircraft)
+            .FirstOrDefault(candidate => candidate.ObjectId == technoReference.ObjectId);
+
+        return techno ?? throw new MapFacadeValidationException($"Techno objectId {technoReference.ObjectId} does not exist on the current map.");
+    }
+
+    private House ResolveHouse(string ownerName)
+    {
+        if (string.IsNullOrWhiteSpace(ownerName))
+            throw new MapFacadeValidationException("An owner house name cannot be empty.");
+
+        return map.GetHouses().Find(house => string.Equals(house.ININame, ownerName, StringComparison.OrdinalIgnoreCase)) ??
+            throw new MapFacadeValidationException($"House '{ownerName}' does not exist on the map.");
+    }
+
+    private static string ResolveMission(string missionName)
+    {
+        string mission = Array.Find(ValidMissions, validMission => string.Equals(validMission, missionName, StringComparison.OrdinalIgnoreCase));
+        return mission ?? throw new MapFacadeValidationException($"Mission '{missionName}' is not available in the editor.");
+    }
+
+    private static bool HasAnyModification(MapTechnoModificationProperties properties)
+    {
+        return properties.Owner != null || properties.Health.HasValue || properties.Facing.HasValue || properties.AttachedTag != null || properties.ClearAttachedTag ||
+            HasFootModification(properties) || HasBuildingModification(properties);
+    }
+
+    private static bool HasFootModification(MapTechnoModificationProperties properties)
+    {
+        return properties.Mission != null || properties.Veterancy.HasValue || properties.Group.HasValue || properties.OnBridge.HasValue ||
+            properties.AutocreateNoRecruitable.HasValue || properties.AutocreateYesRecruitable.HasValue;
+    }
+
+    private static bool HasBuildingModification(MapTechnoModificationProperties properties)
+    {
+        return properties.AISellable.HasValue || properties.AIRebuildable.HasValue || properties.Powered.HasValue || properties.AIRepairable.HasValue ||
+            properties.Nominal.HasValue || properties.Spotlight.HasValue || properties.Upgrade1 != null || properties.Upgrade2 != null || properties.Upgrade3 != null ||
+            properties.ClearUpgrade1 || properties.ClearUpgrade2 || properties.ClearUpgrade3;
     }
 
     private void ApplyBuildingPlacementProperties(Structure structure, MapBuildingPlacementProperties properties)
@@ -814,27 +1077,32 @@ public class MapFacade
         if (upgradeName == null)
             return false;
 
+        structure.Upgrades[upgradeIndex] = ResolveBuildingUpgrade(structure.ObjectType, upgradeName, upgradeIndex);
+        return true;
+    }
+
+    private BuildingType ResolveBuildingUpgrade(BuildingType buildingType, string upgradeName, int upgradeIndex)
+    {
         if (string.IsNullOrWhiteSpace(upgradeName))
             throw new MapFacadeValidationException($"Building upgrade #{upgradeIndex + 1} cannot be empty.");
 
-        if (upgradeIndex >= structure.ObjectType.Upgrades)
+        if (upgradeIndex >= buildingType.Upgrades)
         {
             throw new MapFacadeValidationException(
-                $"Building type '{structure.ObjectType.ININame}' does not support upgrade slot #{upgradeIndex + 1}.");
+                $"Building type '{buildingType.ININame}' does not support upgrade slot #{upgradeIndex + 1}.");
         }
 
         var upgrade = map.Rules.BuildingTypes.Find(bt => string.Equals(bt.ININame, upgradeName, StringComparison.OrdinalIgnoreCase));
         if (upgrade == null)
             throw new MapFacadeValidationException($"Building upgrade type '{upgradeName}' does not exist in the loaded rules.");
 
-        if (!string.Equals(upgrade.PowersUpBuilding, structure.ObjectType.ININame, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(upgrade.PowersUpBuilding, buildingType.ININame, StringComparison.OrdinalIgnoreCase))
         {
             throw new MapFacadeValidationException(
-                $"Building type '{upgrade.ININame}' is not a valid upgrade for '{structure.ObjectType.ININame}'.");
+                $"Building type '{upgrade.ININame}' is not a valid upgrade for '{buildingType.ININame}'.");
         }
 
-        structure.Upgrades[upgradeIndex] = upgrade;
-        return true;
+        return upgrade;
     }
 
     private void ApplyFootPlacementProperties<T>(Foot<T> foot, MapFootPlacementProperties properties, bool supportsOnBridge, bool supportsSubCell)
@@ -974,6 +1242,26 @@ public class MapFacade
             editorCategory = technoType.Owner;
 
         return string.IsNullOrWhiteSpace(editorCategory) ? "Uncategorized" : editorCategory;
+    }
+
+    private static string NormalizeTechnoRTTI(string rtti)
+    {
+        if (string.IsNullOrWhiteSpace(rtti))
+            return null;
+
+        string normalizedRTTI = rtti.Trim();
+        if (string.Equals(normalizedRTTI, nameof(RTTIType.Building), StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedRTTI, "Structure", StringComparison.OrdinalIgnoreCase))
+            return nameof(RTTIType.Building);
+        if (string.Equals(normalizedRTTI, nameof(RTTIType.Unit), StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedRTTI, "Vehicle", StringComparison.OrdinalIgnoreCase))
+            return nameof(RTTIType.Unit);
+        if (string.Equals(normalizedRTTI, nameof(RTTIType.Infantry), StringComparison.OrdinalIgnoreCase))
+            return nameof(RTTIType.Infantry);
+        if (string.Equals(normalizedRTTI, nameof(RTTIType.Aircraft), StringComparison.OrdinalIgnoreCase))
+            return nameof(RTTIType.Aircraft);
+
+        throw new MapFacadeValidationException($"RTTI '{rtti}' is not a techno kind. Use Building, Unit, Infantry, or Aircraft.");
     }
 
     private static bool ContainsIgnoringCase(string value, string searchValue)

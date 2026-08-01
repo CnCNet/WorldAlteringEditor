@@ -62,7 +62,10 @@ namespace TSMapEditor.Initialization
         void AddScript(Script script);
         void AddTeamType(TeamType teamType);
 
-        void PlaceUnit(Unit unit);
+        void PlaceBuilding(Structure structure);
+        void PlaceUnit(Unit unit, bool allowOutOfBounds = false);
+        void PlaceInfantry(Infantry infantry, bool allowOutOfBounds = false);
+        void PlaceAircraft(Aircraft aircraft, bool allowOutOfBounds = false);
         void RemoveUnit(Unit unit);
 
         void DoForAllValidTiles(Action<MapTile> action);
