@@ -48,6 +48,9 @@ namespace TSMapEditor.Mutations.Classes
         private const float NodeScoreJitterAmplitude = 0.02f;
 
         private readonly List<ConnectedTileUndoData> undoData = new List<ConnectedTileUndoData>();
+        private readonly HashSet<Point2D> affectedCellCoords = new HashSet<Point2D>();
+
+        public IReadOnlyCollection<Point2D> AffectedCellCoords => affectedCellCoords;
 
         private readonly List<Point2D> path;
         private readonly ConnectedTileType connectedTileType;
@@ -255,6 +258,7 @@ namespace TSMapEditor.Mutations.Classes
                         SubTileIndex = mapTile.SubTileIndex,
                         Level = mapTile.Level
                     });
+                    affectedCellCoords.Add(new Point2D(cx, cy));
 
                     mapTile.ChangeTileIndex(tile.TileID, (byte)i);
                     mapTile.Level = (byte)Math.Min(originLevel + image.TmpImage.Height, Constants.MaxMapHeightLevel);
@@ -279,6 +283,7 @@ namespace TSMapEditor.Mutations.Classes
             }
 
             undoData.Clear();
+            affectedCellCoords.Clear();
             MutationTarget.InvalidateMap();
         }
     }

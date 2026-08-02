@@ -466,7 +466,6 @@ namespace TSMapEditor.Models
         public string IniName { get; }
         public string Name { get; }
         public bool FrontOnly { get; }
-        public bool IsLegal { get; set; } = true;
         public Color? Color { get; set; }
         public List<string> AllowedTheaters { get; set; }
         public List<ConnectedTile> Tiles { get; }

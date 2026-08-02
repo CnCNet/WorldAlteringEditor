@@ -312,6 +312,7 @@ public class MapFacade
 {
     private const int MaxTechnoQueryResults = 1_000;
     private const int MaxObjectDeletionCount = 1_000;
+    private const int MaxConnectedTilePathVertexCount = 256;
     private const int MaxMapOperationDimension = 256;
     private const int MaxMapOperationCellCount = 10_000;
 
@@ -417,6 +418,25 @@ public class MapFacade
                 typeInfo.Frames.Exists(frame => ContainsIgnoringCase(frame.OverlayININame, normalizedFilter)))
             .OrderBy(typeInfo => typeInfo.UIName)
             .ThenBy(typeInfo => typeInfo.Name)
+            .ToList();
+    }
+
+    public List<MapConnectedTileTypeInfo> GetConnectedTileTypes(string nameFilter = null)
+    {
+        string normalizedFilter = nameFilter?.Trim();
+
+        return map.EditorConfig.Cliffs
+            .Where(IsConnectedTileTypeAvailable)
+            .Select(connectedTileType => new MapConnectedTileTypeInfo(
+                connectedTileType.IniName,
+                connectedTileType.Name,
+                connectedTileType.FrontOnly,
+                connectedTileType.Tiles.Count))
+            .Where(typeInfo => string.IsNullOrWhiteSpace(normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.ININame, normalizedFilter) ||
+                ContainsIgnoringCase(typeInfo.Name, normalizedFilter))
+            .OrderBy(typeInfo => typeInfo.Name)
+            .ThenBy(typeInfo => typeInfo.ININame)
             .ToList();
     }
 
@@ -777,6 +797,81 @@ public class MapFacade
             affectedMapTiles.Select(mapTile => CellInfo.FromMapCell(map, mapTile)).ToList());
     }
 
+    public MapEditResult DrawConnectedTiles(string connectedTileTypeName, List<MapConnectedTilePathVertex> path,
+        string side, int randomSeed, int extraHeight)
+    {
+        if (string.IsNullOrWhiteSpace(connectedTileTypeName))
+            throw new MapFacadeValidationException("A connected tile type INI name must be provided.");
+
+        var connectedTileType = map.EditorConfig.Cliffs.Find(
+            candidate => string.Equals(candidate.IniName, connectedTileTypeName, StringComparison.OrdinalIgnoreCase));
+        if (connectedTileType == null)
+            throw new MapFacadeValidationException($"Connected tile type '{connectedTileTypeName}' does not exist in the editor configuration.");
+        if (!IsConnectedTileTypeAvailableInTheater(connectedTileType))
+            throw new MapFacadeValidationException($"Connected tile type '{connectedTileType.IniName}' is not valid for theater '{map.LoadedTheaterName}'.");
+
+        if (path == null)
+            throw new MapFacadeValidationException("A connected tile path must be provided.");
+        if (path.Count < 2)
+            throw new MapFacadeValidationException("A connected tile path must contain at least two vertices.");
+        if (path.Count > MaxConnectedTilePathVertexCount)
+            throw new MapFacadeValidationException($"A connected tile path may contain at most {MaxConnectedTilePathVertexCount} vertices.");
+
+        var pathCoords = new List<Point2D>(path.Count);
+        for (int i = 0; i < path.Count; i++)
+        {
+            MapConnectedTilePathVertex vertex = path[i];
+            if (vertex == null)
+                throw new MapFacadeValidationException($"Connected tile path vertex {i} cannot be null.");
+
+            var coords = new Point2D(vertex.X, vertex.Y);
+            if (map.GetTile(coords) == null)
+                throw new MapFacadeValidationException($"Connected tile path vertex {i} at ({vertex.X}, {vertex.Y}) is outside the map.");
+            if (i > 0 && coords == pathCoords[i - 1])
+                throw new MapFacadeValidationException($"Connected tile path vertices {i - 1} and {i} cannot have the same coordinates.");
+
+            pathCoords.Add(coords);
+        }
+
+        ConnectedTileSide startingSide;
+        if (string.Equals(side, nameof(ConnectedTileSide.Front), StringComparison.OrdinalIgnoreCase))
+            startingSide = ConnectedTileSide.Front;
+        else if (string.Equals(side, nameof(ConnectedTileSide.Back), StringComparison.OrdinalIgnoreCase))
+            startingSide = ConnectedTileSide.Back;
+        else
+            throw new MapFacadeValidationException("Connected tile side must be Front or Back.");
+
+        if (connectedTileType.FrontOnly && startingSide != ConnectedTileSide.Front)
+            throw new MapFacadeValidationException($"Connected tile type '{connectedTileType.IniName}' only supports the Front side.");
+
+        int originLevel = map.GetTile(pathCoords[0]).Level;
+        if (extraHeight < 0 || extraHeight > Constants.MaxMapHeightLevel - originLevel)
+        {
+            throw new MapFacadeValidationException(
+                $"extraHeight must be from 0 through {Constants.MaxMapHeightLevel - originLevel} for the first path vertex's current height.");
+        }
+
+        ValidateConnectedTileType(connectedTileType);
+
+        var mutation = new DrawConnectedTilesMutation(
+            mutationTarget,
+            pathCoords,
+            connectedTileType,
+            startingSide,
+            randomSeed,
+            (byte)extraHeight);
+
+        mutationManager.PerformMutation(mutation);
+
+        return new MapEditResult(
+            mutationManager.Revision,
+            mutation.AffectedCellCoords
+                .Select(coords => CellInfo.FromMapCell(map, map.GetTile(coords)))
+                .OrderBy(cellInfo => cellInfo.Y)
+                .ThenBy(cellInfo => cellInfo.X)
+                .ToList());
+    }
+
     public MapEditResult PlaceWaypoint(int identifier, int x, int y, string editorColor)
     {
         if (identifier < 0 || identifier >= Constants.MaxWaypoint)
@@ -1067,9 +1162,10 @@ public class MapFacade
                 $"Tile index {tileIndexInTileSet} is outside tile set '{tileSet.SetName}', which contains {tileSet.LoadedTileCount} tiles.");
         }
 
+        // Use an existing brush size instance if preconfigured. If not, create a new one.
         var brushSize = map.EditorConfig.BrushSizes.Find(bs => bs.Width == brushWidth && bs.Height == brushHeight);
         if (brushSize == null)
-            throw new MapFacadeValidationException($"Brush size {brushWidth}x{brushHeight} is not configured in the editor.");
+            brushSize = new BrushSize(brushWidth, brushHeight);
 
         if (tileSet.Only1x1 && (brushSize.Width != 1 || brushSize.Height != 1))
             throw new MapFacadeValidationException($"Tile set '{tileSet.SetName}' only supports a 1x1 brush.");
@@ -1112,12 +1208,18 @@ public class MapFacade
         return new MapEditResult(mutationManager.Revision, InspectRegion(affectedArea));
     }
 
-    public MapEditResult SetCellTerrain(int x, int y, int tileIndex, int subTileIndex)
+    public MapEditResult SetCellsTerrain(List<MapCellCoordinate> cells, int tileIndex, int subTileIndex, int? expectedRevision)
     {
-        var cellCoords = new Point2D(x, y);
-        var mapTile = map.IsCoordWithinMap(cellCoords) ? map.GetTile(cellCoords) : null;
-        if (mapTile == null)
-            throw new MapFacadeValidationException($"Cell ({x}, {y}) is outside the map.");
+        if (expectedRevision.HasValue && expectedRevision.Value != mutationManager.Revision)
+        {
+            throw new MapFacadeValidationException(
+                $"The map revision changed from {expectedRevision.Value} to {mutationManager.Revision}. Query the map again before setting terrain, or omit expectedRevision to allow concurrent edits.");
+        }
+
+        if (cells == null || cells.Count == 0)
+            throw new MapFacadeValidationException("At least one cell coordinate must be provided.");
+        if (cells.Count > MaxMapOperationCellCount)
+            throw new MapFacadeValidationException($"At most {MaxMapOperationCellCount} cell coordinates can be set in one call.");
 
         if (tileIndex < 0 || tileIndex >= mutationTarget.TheaterGraphics.TileCount)
             throw new MapFacadeValidationException($"Absolute tile index {tileIndex} is not loaded.");
@@ -1132,18 +1234,42 @@ public class MapFacade
                 $"Sub-tile index {subTileIndex} is not valid for absolute tile index {tileIndex}.");
         }
 
-        var mutation = new SetCellTerrainMutation(mutationTarget, cellCoords, tileIndex, (byte)subTileIndex);
-        if (!mutation.ShouldPerform())
+        var distinctCoords = new HashSet<Point2D>();
+        for (int i = 0; i < cells.Count; i++)
         {
-            throw new MapFacadeValidationException(
-                $"Cell ({x}, {y}) already uses absolute tile index {tileIndex} and sub-tile index {subTileIndex}.");
+            MapCellCoordinate cell = cells[i];
+            if (cell == null)
+                throw new MapFacadeValidationException($"Cell coordinate {i} cannot be null.");
+
+            var cellCoords = new Point2D(cell.X, cell.Y);
+            if (map.GetTile(cellCoords) == null)
+                throw new MapFacadeValidationException($"Cell coordinate {i} at ({cell.X}, {cell.Y}) is outside the map.");
+
+            distinctCoords.Add(cellCoords);
         }
 
-        mutationManager.PerformMutation(mutation);
+        var changedCoords = distinctCoords
+            .Where(coords =>
+            {
+                MapTile mapTile = map.GetTile(coords);
+                return mapTile.TileIndex != tileIndex || mapTile.SubTileIndex != subTileIndex;
+            })
+            .OrderBy(coords => coords.Y)
+            .ThenBy(coords => coords.X)
+            .ToList();
+
+        if (changedCoords.Count == 0)
+            return new MapEditResult(mutationManager.Revision, new List<CellInfo>());
+
+        mutationManager.PerformMutation(new SetCellsTerrainMutation(
+            mutationTarget,
+            changedCoords,
+            tileIndex,
+            (byte)subTileIndex));
 
         return new MapEditResult(
             mutationManager.Revision,
-            new List<CellInfo> { CellInfo.FromMapCell(map, mapTile) });
+            changedCoords.Select(coords => CellInfo.FromMapCell(map, map.GetTile(coords))).ToList());
     }
 
     private void ApplyModificationProperties(TechnoBase techno, TechnoPropertiesSnapshot snapshot, MapTechnoModificationProperties properties)
@@ -1366,6 +1492,50 @@ public class MapFacade
             return 0;
 
         return mutationTarget.TheaterGraphics.GetOverlayFrameCount(overlayType);
+    }
+
+    private bool IsConnectedTileTypeAvailable(ConnectedTileType connectedTileType)
+    {
+        return IsConnectedTileTypeAvailableInTheater(connectedTileType);
+    }
+
+    private bool IsConnectedTileTypeAvailableInTheater(ConnectedTileType connectedTileType)
+    {
+        return connectedTileType.AllowedTheaters.Exists(
+            theaterName => string.Equals(theaterName, map.LoadedTheaterName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void ValidateConnectedTileType(ConnectedTileType connectedTileType)
+    {
+        if (connectedTileType.Tiles.Count == 0)
+            throw new MapFacadeValidationException($"Connected tile type '{connectedTileType.IniName}' does not contain any tiles.");
+
+        foreach (ConnectedTile connectedTile in connectedTileType.Tiles)
+        {
+            var tileSet = map.TheaterInstance.Theater.TileSets.Find(
+                candidate => candidate.AllowToPlace && string.Equals(candidate.SetName, connectedTile.TileSetName, StringComparison.OrdinalIgnoreCase));
+            if (tileSet == null)
+            {
+                throw new MapFacadeValidationException(
+                    $"Connected tile type '{connectedTileType.IniName}' references unavailable tile set '{connectedTile.TileSetName}'.");
+            }
+
+            if (connectedTile.Foundation == null || connectedTile.Foundation.Count == 0)
+            {
+                throw new MapFacadeValidationException(
+                    $"Connected tile type '{connectedTileType.IniName}' tile {connectedTile.Index} has no usable foundation.");
+            }
+
+            foreach (int tileIndexInSet in connectedTile.IndicesInTileSet)
+            {
+                if (tileIndexInSet < 0 || tileIndexInSet >= tileSet.LoadedTileCount ||
+                    mutationTarget.TheaterGraphics.GetTileGraphics(tileSet.StartTileIndex + tileIndexInSet) == null)
+                {
+                    throw new MapFacadeValidationException(
+                        $"Connected tile type '{connectedTileType.IniName}' tile {connectedTile.Index} references unavailable tile index {tileIndexInSet} in tile set '{tileSet.SetName}'.");
+                }
+            }
+        }
     }
 
     private void ValidateOverlayFrame(OverlayType overlayType, int frameIndex)

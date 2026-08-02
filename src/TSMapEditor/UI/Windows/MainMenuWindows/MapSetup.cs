@@ -203,23 +203,23 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
         /// </summary>
         private void FillConnectedTileFoundations(ITheater theaterTileInfo)
         {
-            foreach (var cliffType in LoadedMap.EditorConfig.Cliffs)
+            foreach (var connectedTileType in LoadedMap.EditorConfig.Cliffs)
             {
-                if (!cliffType.AllowedTheaters.Select(at => at.ToUpperInvariant()).Contains(LoadedMap.LoadedTheaterName.ToUpperInvariant()))
+                if (!connectedTileType.AllowedTheaters.Select(at => at.ToUpperInvariant()).Contains(LoadedMap.LoadedTheaterName.ToUpperInvariant()))
                     continue;
 
-                var tiles = cliffType.Tiles;
+                var tiles = connectedTileType.Tiles;
                 if (tiles.Count == 0)
-                    throw new INIConfigException($"Connected terrain type {cliffType.IniName} has 0 tiles!");
+                    throw new INIConfigException($"Connected terrain type {connectedTileType.IniName} has 0 tiles!");
 
-                foreach (var cliffTypeTile in cliffType.Tiles)
+                foreach (var connectedTile in connectedTileType.Tiles)
                 {
-                    var tileSet = theaterTileInfo.Theater.TileSets.Find(ts => ts.SetName == cliffTypeTile.TileSetName && ts.AllowToPlace);
+                    var tileSet = theaterTileInfo.Theater.TileSets.Find(ts => ts.SetName == connectedTile.TileSetName && ts.AllowToPlace);
 
                     if (tileSet == null)
                     {
-                        string errorMessage = $"Unable to find TileSet \"{cliffTypeTile.TileSetName}\" " +
-                            $"for connected terrain type \"{cliffType.IniName}\", tile index {cliffTypeTile.Index}";
+                        string errorMessage = $"Unable to find TileSet \"{connectedTile.TileSetName}\" " +
+                            $"for connected terrain type \"{connectedTileType.IniName}\", tile index {connectedTile.Index}";
 #if DEBUG
                         throw new INIConfigException(errorMessage);
 #else
@@ -229,15 +229,15 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
 #endif
                     }
 
-                    if (cliffTypeTile.IndicesInTileSet.Count == 0)
+                    if (connectedTile.IndicesInTileSet.Count == 0)
                         continue;
 
-                    if (cliffTypeTile.Foundation != null)
+                    if (connectedTile.Foundation != null)
                         continue;
 
-                    cliffTypeTile.Foundation = new HashSet<GameMath.Point2D>();
+                    connectedTile.Foundation = new HashSet<GameMath.Point2D>();
 
-                    int firstTileIndexWithinSet = cliffTypeTile.IndicesInTileSet[0];
+                    int firstTileIndexWithinSet = connectedTile.IndicesInTileSet[0];
 
                     int totalFirstTileIndex = tileSet.StartTileIndex + firstTileIndexWithinSet;
 
@@ -250,7 +250,7 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
                             continue;
 
                         var offset = tile.GetSubTileCoordOffset(i).Value;
-                        cliffTypeTile.Foundation.Add(offset);
+                        connectedTile.Foundation.Add(offset);
                     }
                 }
             }

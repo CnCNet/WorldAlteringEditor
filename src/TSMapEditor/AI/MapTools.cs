@@ -75,6 +75,16 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetConnectedOverlayTypes(nameFilter), cancellationToken);
     }
 
+    [McpServerTool(Name = "get_connected_tile_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns WAE Connected Tiles configurations that are enabled and valid for the current map's theater. Use draw_connected_tiles with an INI name from this result to lay out cliffs, shores, roads, rivers, and other configured connected terrain.")]
+    public Task<List<MapConnectedTileTypeInfo>> GetConnectedTileTypes(
+        [Description("Optional case-insensitive filter matched against INI name and display name.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetConnectedTileTypes)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetConnectedTileTypes(nameFilter), cancellationToken);
+    }
+
     [McpServerTool(Name = "get_building_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns building types that are visible in the editor and valid for the current map's theater, including foundation dimensions.")]
     public Task<List<MapBuildingTypeInfo>> GetBuildingTypes(
@@ -375,6 +385,30 @@ public sealed class MapTools
         }
     }
 
+    [McpServerTool(Name = "draw_connected_tiles", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Uses WAE's Connected Tiles pathfinder to draw a connected terrain line through two or more map-cell vertices. The line can overwrite terrain and update cell heights. The operation is one undo entry and one revision bump.")]
+    public async Task<MapEditResult> DrawConnectedTiles(
+        [Description("INI name of a Connected Tiles configuration returned by get_connected_tile_types.")] string connectedTileTypeName,
+        [Description("Ordered polyline vertices for the connected terrain path. Each consecutive pair defines one segment; at least two and at most 256 vertices are supported.")] List<MapConnectedTilePathVertex> path,
+        [Description("Starting side of the connected terrain: Front or Back. Front-only types require Front.")] string side = "Front",
+        [Description("Seed used to select and score tile variants. Change it to request a different pattern while keeping the same path. Defaults to 0.")] int randomSeed = 0,
+        [Description("Non-negative height offset added to the first vertex's current level before the connected tiles' own height offsets are applied. Defaults to 0.")] int extraHeight = 0,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(DrawConnectedTiles)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.DrawConnectedTiles(connectedTileTypeName, path, side, randomSeed, extraHeight),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
     [McpServerTool(Name = "place_waypoint", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Places a uniquely numbered waypoint on a map cell. Waypoints 0 through 7 are multiplayer starting locations. Multiple differently numbered waypoints may share a cell. The operation is one undo entry and one revision bump.")]
     public async Task<MapEditResult> PlaceWaypoint(
@@ -545,21 +579,21 @@ public sealed class MapTools
         }
     }
 
-    [McpServerTool(Name = "set_cell_terrain", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Directly sets the absolute tile index and sub-tile index of one cell. This is a low-level operation that does not apply a brush or AutoLAT, and it is added to undo history.")]
-    public async Task<MapEditResult> SetCellTerrain(
-        [Description("X coordinate of the cell.")] int x,
-        [Description("Y coordinate of the cell.")] int y,
+    [McpServerTool(Name = "set_cells_terrain", ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Directly sets the same absolute tile index and sub-tile index on one or more map cells. Duplicate coordinates and cells that already have the requested terrain are ignored. The batch is one atomic undo entry and one revision bump when any cells change. This low-level operation does not apply a brush or AutoLAT.")]
+    public async Task<MapEditResult> SetCellsTerrain(
+        [Description("One or more map-cell coordinates. At most 10,000 entries are supported.")] List<MapCellCoordinate> cells,
         [Description("Absolute tile index in the loaded theater.")] int tileIndex,
         [Description("Sub-tile index within the selected full tile.")] int subTileIndex,
-        CancellationToken cancellationToken)
+        [Description("Optional map revision returned by get_map_revision or another map tool. When supplied, the operation fails if the map has changed; omit it to allow concurrent human edits.")] int? expectedRevision = null,
+        CancellationToken cancellationToken = default)
     {
-        Logger.Log($"{nameof(MapTools)}.{nameof(SetCellTerrain)}");
+        Logger.Log($"{nameof(MapTools)}.{nameof(SetCellsTerrain)}");
 
         try
         {
             return await gameThreadDispatcher.InvokeAsync(
-                () => mapFacade.SetCellTerrain(x, y, tileIndex, subTileIndex),
+                () => mapFacade.SetCellsTerrain(cells, tileIndex, subTileIndex, expectedRevision),
                 cancellationToken);
         }
         catch (MapFacadeValidationException ex)
