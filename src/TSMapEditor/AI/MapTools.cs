@@ -1,11 +1,13 @@
 using Microsoft.Xna.Framework;
 using ModelContextProtocol;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Rampastring.Tools;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using TSMapEditor.Rendering;
 
 namespace TSMapEditor.AI;
 
@@ -14,15 +16,18 @@ public sealed class MapTools
 {
     private const int MaxRegionDimension = 256;
     private const int MaxRegionCellCount = 10_000;
+    private const int MaxScreenshotPixelCount = 8_000_000;
 
-    public MapTools(MapFacade mapFacade, GameThreadDispatcher gameThreadDispatcher)
+    public MapTools(MapFacade mapFacade, GameThreadDispatcher gameThreadDispatcher, IMapScreenCropper mapScreenCropper)
     {
         this.mapFacade = mapFacade;
         this.gameThreadDispatcher = gameThreadDispatcher;
+        this.mapScreenCropper = mapScreenCropper;
     }
 
     private readonly MapFacade mapFacade;
     private readonly GameThreadDispatcher gameThreadDispatcher;
+    private readonly IMapScreenCropper mapScreenCropper;
 
     [McpServerTool(Name = "get_map_info", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns basic information about the map currently open in the World-Altering Editor.")]
@@ -208,6 +213,51 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(
             () => mapFacade.InspectRegion(new Rectangle(x, y, width, height)),
             cancellationToken);
+    }
+
+    [McpServerTool(Name = "screenshot_map_region", ReadOnly = true, OpenWorld = false)]
+    [Description("Renders the entire open map and returns a PNG screenshot of the axis-aligned pixel bounds for a rectangular region of cells. In normal 3D mode, the image includes fixed vertical padding above those bounds for terrain at the maximum supported height. Because the map is isometric, the requested cells form a diamond within the returned rectangular image, whose corners can contain map content outside the requested cells.")]
+    public async Task<ImageContentBlock> ScreenshotMapRegion(
+        [Description("X coordinate of the region's top-left cell.")] int x,
+        [Description("Y coordinate of the region's top-left cell.")] int y,
+        [Description("Width of the region in cells.")] int width,
+        [Description("Height of the region in cells.")] int height,
+        CancellationToken cancellationToken)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(ScreenshotMapRegion)}");
+
+        if (width <= 0 || height <= 0)
+            throw new McpException("The region width and height must both be greater than zero.");
+
+        if (width > MaxRegionDimension || height > MaxRegionDimension || (long)width * height > MaxRegionCellCount)
+            throw new McpException($"The requested region is too large. Each dimension may be at most {MaxRegionDimension} cells and the total area may be at most {MaxRegionCellCount} cells.");
+
+        long projectedPixelWidth = ((long)width + height - 2L) * (Constants.CellSizeX / 2L) + Constants.CellSizeX;
+        long projectedPixelHeight = ((long)width + height - 2L) * (Constants.CellSizeY / 2L) + Constants.CellSizeY + Constants.MapYBaseline;
+        if (projectedPixelWidth * projectedPixelHeight > MaxScreenshotPixelCount)
+        {
+            throw new McpException(
+                $"The requested screenshot would be too large ({projectedPixelWidth}x{projectedPixelHeight} pixels). " +
+                $"The projected image may contain at most {MaxScreenshotPixelCount} pixels.");
+        }
+
+        if (!mapScreenCropper.TryRequestScreenCrop(
+            new Rectangle(x, y, width, height),
+            cancellationToken,
+            out Task<byte[]> screenCropTask))
+        {
+            throw new McpException("The renderer is already busy with a previous screen-crop request.");
+        }
+
+        try
+        {
+            byte[] pngData = await screenCropTask.ConfigureAwait(false);
+            return ImageContentBlock.FromBytes(pngData, "image/png");
+        }
+        catch (MapScreenCropException ex)
+        {
+            throw new McpException(ex.Message);
+        }
     }
 
     [McpServerTool(Name = "modify_technos", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]

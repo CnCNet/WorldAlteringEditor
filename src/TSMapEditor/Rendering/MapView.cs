@@ -8,6 +8,8 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
 using TSMapEditor.Models.Enums;
@@ -19,6 +21,19 @@ using TSMapEditor.UI.Windows;
 
 namespace TSMapEditor.Rendering
 {
+    public interface IMapScreenCropper
+    {
+        bool TryRequestScreenCrop(Rectangle cellRectangle, CancellationToken cancellationToken, out Task<byte[]> screenCropTask);
+        void StopScreenCropRequests();
+    }
+
+    public sealed class MapScreenCropException : Exception
+    {
+        public MapScreenCropException(string message) : base(message)
+        {
+        }
+    }
+
     public interface IMapView
     {
         Map Map { get; }
@@ -34,8 +49,41 @@ namespace TSMapEditor.Rendering
     /// <summary>
     /// The renderer. Draws the map.
     /// </summary>
-    public class MapView : IMapView
+    public class MapView : IMapView, IMapScreenCropper
     {
+        private sealed class ScreenCropRequest : IDisposable
+        {
+            public ScreenCropRequest(
+                Rectangle cellRectangle,
+                CancellationToken cancellationToken,
+                Action<ScreenCropRequest> cancellationCallback)
+            {
+                CellRectangle = cellRectangle;
+                CancellationToken = cancellationToken;
+                completionSource = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+                cancellationTokenRegistration = cancellationToken.Register(
+                    () =>
+                    {
+                        completionSource.TrySetCanceled(cancellationToken);
+                        cancellationCallback(this);
+                    });
+            }
+
+            private readonly TaskCompletionSource<byte[]> completionSource;
+            private readonly CancellationTokenRegistration cancellationTokenRegistration;
+
+            public Rectangle CellRectangle { get; }
+            public Rectangle CalculatedPixelRectangle { get; set; }
+            public CancellationToken CancellationToken { get; }
+            public bool IsProcessing { get; set; }
+            public Task<byte[]> Task => completionSource.Task;
+
+            public void TrySetResult(byte[] pngData) => completionSource.TrySetResult(pngData);
+            public void TrySetException(Exception exception) => completionSource.TrySetException(exception);
+
+            public void Dispose() => cancellationTokenRegistration.Dispose();
+        }
+
         struct WaypointDrawStruct
         {
             public Waypoint Waypoint;
@@ -132,6 +180,11 @@ namespace TSMapEditor.Rendering
         private bool mapInvalidated;
         private bool cameraMoved;
         private bool minimapNeedsRefresh;
+        private bool renderingWholeMapForScreenCrop;
+
+        private readonly object screenCropRequestLock = new object();
+        private ScreenCropRequest screenCropRequest;
+        private bool acceptingScreenCropRequests = true;
 
         private List<Structure> structuresToRender = new List<Structure>();
         private List<Overlay> flatOverlaysToRender = new List<Overlay>();
@@ -167,6 +220,216 @@ namespace TSMapEditor.Rendering
         {
             InvalidateMap();
         }
+
+        #region Screen-crop support for MCP
+
+        public bool TryRequestScreenCrop(Rectangle cellRectangle, CancellationToken cancellationToken, out Task<byte[]> screenCropTask)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            ScreenCropRequest canceledRequest = null;
+            ScreenCropRequest staleCanceledRequest = null;
+
+            lock (screenCropRequestLock)
+            {
+                if (!acceptingScreenCropRequests)
+                {
+                    screenCropTask = Task.FromException<byte[]>(
+                        new MapScreenCropException("The map renderer is not available."));
+                    return true;
+                }
+
+                if (screenCropRequest != null &&
+                    screenCropRequest.CancellationToken.IsCancellationRequested &&
+                    !screenCropRequest.IsProcessing)
+                {
+                    staleCanceledRequest = screenCropRequest;
+                    screenCropRequest = null;
+                }
+
+                if (screenCropRequest != null)
+                {
+                    screenCropTask = null;
+                    return false;
+                }
+
+                var request = new ScreenCropRequest(cellRectangle, cancellationToken, ScreenCropRequest_Canceled);
+                request.CalculatedPixelRectangle = GetScreenCropSourceRectangle(cellRectangle);
+                screenCropRequest = request;
+                screenCropTask = request.Task;
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    screenCropRequest = null;
+                    canceledRequest = request;
+                }
+            }
+
+            staleCanceledRequest?.Dispose();
+            canceledRequest?.Dispose();
+            return true;
+        }
+
+        private void ScreenCropRequest_Canceled(ScreenCropRequest request)
+        {
+            lock (screenCropRequestLock)
+            {
+                if (ReferenceEquals(screenCropRequest, request) && !request.IsProcessing)
+                    screenCropRequest = null;
+            }
+        }
+
+        public void StopScreenCropRequests()
+        {
+            ScreenCropRequest request;
+            bool releaseRequest;
+
+            lock (screenCropRequestLock)
+            {
+                acceptingScreenCropRequests = false;
+                request = screenCropRequest;
+                releaseRequest = request != null && !request.IsProcessing;
+
+                if (releaseRequest)
+                    screenCropRequest = null;
+            }
+
+            if (request == null)
+                return;
+
+            request.TrySetException(new MapScreenCropException("The MCP server stopped before the screenshot could be captured."));
+
+            if (releaseRequest)
+                request.Dispose();
+        }
+
+        private ScreenCropRequest TryBeginScreenCropRequest()
+        {
+            ScreenCropRequest canceledRequest = null;
+
+            lock (screenCropRequestLock)
+            {
+                if (screenCropRequest == null || screenCropRequest.IsProcessing)
+                    return null;
+
+                if (screenCropRequest.CancellationToken.IsCancellationRequested)
+                {
+                    canceledRequest = screenCropRequest;
+                    screenCropRequest = null;
+                }
+                else
+                {
+                    screenCropRequest.IsProcessing = true;
+                    return screenCropRequest;
+                }
+            }
+
+            canceledRequest.Dispose();
+            return null;
+        }
+
+        private Rectangle GetScreenCropSourceRectangle(Rectangle cellRectangle)
+        {
+            if (compositeRenderTarget == null)
+                throw new MapScreenCropException("The map renderer is not available.");
+
+            long rightCellX = (long)cellRectangle.X + cellRectangle.Width - 1L;
+            long bottomCellY = (long)cellRectangle.Y + cellRectangle.Height - 1L;
+            long halfCellWidth = Constants.CellSizeX / 2L;
+            long halfCellHeight = Constants.CellSizeY / 2L;
+
+            long left = ((long)cellRectangle.X - 1L) * halfCellWidth + ((long)Map.Size.X - bottomCellY) * halfCellWidth;
+            long top = ((long)cellRectangle.X - 1L) * halfCellHeight - ((long)Map.Size.X - cellRectangle.Y) * halfCellHeight + Constants.MapYBaseline;
+            long right = (rightCellX - 1L) * halfCellWidth + ((long)Map.Size.X - cellRectangle.Y) * halfCellWidth + Constants.CellSizeX;
+            long bottom = (rightCellX - 1L) * halfCellHeight - ((long)Map.Size.X - bottomCellY) * halfCellHeight + Constants.MapYBaseline + Constants.CellSizeY;
+
+            // Terrain is drawn upwards from its flat cell position. Keep a stable logical-cell crop while
+            // reserving enough space above it for terrain at the maximum supported height level.
+            if (!EditorState.Is2DMode)
+                top -= Constants.MapYBaseline;
+
+            if (left < 0L || top < 0L || right > compositeRenderTarget.Width || bottom > compositeRenderTarget.Height ||
+                right <= left || bottom <= top)
+            {
+                throw new MapScreenCropException("The requested screenshot region projects outside the map texture.");
+            }
+
+            return new Rectangle((int)left, (int)top, (int)(right - left), (int)(bottom - top));
+        }
+
+        private byte[] CaptureScreenCrop(Rectangle sourceRectangle)
+        {
+            using var cropRenderTarget = new RenderTarget2D(
+                GraphicsDevice,
+                sourceRectangle.Width,
+                sourceRectangle.Height,
+                false,
+                SurfaceFormat.Color,
+                DepthFormat.None);
+
+            Renderer.PushRenderTarget(cropRenderTarget);
+
+            GraphicsDevice.Clear(Color.Black);
+            Renderer.DrawTexture(
+                compositeRenderTarget,
+                sourceRectangle,
+                new Rectangle(0, 0, cropRenderTarget.Width, cropRenderTarget.Height),
+                Color.White);
+
+            Renderer.PopRenderTarget();
+
+            using var stream = new MemoryStream();
+            cropRenderTarget.SaveAsPng(stream, cropRenderTarget.Width, cropRenderTarget.Height);
+            return stream.ToArray();
+        }
+
+        private void CompleteScreenCropRequest(ScreenCropRequest request, Rectangle sourceRectangle)
+        {
+            // No need for exception handling here because the caller already has a try-catch
+            if (!request.CancellationToken.IsCancellationRequested && !request.Task.IsCompleted)
+                request.TrySetResult(CaptureScreenCrop(sourceRectangle));
+
+            renderingWholeMapForScreenCrop = false;
+            ReleaseScreenCropRequest(request);
+        }
+
+        private void FailScreenCropRequest(ScreenCropRequest request, Exception exception)
+        {
+            request.TrySetException(exception);
+            renderingWholeMapForScreenCrop = false;
+            ReleaseScreenCropRequest(request);
+        }
+
+        private void ReleaseScreenCropRequest(ScreenCropRequest request)
+        {
+            lock (screenCropRequestLock)
+            {
+                if (ReferenceEquals(screenCropRequest, request))
+                    screenCropRequest = null;
+            }
+
+            request.Dispose();
+        }
+
+        private void FailPendingScreenCropRequest()
+        {
+            ScreenCropRequest request;
+
+            lock (screenCropRequestLock)
+            {
+                acceptingScreenCropRequests = false;
+                request = screenCropRequest;
+                screenCropRequest = null;
+            }
+
+            if (request == null)
+                return;
+
+            request.TrySetException(new MapScreenCropException("The map renderer stopped before the screenshot could be captured."));
+            request.Dispose();
+        }
+
+        #endregion
 
         /// <summary>
         /// Schedules the visible portion of the map to be re-rendered
@@ -226,6 +489,8 @@ namespace TSMapEditor.Rendering
 
         public void Clear()
         {
+            FailPendingScreenCropRequest();
+
             EditorState = null;
             TheaterGraphics = null;
             MapWideOverlay.Clear();
@@ -504,7 +769,7 @@ namespace TSMapEditor.Rendering
             int camRight;
             int camBottom;
 
-            if (minimapNeedsRefresh && MinimapUsers.Count > 0)
+            if (renderingWholeMapForScreenCrop || (minimapNeedsRefresh && MinimapUsers.Count > 0))
             {
                 // If the minimap needs a full refresh, then we need to re-render the whole map
                 tlX = 0;
@@ -822,7 +1087,7 @@ namespace TSMapEditor.Rendering
                 if (cell != null && !EditorState.Is2DMode)
                     drawPoint -= new Point2D(0, cell.Level * Constants.CellHeight);
 
-                if (MinimapUsers.Count == 0 &&
+                if (!renderingWholeMapForScreenCrop && MinimapUsers.Count == 0 &&
                     (Camera.TopLeftPoint.X > drawPoint.X + EditorGraphics.TileBorderTexture.Width ||
                     Camera.TopLeftPoint.Y > drawPoint.Y + EditorGraphics.TileBorderTexture.Height ||
                     GetCameraRightXCoord() < drawPoint.X ||
@@ -865,39 +1130,6 @@ namespace TSMapEditor.Rendering
                     waypointsToRender[i].DrawRectangle.Y + ((Constants.CellSizeY - textDimensions.Y) / 2)),
                     waypointsToRender[i].Color);
             }
-        }
-
-        private void DrawWaypoint(Waypoint waypoint)
-        {
-            Point2D drawPoint = CellMath.CellTopLeftPointFromCellCoords(waypoint.Position, Map);
-
-            var cell = Map.GetTile(waypoint.Position);
-            if (cell != null && !EditorState.Is2DMode)
-                drawPoint -= new Point2D(0, cell.Level * Constants.CellHeight);
-
-            if (MinimapUsers.Count == 0 &&
-                (Camera.TopLeftPoint.X > drawPoint.X + EditorGraphics.TileBorderTexture.Width ||
-                Camera.TopLeftPoint.Y > drawPoint.Y + EditorGraphics.TileBorderTexture.Height ||
-                GetCameraRightXCoord() < drawPoint.X ||
-                GetCameraBottomYCoord() < drawPoint.Y))
-            {
-                // This waypoint is outside the camera
-                return;
-            }
-
-            Color waypointColor = string.IsNullOrEmpty(waypoint.EditorColor) ? Color.Fuchsia : waypoint.XNAColor;
-            var drawRectangle = new Rectangle(drawPoint.X, drawPoint.Y, EditorGraphics.GenericTileTexture.Width, EditorGraphics.GenericTileTexture.Height);
-
-            Renderer.DrawTexture(EditorGraphics.GenericTileTexture, drawRectangle, new Color(0, 0, 0, 128));
-            Renderer.DrawTexture(EditorGraphics.TileBorderTexture, drawRectangle, waypointColor);
-
-            int fontIndex = Constants.UIBoldFont;
-            string waypointIdentifier = waypoint.Identifier.ToString();
-            var textDimensions = Renderer.GetTextDimensions(waypointIdentifier, fontIndex);
-            Renderer.DrawStringWithShadow(waypointIdentifier,
-                fontIndex,
-                new Vector2(drawPoint.X + ((Constants.CellSizeX - textDimensions.X) / 2), drawPoint.Y + ((Constants.CellSizeY - textDimensions.Y) / 2)),
-                waypointColor);
         }
 
         private void DrawCellTags()
@@ -1152,7 +1384,7 @@ namespace TSMapEditor.Rendering
 
             // Base nodes can be large, let's increase the level of padding for them.
             int padding = Constants.RenderPixelPadding * 2;
-            if (MinimapUsers.Count == 0 &&
+            if (!renderingWholeMapForScreenCrop && MinimapUsers.Count == 0 &&
                 (Camera.TopLeftPoint.X > drawPoint.X + padding || Camera.TopLeftPoint.Y > drawPoint.Y + padding ||
                 GetCameraRightXCoord() < drawPoint.X - padding || GetCameraBottomYCoord() < drawPoint.Y - padding))
             {
@@ -1614,37 +1846,69 @@ namespace TSMapEditor.Rendering
 
         public void Draw(bool isActive, TechnoBase technoUnderCursor, MapTile tileUnderCursor, CursorAction cursorAction)
         {
-            if (isActive && tileUnderCursor != null && cursorAction != null)
+            ScreenCropRequest currentScreenCropRequest = TryBeginScreenCropRequest();
+            Rectangle screenCropSourceRectangle = Rectangle.Empty;
+
+            if (currentScreenCropRequest != null)
             {
-                cursorAction.PreMapDraw(tileUnderCursor.CoordsToPoint());
+                screenCropSourceRectangle = currentScreenCropRequest.CalculatedPixelRectangle;
+
+                renderingWholeMapForScreenCrop = true;
+                InvalidateMap();
             }
 
-            if (mapInvalidated || cameraMoved)
+            try
             {
-                DrawVisibleMapPortion();
-                mapInvalidated = false;
-                cameraMoved = false;
+                if (isActive && tileUnderCursor != null && cursorAction != null)
+                {
+                    cursorAction.PreMapDraw(tileUnderCursor.CoordsToPoint());
+                }
+
+                if (mapInvalidated || cameraMoved)
+                {
+                    DrawVisibleMapPortion();
+                    mapInvalidated = false;
+                    cameraMoved = false;
+                }
+
+                CalculateMapRenderRectangles();
+
+                DrawPerFrameTransparentElements(technoUnderCursor);
+
+                DrawWorld();
+
+                if (currentScreenCropRequest != null)
+                {
+                    ScreenCropRequest requestToComplete = currentScreenCropRequest;
+                    currentScreenCropRequest = null;
+                    CompleteScreenCropRequest(requestToComplete, screenCropSourceRectangle);
+                }
+
+                if (EditorState.DrawMapWideOverlay)
+                {
+                    MapWideOverlay.Draw(new Rectangle(
+                            (int)(-Camera.TopLeftPoint.X * Camera.ZoomLevel),
+                            (int)((-Camera.TopLeftPoint.Y + Constants.MapYBaseline) * Camera.ZoomLevel),
+                            (int)(mapRenderTarget.Width * Camera.ZoomLevel),
+                            (int)((mapRenderTarget.Height - Constants.MapYBaseline) * Camera.ZoomLevel)));
+                }
+
+                if (isActive && tileUnderCursor != null && cursorAction != null)
+                {
+                    cursorAction.DrawPreview(tileUnderCursor.CoordsToPoint(), Camera.TopLeftPoint);
+                    cursorAction.PostMapDraw(tileUnderCursor.CoordsToPoint());
+                }
             }
-
-            CalculateMapRenderRectangles();
-
-            DrawPerFrameTransparentElements(technoUnderCursor);
-
-            DrawWorld();
-
-            if (EditorState.DrawMapWideOverlay)
+            catch (Exception ex)
             {
-                MapWideOverlay.Draw(new Rectangle(
-                        (int)(-Camera.TopLeftPoint.X * Camera.ZoomLevel),
-                        (int)((-Camera.TopLeftPoint.Y + Constants.MapYBaseline) * Camera.ZoomLevel),
-                        (int)(mapRenderTarget.Width * Camera.ZoomLevel),
-                        (int)((mapRenderTarget.Height - Constants.MapYBaseline) * Camera.ZoomLevel)));
-            }
+                if (currentScreenCropRequest != null)
+                {
+                    FailScreenCropRequest(
+                        currentScreenCropRequest,
+                        new MapScreenCropException("Internal renderer error encountered for the requested screenshot. Returned error: " + ex.Message));
+                }
 
-            if (isActive && tileUnderCursor != null && cursorAction != null)
-            {
-                cursorAction.DrawPreview(tileUnderCursor.CoordsToPoint(), Camera.TopLeftPoint);
-                cursorAction.PostMapDraw(tileUnderCursor.CoordsToPoint());
+                throw;
             }
         }
 

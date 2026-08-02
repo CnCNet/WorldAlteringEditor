@@ -212,7 +212,7 @@ namespace TSMapEditor.UI
         {
             try
             {
-                mcpServer = new MCPServer(WindowManager, new MapFacade(map, mutationManager, mapUI.MutationTarget));
+                mcpServer = new MCPServer(WindowManager, new MapFacade(map, mutationManager, mapUI.MutationTarget), mapUI);
                 mcpServer.StartAsync().GetAwaiter().GetResult();
                 Logger.Log($"MCP server listening at {MCPServer.ServerUrl}{MCPServer.MCPPath}");
             }

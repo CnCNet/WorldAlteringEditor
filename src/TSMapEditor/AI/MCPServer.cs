@@ -8,6 +8,7 @@ using Rampastring.XNAUI;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using TSMapEditor.Rendering;
 
 namespace TSMapEditor.AI;
 
@@ -18,14 +19,16 @@ public sealed class MCPServer : IDisposable
 
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(5.0);
 
-    public MCPServer(WindowManager windowManager, MapFacade mapFacade)
+    public MCPServer(WindowManager windowManager, MapFacade mapFacade, IMapScreenCropper mapScreenCropper)
     {
         this.windowManager = windowManager;
         this.mapFacade = mapFacade;
+        this.mapScreenCropper = mapScreenCropper;
     }
 
     private readonly WindowManager windowManager;
     private readonly MapFacade mapFacade;
+    private readonly IMapScreenCropper mapScreenCropper;
     private readonly CancellationTokenSource shutdownCancellationTokenSource = new CancellationTokenSource();
 
     private WebApplication application;
@@ -48,6 +51,7 @@ public sealed class MCPServer : IDisposable
         builder.Configuration["AllowedHosts"] = "localhost;127.0.0.1;[::1]";
 
         builder.Services.AddSingleton(mapFacade);
+        builder.Services.AddSingleton(mapScreenCropper);
         builder.Services.AddSingleton(new GameThreadDispatcher(windowManager, shutdownCancellationTokenSource.Token));
         builder.Services
             .AddMcpServer()
@@ -67,6 +71,7 @@ public sealed class MCPServer : IDisposable
 
         disposed = true;
         shutdownCancellationTokenSource.Cancel();
+        mapScreenCropper.StopScreenCropRequests();
 
         WebApplication applicationToDispose = application;
         application = null;

@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using TSMapEditor.GameMath;
 using TSMapEditor.Misc;
 using TSMapEditor.Models;
@@ -58,7 +60,7 @@ namespace TSMapEditor.UI
     /// <summary>
     /// Handles user input on the map and utilizes <see cref="MapView"/> to draw the map.
     /// </summary>
-    public class MapUI : XNAControl, ICursorActionTarget, IMutationTarget
+    public class MapUI : XNAControl, ICursorActionTarget, IMutationTarget, IMapScreenCropper
     {
         private const float RightClickScrollRateDivisor = 48f;
         private const double ZoomStep = 0.1;
@@ -117,6 +119,11 @@ namespace TSMapEditor.UI
         }
         public Texture2D MinimapTexture => mapView.MinimapTexture;
         public HashSet<object> MinimapUsers => mapView.MinimapUsers;
+
+        public bool TryRequestScreenCrop(Rectangle cellRectangle, CancellationToken cancellationToken, out Task<byte[]> screenCropTask)
+            => mapView.TryRequestScreenCrop(cellRectangle, cancellationToken, out screenCropTask);
+
+        public void StopScreenCropRequests() => mapView.StopScreenCropRequests();
 
         public Camera Camera => mapView.Camera;
         public TechnoBase TechnoUnderCursor { get; set; }
