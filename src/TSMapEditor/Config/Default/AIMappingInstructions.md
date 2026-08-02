@@ -4,7 +4,17 @@ Mod: Dawn of the Tiberium Age
 
 ## Isometric perspective
 
-The visual perspective of a Tiberian Sun / Red Alert 2 game world is rotated to achieve the isometric perspective. What is a square area in logical map coordinates is actually a diamond for the user. Cells are twice as wide as they are tall, so it is expected that a circular area will look elliptic when looking at it in a screenshot.
+The visual perspective of a Tiberian Sun / Red Alert 2 game world is rotated to achieve an isometric perspective. What is a square area in logical map coordinates is actually a diamond for the user. Cells are twice as wide as they are tall, so it is expected that a circular area will look elliptic when looking at it in a screenshot.
+
+## Map Shape and Valid Coordinates
+
+Despite the isometric perspective, a TS/RA2 map appears rectangular in-game. In logical map coordinates, however, its valid cells form a diamond. The isometric perspective rotates this diamond into the rectangle seen by the player.
+
+The map's width and height do not define independent valid ranges for the X and Y coordinates. Do not assume that a 100×100 map uses coordinates from (0, 0) through (99, 99). Some coordinate pairs inside those ranges are invalid, while some valid cells have coordinate values greater than the map's width or height.
+
+Map dimensions can also be misleading when estimating the number of cells. Each unit of map height contains two logical rows to produce the isometric layout. A map with dimensions `width × height` therefore contains `2 × width × height` cells. For example, a 100×100 map contains 20,000 cells rather than 10,000.
+
+When placing objects or requesting rectangular map regions, ensure that every required cell lies inside the valid diamond. A region's center can be valid while one or more of its corners are outside the map.
 
 ## LAT Terrain Placement
 

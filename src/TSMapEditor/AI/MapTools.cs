@@ -446,7 +446,7 @@ public sealed class MapTools
         [Description("Ordered polyline vertices for the connected terrain path. Each consecutive pair defines one segment. Open paths require at least two vertices; closed paths require at least three distinct vertices. At most 256 vertices are supported.")] List<MapConnectedTilePathVertex> path,
         [Description("Starting side of the connected terrain: Front or Back. Front-only types require Front.")] string side = "Front",
         [Description("Seed used to select and score tile variants. Change it to request a different pattern while keeping the same path. Defaults to 0.")] int randomSeed = 0,
-        [Description("Non-negative height offset added to the first vertex's current level before the connected tiles' own height offsets are applied. Defaults to 0.")] int extraHeight = 0,
+        [Description("Non-negative height offset added to the first vertex's current level before the connected tiles' own height offsets are applied. Defaults to 0. Must be 0 if the active mod has flat maps.")] int extraHeight = 0,
         [Description("Whether to cap both ends of an open path with configured one-connection-point ending pieces. The selected type must support ending pieces. Ignored for closed paths. Defaults to false.")] bool useEndPieces = false,
         [Description("Whether to connect the last vertex back to the first. Closed paths require at least three distinct vertices and never use ending pieces. Defaults to false.")] bool closed = false,
         CancellationToken cancellationToken = default)

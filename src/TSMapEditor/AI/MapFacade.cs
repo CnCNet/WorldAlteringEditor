@@ -210,16 +210,18 @@ public class CellInfo
 
 public class MapInfo
 {
-    public MapInfo(string theaterName, int width, int height)
+    public MapInfo(string theaterName, int width, int height, bool isFlatWorld)
     {
         TheaterName = theaterName;
         Width = width;
         Height = height;
+        IsFlatWorld = isFlatWorld;
     }
 
     public string TheaterName { get; }
     public int Width { get; }
     public int Height { get; }
+    public bool IsFlatWorld { get; }
 }
 
 public class MapObjectTypeInfo
@@ -337,7 +339,7 @@ public class MapFacade
 
     public MapInfo GetMapInfo()
     {
-        return new MapInfo(map.LoadedTheaterName, map.Size.X, map.Size.Y);
+        return new MapInfo(map.LoadedTheaterName, map.Size.X, map.Size.Y, Constants.IsFlatWorld);
     }
 
     public int GetMapRevision()
@@ -819,6 +821,9 @@ public class MapFacade
             throw new MapFacadeValidationException($"Connected tile type '{connectedTileTypeName}' is not available because it is configured incorrectly.");
         if (!IsConnectedTileTypeAvailableInTheater(connectedTileType))
             throw new MapFacadeValidationException($"Connected tile type '{connectedTileType.IniName}' is not valid for theater '{map.LoadedTheaterName}'.");
+
+        if (Constants.IsFlatWorld && extraHeight != 0)
+            throw new MapFacadeValidationException("Extra height must be 0 when the active mod has flat maps.");
 
         if (path == null)
             throw new MapFacadeValidationException("A connected tile path must be provided.");
