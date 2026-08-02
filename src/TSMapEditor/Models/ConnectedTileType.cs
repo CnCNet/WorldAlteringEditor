@@ -368,5 +368,11 @@ namespace TSMapEditor.Models
         public List<string> AllowedTheaters { get; set; }
         public List<ConnectedTile> Tiles { get; }
         public bool SupportsEndPieces => Tiles.Exists(tile => tile.IsEndingPiece);
+
+        /// <summary>
+        /// Determines whether the connected tile type is properly configured and usable in the editor.
+        /// Intentionally never assigned to anything else in debug mode - but is in release mode.
+        /// </summary>
+        public bool IsLegal { get; set; } = true;
     }
 }

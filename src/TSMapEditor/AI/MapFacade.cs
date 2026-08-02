@@ -425,7 +425,7 @@ public class MapFacade
     {
         string normalizedFilter = nameFilter?.Trim();
 
-        return map.EditorConfig.Cliffs
+        return map.EditorConfig.ConnectedTileTypes
             .Where(IsConnectedTileTypeAvailable)
             .Select(connectedTileType => new MapConnectedTileTypeInfo(
                 connectedTileType.IniName,
@@ -811,10 +811,12 @@ public class MapFacade
         if (string.IsNullOrWhiteSpace(connectedTileTypeName))
             throw new MapFacadeValidationException("A connected tile type INI name must be provided.");
 
-        var connectedTileType = map.EditorConfig.Cliffs.Find(
+        var connectedTileType = map.EditorConfig.ConnectedTileTypes.Find(
             candidate => string.Equals(candidate.IniName, connectedTileTypeName, StringComparison.OrdinalIgnoreCase));
         if (connectedTileType == null)
             throw new MapFacadeValidationException($"Connected tile type '{connectedTileTypeName}' does not exist in the editor configuration.");
+        if (!connectedTileType.IsLegal)
+            throw new MapFacadeValidationException($"Connected tile type '{connectedTileTypeName}' is not available because it is configured incorrectly.");
         if (!IsConnectedTileTypeAvailableInTheater(connectedTileType))
             throw new MapFacadeValidationException($"Connected tile type '{connectedTileType.IniName}' is not valid for theater '{map.LoadedTheaterName}'.");
 

@@ -131,15 +131,14 @@ namespace TSMapEditor.UI.TopBar
                 }
             }
 
-            var theaterMatchingCliffs = map.EditorConfig.Cliffs.Where(cliff => cliff.AllowedTheaters.Exists(
+            var theaterMatchingConnectedTileTypes = map.EditorConfig.ConnectedTileTypes.Where(ctt => ctt.IsLegal && ctt.AllowedTheaters.Exists(
                 theaterName => theaterName.Equals(map.TheaterName, StringComparison.OrdinalIgnoreCase))).ToList();
-            int cliffCount = theaterMatchingCliffs.Count;
-            if (cliffCount > 0)
+            if (theaterMatchingConnectedTileTypes.Count > 0)
             {
-                if (cliffCount == 1)
+                if (theaterMatchingConnectedTileTypes.Count == 1)
                 {
                     editContextMenu.AddItem(Translate(this, "Edit.DrawConnectedTiles", "Draw Connected Tiles"), () => mapUI.EditorState.CursorAction =
-                        new DrawConnectedTilesCursorAction(mapUI, theaterMatchingCliffs[0]), null, null, null);
+                        new DrawConnectedTilesCursorAction(mapUI, theaterMatchingConnectedTileTypes[0]), null, null, null);
                 }
                 else
                 {

@@ -30,7 +30,7 @@ namespace TSMapEditor.Models
         public List<Theater> Theaters { get; } = new List<Theater>();
         public List<BridgeType> Bridges { get; } = new List<BridgeType>();
         public List<ConnectedOverlayType> ConnectedOverlays { get; } = new List<ConnectedOverlayType>();
-        public List<ConnectedTileType> Cliffs { get; } = new List<ConnectedTileType>();
+        public List<ConnectedTileType> ConnectedTileTypes { get; } = new List<ConnectedTileType>();
         public List<TeamTypeFlag> TeamTypeFlags { get; } = new List<TeamTypeFlag>();
         public EvaSpeeches Speeches { get; private set; }
 
@@ -51,7 +51,7 @@ namespace TSMapEditor.Models
             ReadTheaters();
             ReadTeamTypeFlags();
             ReadSpeeches();
-            ReadCliffs();
+            ReadConnectedTileTypes();
         }
 
         public void RulesDependentInit(Rules rules)
@@ -436,9 +436,9 @@ namespace TSMapEditor.Models
             Speeches = new EvaSpeeches(speeches.ToArray());
         }
 
-        private void ReadCliffs()
+        private void ReadConnectedTileTypes()
         {
-            Cliffs.Clear();
+            ConnectedTileTypes.Clear();
 
             var iniFile = Helpers.ReadConfigINI("ConnectedTileDrawer.ini");
             var section = iniFile.GetSection("ConnectedTiles");
@@ -449,9 +449,9 @@ namespace TSMapEditor.Models
             {
                 string cliffIniName = kvp.Value;
 
-                ConnectedTileType cliffType = ConnectedTileType.FromIniSection(iniFile, cliffIniName);
-                if (cliffType != null)
-                    Cliffs.Add(cliffType);
+                var connectedTileType = ConnectedTileType.FromIniSection(iniFile, cliffIniName);
+                if (connectedTileType != null)
+                    ConnectedTileTypes.Add(connectedTileType);
             }
         }
     }

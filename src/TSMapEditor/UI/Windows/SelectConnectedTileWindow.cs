@@ -41,10 +41,13 @@ namespace TSMapEditor.UI.Windows
         {
             lbObjectList.Clear();
 
-            foreach (ConnectedTileType cliff in map.EditorConfig.Cliffs.Where(cliff =>
-                         cliff.AllowedTheaters.Exists(theaterName => theaterName.Equals(map.TheaterName, StringComparison.OrdinalIgnoreCase))))
+            foreach (ConnectedTileType connectedTileType in map.EditorConfig.ConnectedTileTypes.Where(ctt =>
+                         ctt.AllowedTheaters.Exists(theaterName => theaterName.Equals(map.TheaterName, StringComparison.OrdinalIgnoreCase))))
             {
-                lbObjectList.AddItem(new XNAListBoxItem() { Text = cliff.Name, Tag = cliff, TextColor = cliff.Color.GetValueOrDefault(lbObjectList.DefaultItemColor) });
+                if (!connectedTileType.IsLegal)
+                    continue;
+
+                lbObjectList.AddItem(new XNAListBoxItem() { Text = connectedTileType.Name, Tag = connectedTileType, TextColor = connectedTileType.Color.GetValueOrDefault(lbObjectList.DefaultItemColor) });
             }
         }
     }

@@ -203,7 +203,7 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
         /// </summary>
         private void FillConnectedTileFoundations(ITheater theaterTileInfo)
         {
-            foreach (var connectedTileType in LoadedMap.EditorConfig.Cliffs)
+            foreach (var connectedTileType in LoadedMap.EditorConfig.ConnectedTileTypes)
             {
                 if (!connectedTileType.AllowedTheaters.Select(at => at.ToUpperInvariant()).Contains(LoadedMap.LoadedTheaterName.ToUpperInvariant()))
                     continue;
@@ -224,7 +224,7 @@ namespace TSMapEditor.UI.Windows.MainMenuWindows
                         throw new INIConfigException(errorMessage);
 #else
                         Logger.Log("WARNING: " + errorMessage + ". Disabling the connected terrain type.");
-                        cliffType.IsLegal = false;
+                        connectedTileType.IsLegal = false;
                         break;
 #endif
                     }

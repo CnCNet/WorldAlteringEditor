@@ -2,7 +2,7 @@ using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
+using System.Runtime.CompilerServices;
 using TSMapEditor.GameMath;
 
 namespace TSMapEditor.Models
@@ -43,11 +43,11 @@ namespace TSMapEditor.Models
     public sealed class ConnectedTilePlan
     {
         internal ConnectedTilePlan(ConnectedTileType type, Point2D origin,
-            IEnumerable<ConnectedTilePlacement> placements, bool isClosed, bool usesEndPieces)
+            List<ConnectedTilePlacement> placements, bool isClosed, bool usesEndPieces)
         {
             Type = type;
             Origin = origin;
-            Placements = new ReadOnlyCollection<ConnectedTilePlacement>(placements.ToList());
+            Placements = new ReadOnlyCollection<ConnectedTilePlacement>(placements);
             IsClosed = isClosed;
             UsesEndPieces = usesEndPieces;
         }
@@ -95,6 +95,7 @@ namespace TSMapEditor.Models
         private const int MaxQueuedNodesPerStrictSegment = 100_000;
         private const int MaxPlacementCount = 2_048;
         private const int MaxBoundaryStates = 24;
+        private const int MaxStackAllocatedPathVertexCount = 256;
 
         private const float TileSizePenaltyPerFoundationCell = 0.07f;
         private const int RepeatPenaltyAncestorWindow = 5;
@@ -103,6 +104,8 @@ namespace TSMapEditor.Models
         private const float TurnTilePenalty = 1.0f;
         private const float NodeScoreJitterAmplitude = 0.02f;
 
+        private static readonly ConditionalWeakTable<ConnectedTileType, SearchTileCache> SearchTileCaches = new();
+
         private enum SegmentGoal
         {
             Point,
@@ -110,58 +113,152 @@ namespace TSMapEditor.Models
             ClosedSeam
         }
 
+        private readonly struct SearchTile
+        {
+            public SearchTile(ConnectedTile tile)
+            {
+                Tile = tile;
+                FoundationCells = new Point2D[tile.Foundation.Count];
+                tile.Foundation.CopyTo(FoundationCells);
+            }
+
+            public ConnectedTile Tile { get; }
+            public Point2D[] FoundationCells { get; }
+        }
+
+        private sealed class SearchTileCache
+        {
+            public SearchTileCache(ConnectedTileType type)
+            {
+                Tiles = type.Tiles.ToArray();
+                Foundations = new HashSet<Point2D>[Tiles.Length];
+                FoundationCounts = new int[Tiles.Length];
+
+                int linearTileCount = 0;
+                int endingTileCount = 0;
+                for (int i = 0; i < Tiles.Length; i++)
+                {
+                    ConnectedTile tile = Tiles[i];
+                    Foundations[i] = tile.Foundation;
+                    FoundationCounts[i] = tile.Foundation?.Count ?? 0;
+                    if (!HasUsableFoundation(tile))
+                        continue;
+
+                    if (tile.ConnectionPoints.Length == 2)
+                        linearTileCount++;
+                    else if (tile.ConnectionPoints.Length == 1)
+                        endingTileCount++;
+                }
+
+                LinearTiles = new SearchTile[linearTileCount];
+                EndingTiles = new SearchTile[endingTileCount];
+
+                int linearTileIndex = 0;
+                int endingTileIndex = 0;
+                for (int i = 0; i < Tiles.Length; i++)
+                {
+                    ConnectedTile tile = Tiles[i];
+                    if (!HasUsableFoundation(tile))
+                        continue;
+
+                    if (tile.ConnectionPoints.Length == 2)
+                        LinearTiles[linearTileIndex++] = new SearchTile(tile);
+                    else if (tile.ConnectionPoints.Length == 1)
+                        EndingTiles[endingTileIndex++] = new SearchTile(tile);
+                }
+            }
+
+            public ConnectedTile[] Tiles { get; }
+            public HashSet<Point2D>[] Foundations { get; }
+            public int[] FoundationCounts { get; }
+            public SearchTile[] LinearTiles { get; }
+            public SearchTile[] EndingTiles { get; }
+
+            public bool Matches(ConnectedTileType type)
+            {
+                if (type.Tiles.Count != Tiles.Length)
+                    return false;
+
+                for (int i = 0; i < Tiles.Length; i++)
+                {
+                    ConnectedTile tile = type.Tiles[i];
+                    if (!ReferenceEquals(tile, Tiles[i]) ||
+                        !ReferenceEquals(tile.Foundation, Foundations[i]) ||
+                        (tile.Foundation?.Count ?? 0) != FoundationCounts[i])
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
+
         private sealed class SearchNode
         {
             private SearchNode() { }
 
-            public SearchNode(SearchNode parent, ConnectedTile tile, Point2D location,
-                TileConnectionPoint? entryPoint, TileConnectionPoint? exitPoint, HashSet<Point2D> occupiedCells,
-                float gScore)
+            public SearchNode(SearchNode parent, SearchTile searchTile, Point2D location,
+                int entryPointIndex, int exitPointIndex, float gScore)
             {
                 Parent = parent;
-                Tile = tile;
+                SearchTile = searchTile;
                 Location = location;
-                EntryPoint = entryPoint;
-                ExitPoint = exitPoint;
-                OccupiedCells = occupiedCells;
+                EntryPointIndex = entryPointIndex;
+                ExitPointIndex = exitPointIndex;
                 GScore = gScore;
                 Depth = (parent?.Depth ?? 0) + 1;
 
                 if (parent?.FirstPlacement != null)
                     FirstPlacement = parent.FirstPlacement;
-                else if (tile != null)
+                else if (searchTile.Tile != null)
                     FirstPlacement = this;
             }
 
             public SearchNode Parent { get; private init; }
             public SearchNode FirstPlacement { get; private set; }
-            public ConnectedTile Tile { get; private init; }
+            public SearchTile SearchTile { get; private init; }
+            public ConnectedTile Tile => SearchTile.Tile;
             public Point2D Location { get; private init; }
-            public TileConnectionPoint? EntryPoint { get; private init; }
-            public TileConnectionPoint? ExitPoint { get; private init; }
-            public HashSet<Point2D> OccupiedCells { get; private init; }
+            public int EntryPointIndex { get; private init; }
+            public int ExitPointIndex { get; private init; }
             public float GScore { get; private init; }
             public int Depth { get; private init; }
+            public ConnectedTileSide SyntheticStartingSide { get; private init; }
 
-            public Point2D ExitCoordinates => Location + ExitPoint.Value.CoordinateOffset;
+            public bool HasExitPoint => Tile == null || ExitPointIndex >= 0;
+
+            public TileConnectionPoint ExitPoint
+            {
+                get
+                {
+                    if (Tile != null)
+                        return Tile.ConnectionPoints[ExitPointIndex];
+
+                    return new TileConnectionPoint
+                    {
+                        Index = -1,
+                        ConnectionMask = byte.MaxValue,
+                        CoordinateOffset = Point2D.Zero,
+                        Side = SyntheticStartingSide,
+                        RequiredTiles = Array.Empty<int>(),
+                        ForbiddenTiles = Array.Empty<int>()
+                    };
+                }
+            }
+
+            public Point2D ExitCoordinates => Tile == null
+                ? Location
+                : Location + Tile.ConnectionPoints[ExitPointIndex].CoordinateOffset;
 
             public static SearchNode MakeSyntheticStart(Point2D location, ConnectedTileSide startingSide)
             {
-                var connectionPoint = new TileConnectionPoint
-                {
-                    Index = -1,
-                    ConnectionMask = byte.MaxValue,
-                    CoordinateOffset = Point2D.Zero,
-                    Side = startingSide,
-                    RequiredTiles = Array.Empty<int>(),
-                    ForbiddenTiles = Array.Empty<int>()
-                };
-
                 return new SearchNode
                 {
                     Location = location,
-                    ExitPoint = connectionPoint,
-                    OccupiedCells = new HashSet<Point2D>(),
+                    EntryPointIndex = -1,
+                    ExitPointIndex = -1,
+                    SyntheticStartingSide = startingSide,
                     GScore = 0.0f,
                     Depth = 0
                 };
@@ -180,23 +277,26 @@ namespace TSMapEditor.Models
             Func<Point2D, bool> isCellValid)
         {
             if (type == null)
-                return ConnectedTilePlanResult.Failed(ConnectedTilePlanStatus.InvalidInput,
-                    "A connected tile type is required.");
+                return ConnectedTilePlanResult.Failed(ConnectedTilePlanStatus.InvalidInput, "A connected tile type is required.");
 
             if (path == null)
-                return ConnectedTilePlanResult.Failed(ConnectedTilePlanStatus.InvalidInput,
-                    "A connected tile path is required.");
+                return ConnectedTilePlanResult.Failed(ConnectedTilePlanStatus.InvalidInput, "A connected tile path is required.");
 
             if (isCellValid == null)
-                return ConnectedTilePlanResult.Failed(ConnectedTilePlanStatus.InvalidInput,
-                    "A map-cell validator is required.");
+                return ConnectedTilePlanResult.Failed(ConnectedTilePlanStatus.InvalidInput, "A map-cell validator is required.");
 
-            var vertices = path.ToList();
-            if (closed && vertices.Count > 1 && vertices[0] == vertices[^1])
-                vertices.RemoveAt(vertices.Count - 1);
+            Span<Point2D> vertices = path.Count <= MaxStackAllocatedPathVertexCount
+                ? stackalloc Point2D[path.Count]
+                : new Point2D[path.Count];
+            for (int i = 0; i < path.Count; i++)
+                vertices[i] = path[i];
+
+            int vertexCount = vertices.Length;
+            if (closed && vertexCount > 1 && vertices[0] == vertices[vertexCount - 1])
+                vertexCount--;
 
             int minimumVertexCount = closed ? 3 : 2;
-            if (vertices.Count < minimumVertexCount)
+            if (vertexCount < minimumVertexCount)
             {
                 return ConnectedTilePlanResult.Failed(ConnectedTilePlanStatus.InvalidInput,
                     closed
@@ -204,13 +304,13 @@ namespace TSMapEditor.Models
                         : "A connected tile path requires at least two vertices.");
             }
 
-            if (closed && vertices.Distinct().Count() < 3)
+            if (closed && !HasThreeDistinctVertices(vertices[..vertexCount]))
             {
                 return ConnectedTilePlanResult.Failed(ConnectedTilePlanStatus.InvalidInput,
                     "A closed connected tile path requires at least three distinct vertices.");
             }
 
-            for (int i = 0; i < vertices.Count; i++)
+            for (int i = 0; i < vertexCount; i++)
             {
                 if (!isCellValid(vertices[i]))
                 {
@@ -225,12 +325,9 @@ namespace TSMapEditor.Models
                 }
             }
 
-            List<ConnectedTile> linearTiles = type.Tiles
-                .Where(tile => tile.ConnectionPoints.Length == 2 && HasUsableFoundation(tile))
-                .ToList();
-            List<ConnectedTile> endingTiles = type.Tiles
-                .Where(tile => tile.ConnectionPoints.Length == 1 && HasUsableFoundation(tile))
-                .ToList();
+            SearchTileCache searchTileCache = GetSearchTileCache(type);
+            SearchTile[] linearTiles = searchTileCache.LinearTiles;
+            SearchTile[] endingTiles = searchTileCache.EndingTiles;
 
             bool usesEndPieces = useEndPieces && !closed;
             bool strict = usesEndPieces || closed;
@@ -253,16 +350,17 @@ namespace TSMapEditor.Models
                 };
             }
 
-            var destinations = vertices.Skip(1).ToList();
-            if (closed)
-                destinations.Add(vertices[0]);
-
+            var openSet = new PriorityQueue<SearchNode, (float Score, int ExtraPriority, long Sequence)>();
             bool earlierSearchWasLimited = false;
+            int segmentCount = vertexCount - 1 + (closed ? 1 : 0);
 
-            for (int segmentIndex = 0; segmentIndex < destinations.Count; segmentIndex++)
+            for (int segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++)
             {
                 bool isFirstSegment = segmentIndex == 0;
-                bool isLastSegment = segmentIndex == destinations.Count - 1;
+                bool isLastSegment = segmentIndex == segmentCount - 1;
+                Point2D destination = closed && isLastSegment
+                    ? vertices[0]
+                    : vertices[segmentIndex + 1];
 
                 if (!isFirstSegment)
                     frontier = BackUpOnePlacement(frontier);
@@ -275,8 +373,9 @@ namespace TSMapEditor.Models
 
                 int exactResultLimit = strict && !isLastSegment ? MaxBoundaryStates : 1;
                 SegmentSearchResult searchResult = SearchSegment(
+                    openSet,
                     frontier,
-                    destinations[segmentIndex],
+                    destination,
                     vertices[0],
                     linearTiles,
                     endingTiles,
@@ -323,13 +422,15 @@ namespace TSMapEditor.Models
             return ConnectedTilePlanResult.Succeeded(plan);
         }
 
-        private static SegmentSearchResult SearchSegment(IReadOnlyList<SearchNode> seeds, Point2D destination,
-            Point2D origin, IReadOnlyList<ConnectedTile> linearTiles, IReadOnlyList<ConnectedTile> endingTiles,
+        private static SegmentSearchResult SearchSegment(
+            PriorityQueue<SearchNode, (float Score, int ExtraPriority, long Sequence)> openSet,
+            IReadOnlyList<SearchNode> seeds, Point2D destination,
+            Point2D origin, SearchTile[] linearTiles, SearchTile[] endingTiles,
             bool allowSideChangingTiles, SegmentGoal goal, int randomSeed, int exactResultLimit, bool strict,
             Func<Point2D, bool> isCellValid)
         {
             var result = new SegmentSearchResult();
-            var openSet = new PriorityQueue<SearchNode, (float Score, int ExtraPriority, long Sequence)>();
+            openSet.Clear();
             long sequence = 0;
             int maxExpandedNodes = strict
                 ? MaxExpandedNodesPerStrictSegment
@@ -338,9 +439,10 @@ namespace TSMapEditor.Models
                 ? MaxQueuedNodesPerStrictSegment
                 : MaxQueuedNodesPerLegacySegment;
 
-            foreach (SearchNode seed in seeds)
+            for (int seedIndex = 0; seedIndex < seeds.Count; seedIndex++)
             {
-                if (seed?.ExitPoint == null)
+                SearchNode seed = seeds[seedIndex];
+                if (seed == null || !seed.HasExitPoint)
                     continue;
 
                 if (openSet.Count >= maxQueuedNodes)
@@ -397,12 +499,11 @@ namespace TSMapEditor.Models
 
                 if (goal == SegmentGoal.EndingPiece)
                 {
-                    List<SearchNode> terminalNodes = GetTerminalEndingNodes(
+                    SearchNode terminalNode = GetBestTerminalEndingNode(
                         currentNode, endingTiles, destination, randomSeed, isCellValid);
-
-                    if (terminalNodes.Count > 0)
+                    if (terminalNode != null)
                     {
-                        result.ExactNodes.Add(terminalNodes[0]);
+                        result.ExactNodes.Add(terminalNode);
                         break;
                     }
                 }
@@ -414,9 +515,12 @@ namespace TSMapEditor.Models
                 }
 
                 bool queueLimitReached = false;
-                foreach (ConnectedTile tile in linearTiles)
+                for (int tileIndex = 0; tileIndex < linearTiles.Length; tileIndex++)
                 {
-                    if (!allowSideChangingTiles && tile.ConnectionPoints[0].Side != tile.ConnectionPoints[1].Side)
+                    SearchTile searchTile = linearTiles[tileIndex];
+                    ConnectedTile tile = searchTile.Tile;
+                    if (!allowSideChangingTiles &&
+                        tile.ConnectionPoints[0].Side != tile.ConnectionPoints[1].Side)
                         continue;
 
                     int remainingQueueCapacity = maxQueuedNodes - openSet.Count;
@@ -426,14 +530,11 @@ namespace TSMapEditor.Models
                         break;
                     }
 
-                    foreach (SearchNode nextNode in GetNextLinearNodes(
-                        currentNode, tile, remainingQueueCapacity, isCellValid))
-                    {
-                        openSet.Enqueue(nextNode, (GetNodePriorityScore(nextNode, destination, randomSeed),
-                            nextNode.Tile.ExtraPriority, sequence++));
-                    }
+                    int generatedNodeCount = EnqueueNextLinearNodes(
+                        openSet, currentNode, searchTile, destination, randomSeed,
+                        remainingQueueCapacity, isCellValid, ref sequence);
 
-                    if (openSet.Count >= maxQueuedNodes)
+                    if (generatedNodeCount >= remainingQueueCapacity)
                     {
                         queueLimitReached = true;
                         break;
@@ -456,10 +557,15 @@ namespace TSMapEditor.Models
             return result;
         }
 
-        private static IEnumerable<SearchNode> GetNextLinearNodes(SearchNode currentNode, ConnectedTile tile,
-            int maxNodeCount, Func<Point2D, bool> isCellValid)
+        private static int EnqueueNextLinearNodes(
+            PriorityQueue<SearchNode, (float Score, int ExtraPriority, long Sequence)> openSet,
+            SearchNode currentNode, SearchTile searchTile, Point2D destination, int randomSeed,
+            int maxNodeCount, Func<Point2D, bool> isCellValid, ref long sequence)
         {
             int generatedNodeCount = 0;
+            ConnectedTile tile = searchTile.Tile;
+            TileConnectionPoint currentExitPoint = currentNode.ExitPoint;
+            Point2D currentExitCoordinates = currentNode.ExitCoordinates;
 
             for (int entryIndex = 0; entryIndex < tile.ConnectionPoints.Length; entryIndex++)
             {
@@ -467,106 +573,120 @@ namespace TSMapEditor.Models
                 if (!CanEnterTile(currentNode, tile, entryPoint))
                     continue;
 
-                byte directionMask = (byte)(entryPoint.ReversedConnectionMask & currentNode.ExitPoint.Value.ConnectionMask);
-                foreach (Direction direction in Helpers.GetDirectionsInMask(directionMask))
+                byte directionMask = (byte)(entryPoint.ReversedConnectionMask & currentExitPoint.ConnectionMask);
+                for (int directionIndex = 0; directionIndex < (int)Direction.Count; directionIndex++)
                 {
-                    Point2D placementOffset = Helpers.VisualDirectionToPoint(direction) - entryPoint.CoordinateOffset;
-                    Point2D placementLocation = currentNode.ExitCoordinates + placementOffset;
-
-                    if (!TryAddFoundation(currentNode.OccupiedCells, tile, placementLocation,
-                        isCellValid, out HashSet<Point2D> occupiedCells))
-                    {
+                    if ((directionMask & (byte)(0b10000000 >> directionIndex)) == 0)
                         continue;
-                    }
+
+                    Direction direction = (Direction)directionIndex;
+                    Point2D placementOffset = Helpers.VisualDirectionToPoint(direction) - entryPoint.CoordinateOffset;
+                    Point2D placementLocation = currentExitCoordinates + placementOffset;
+
+                    if (!CanPlaceFoundation(currentNode, searchTile, placementLocation, isCellValid))
+                        continue;
 
                     TileConnectionPoint exitPoint = tile.ConnectionPoints[entryIndex == 0 ? 1 : 0];
                     Point2D exitCoordinates = placementLocation + exitPoint.CoordinateOffset;
-                    float gScore = currentNode.GScore + Distance(currentNode.ExitCoordinates, exitCoordinates);
+                    float gScore = currentNode.GScore + Distance(currentExitCoordinates, exitCoordinates);
 
                     generatedNodeCount++;
-                    yield return new SearchNode(currentNode, tile, placementLocation,
-                        entryPoint, exitPoint, occupiedCells, gScore);
+                    var nextNode = new SearchNode(currentNode, searchTile, placementLocation,
+                        entryIndex, entryIndex == 0 ? 1 : 0, gScore);
+                    openSet.Enqueue(nextNode, (GetNodePriorityScore(nextNode, destination, randomSeed),
+                        tile.ExtraPriority, sequence++));
 
                     if (generatedNodeCount >= maxNodeCount)
-                        yield break;
+                        return generatedNodeCount;
                 }
             }
+
+            return generatedNodeCount;
         }
 
-        private static List<SearchNode> MakeStartingEndingNodes(IReadOnlyList<ConnectedTile> endingTiles,
+        private static List<SearchNode> MakeStartingEndingNodes(SearchTile[] endingTiles,
             Point2D origin, ConnectedTileSide startingSide, Func<Point2D, bool> isCellValid)
         {
             var nodes = new List<SearchNode>();
 
-            foreach (ConnectedTile endingTile in endingTiles)
+            for (int tileIndex = 0; tileIndex < endingTiles.Length; tileIndex++)
             {
+                SearchTile searchTile = endingTiles[tileIndex];
+                ConnectedTile endingTile = searchTile.Tile;
                 TileConnectionPoint point = endingTile.ConnectionPoints[0];
                 if (point.Side != startingSide)
                     continue;
 
                 Point2D location = origin - point.CoordinateOffset;
-                if (!TryAddFoundation(new HashSet<Point2D>(), endingTile, location,
-                    isCellValid, out HashSet<Point2D> occupiedCells))
-                {
+                if (!CanPlaceFoundation(null, searchTile, location, isCellValid))
                     continue;
-                }
 
-                nodes.Add(new SearchNode(null, endingTile, location, null, point, occupiedCells, 0.0f));
+                nodes.Add(new SearchNode(null, searchTile, location, -1, 0, 0.0f));
             }
 
             return nodes;
         }
 
-        private static List<SearchNode> GetTerminalEndingNodes(SearchNode currentNode,
-            IReadOnlyList<ConnectedTile> endingTiles, Point2D destination, int randomSeed,
+        private static SearchNode GetBestTerminalEndingNode(SearchNode currentNode,
+            SearchTile[] endingTiles, Point2D destination, int randomSeed,
             Func<Point2D, bool> isCellValid)
         {
-            var terminalNodes = new List<SearchNode>();
+            SearchNode bestNode = null;
+            TileConnectionPoint currentExitPoint = currentNode.ExitPoint;
+            Point2D currentExitCoordinates = currentNode.ExitCoordinates;
 
-            foreach (ConnectedTile endingTile in endingTiles)
+            for (int tileIndex = 0; tileIndex < endingTiles.Length; tileIndex++)
             {
+                SearchTile searchTile = endingTiles[tileIndex];
+                ConnectedTile endingTile = searchTile.Tile;
                 TileConnectionPoint entryPoint = endingTile.ConnectionPoints[0];
                 if (!CanEnterTile(currentNode, endingTile, entryPoint))
                     continue;
 
-                byte directionMask = (byte)(entryPoint.ReversedConnectionMask & currentNode.ExitPoint.Value.ConnectionMask);
-                foreach (Direction direction in Helpers.GetDirectionsInMask(directionMask))
+                byte directionMask = (byte)(entryPoint.ReversedConnectionMask & currentExitPoint.ConnectionMask);
+                for (int directionIndex = 0; directionIndex < (int)Direction.Count; directionIndex++)
                 {
+                    if ((directionMask & (byte)(0b10000000 >> directionIndex)) == 0)
+                        continue;
+
+                    Direction direction = (Direction)directionIndex;
                     Point2D placementOffset = Helpers.VisualDirectionToPoint(direction) - entryPoint.CoordinateOffset;
-                    Point2D location = currentNode.ExitCoordinates + placementOffset;
+                    Point2D location = currentExitCoordinates + placementOffset;
                     Point2D entryCoordinates = location + entryPoint.CoordinateOffset;
 
                     if (entryCoordinates != destination)
                         continue;
 
-                    if (!TryAddFoundation(currentNode.OccupiedCells, endingTile, location,
-                        isCellValid, out HashSet<Point2D> occupiedCells))
-                    {
+                    if (!CanPlaceFoundation(currentNode, searchTile, location, isCellValid))
                         continue;
-                    }
 
-                    float gScore = currentNode.GScore + Distance(currentNode.ExitCoordinates, entryCoordinates);
-                    terminalNodes.Add(new SearchNode(currentNode, endingTile, location,
-                        entryPoint, null, occupiedCells, gScore));
+                    float gScore = currentNode.GScore + Distance(currentExitCoordinates, entryCoordinates);
+                    var terminalNode = new SearchNode(currentNode, searchTile, location,
+                        0, -1, gScore);
+                    if (bestNode == null || IsBetterTerminalNode(terminalNode, bestNode, randomSeed))
+                        bestNode = terminalNode;
                 }
             }
 
-            terminalNodes.Sort((left, right) =>
-            {
-                int priorityComparison = left.Tile.ExtraPriority.CompareTo(right.Tile.ExtraPriority);
-                if (priorityComparison != 0)
-                    return priorityComparison;
+            return bestNode;
+        }
 
-                return GetStableNodeHash(left, randomSeed).CompareTo(GetStableNodeHash(right, randomSeed));
-            });
+        private static bool IsBetterTerminalNode(SearchNode candidate, SearchNode currentBest, int randomSeed)
+        {
+            if (candidate.Tile.ExtraPriority != currentBest.Tile.ExtraPriority)
+                return candidate.Tile.ExtraPriority < currentBest.Tile.ExtraPriority;
 
-            return terminalNodes;
+            return GetStableNodeHash(candidate, randomSeed) < GetStableNodeHash(currentBest, randomSeed);
         }
 
         private static bool CanEnterTile(SearchNode currentNode, ConnectedTile candidateTile,
             TileConnectionPoint candidateEntry)
         {
-            if (currentNode.ExitPoint == null || candidateEntry.Side != currentNode.ExitPoint.Value.Side)
+            if (!currentNode.HasExitPoint)
+                return false;
+
+            TileConnectionPoint currentExitPoint = currentNode.ExitPoint;
+            if (candidateEntry.Side != currentExitPoint.Side)
                 return false;
 
             if (currentNode.Tile != null && !ConnectionPointAllowsTile(candidateEntry, currentNode.Tile.Index))
@@ -576,25 +696,26 @@ namespace TSMapEditor.Models
             // incoming candidate only. Preserve that behavior, while allowing a one-point start
             // cap to constrain the first linear tile through its sole outgoing connection.
             if (currentNode.Tile?.IsEndingPiece == true &&
-                !ConnectionPointAllowsTile(currentNode.ExitPoint.Value, candidateTile.Index))
+                !ConnectionPointAllowsTile(currentExitPoint, candidateTile.Index))
             {
                 return false;
             }
 
-            return (candidateEntry.ReversedConnectionMask & currentNode.ExitPoint.Value.ConnectionMask) != 0;
+            return (candidateEntry.ReversedConnectionMask & currentExitPoint.ConnectionMask) != 0;
         }
 
         private static bool CanCloseAtOrigin(SearchNode finalNode, Point2D origin)
         {
             SearchNode firstNode = finalNode.FirstPlacement;
-            if (finalNode.Tile == null || finalNode.ExitPoint == null || firstNode?.EntryPoint == null)
+            if (finalNode.Tile == null || !finalNode.HasExitPoint ||
+                firstNode == null || firstNode.EntryPointIndex < 0)
                 return false;
 
             if (finalNode.Depth < 2 || finalNode.ExitCoordinates != origin)
                 return false;
 
-            TileConnectionPoint finalExit = finalNode.ExitPoint.Value;
-            TileConnectionPoint firstEntry = firstNode.EntryPoint.Value;
+            TileConnectionPoint finalExit = finalNode.ExitPoint;
+            TileConnectionPoint firstEntry = firstNode.Tile.ConnectionPoints[firstNode.EntryPointIndex];
 
             if (finalExit.Side != firstEntry.Side || !ConnectionPointAllowsTile(firstEntry, finalNode.Tile.Index))
                 return false;
@@ -603,8 +724,12 @@ namespace TSMapEditor.Models
             Point2D delta = firstEntryCoordinates - finalNode.ExitCoordinates;
             byte compatibleDirections = (byte)(finalExit.ConnectionMask & firstEntry.ReversedConnectionMask);
 
-            foreach (Direction direction in Helpers.GetDirectionsInMask(compatibleDirections))
+            for (int directionIndex = 0; directionIndex < (int)Direction.Count; directionIndex++)
             {
+                if ((compatibleDirections & (byte)(0b10000000 >> directionIndex)) == 0)
+                    continue;
+
+                Direction direction = (Direction)directionIndex;
                 if (Helpers.VisualDirectionToPoint(direction) == delta)
                     return true;
             }
@@ -615,46 +740,105 @@ namespace TSMapEditor.Models
         private static bool ConnectionPointAllowsTile(TileConnectionPoint point, int tileIndex)
         {
             if (point.RequiredTiles?.Length > 0)
-                return point.RequiredTiles.Contains(tileIndex);
-
-            return point.ForbiddenTiles == null || !point.ForbiddenTiles.Contains(tileIndex);
-        }
-
-        private static bool TryAddFoundation(HashSet<Point2D> existingOccupiedCells, ConnectedTile tile,
-            Point2D location, Func<Point2D, bool> isCellValid, out HashSet<Point2D> occupiedCells)
-        {
-            occupiedCells = null;
-            if (!HasUsableFoundation(tile))
-                return false;
-
-            foreach (Point2D foundationCell in tile.Foundation)
             {
-                Point2D absoluteCell = foundationCell + location;
-                if (!isCellValid(absoluteCell) || existingOccupiedCells.Contains(absoluteCell))
+                for (int i = 0; i < point.RequiredTiles.Length; i++)
+                {
+                    if (point.RequiredTiles[i] == tileIndex)
+                        return true;
+                }
+
+                return false;
+            }
+
+            if (point.ForbiddenTiles == null)
+                return true;
+
+            for (int i = 0; i < point.ForbiddenTiles.Length; i++)
+            {
+                if (point.ForbiddenTiles[i] == tileIndex)
                     return false;
             }
 
-            occupiedCells = new HashSet<Point2D>(existingOccupiedCells);
-            foreach (Point2D foundationCell in tile.Foundation)
-                occupiedCells.Add(foundationCell + location);
+            return true;
+        }
+
+        private static bool CanPlaceFoundation(SearchNode parent, SearchTile searchTile,
+            Point2D location, Func<Point2D, bool> isCellValid)
+        {
+            Point2D[] foundationCells = searchTile.FoundationCells;
+            for (int foundationIndex = 0; foundationIndex < foundationCells.Length; foundationIndex++)
+            {
+                Point2D foundationCell = foundationCells[foundationIndex];
+                Point2D absoluteCell = foundationCell + location;
+                if (!isCellValid(absoluteCell))
+                    return false;
+
+                SearchNode ancestor = parent;
+                while (ancestor != null)
+                {
+                    if (ancestor.Tile != null)
+                    {
+                        Point2D[] occupiedFoundationCells = ancestor.SearchTile.FoundationCells;
+                        for (int occupiedIndex = 0; occupiedIndex < occupiedFoundationCells.Length;
+                             occupiedIndex++)
+                        {
+                            Point2D occupiedFoundationCell = occupiedFoundationCells[occupiedIndex];
+                            if (occupiedFoundationCell + ancestor.Location == absoluteCell)
+                                return false;
+                        }
+                    }
+
+                    ancestor = ancestor.Parent;
+                }
+            }
 
             return true;
+        }
+
+        private static SearchTileCache GetSearchTileCache(ConnectedTileType type)
+        {
+            if (SearchTileCaches.TryGetValue(type, out SearchTileCache cache) && cache.Matches(type))
+                return cache;
+
+            SearchTileCaches.Remove(type);
+            return SearchTileCaches.GetValue(type, static connectedTileType => new SearchTileCache(connectedTileType));
         }
 
         private static bool HasUsableFoundation(ConnectedTile tile)
             => tile.Foundation != null && tile.Foundation.Count > 0;
 
-        private static List<SearchNode> BackUpOnePlacement(IEnumerable<SearchNode> nodes)
+        private static List<SearchNode> BackUpOnePlacement(IReadOnlyList<SearchNode> nodes)
         {
-            var backedUpNodes = new List<SearchNode>();
-            foreach (SearchNode node in nodes)
+            var backedUpNodes = new List<SearchNode>(nodes.Count);
+            for (int nodeIndex = 0; nodeIndex < nodes.Count; nodeIndex++)
             {
+                SearchNode node = nodes[nodeIndex];
                 SearchNode backedUpNode = node.Parent ?? node;
                 if (!backedUpNodes.Contains(backedUpNode))
                     backedUpNodes.Add(backedUpNode);
             }
 
             return backedUpNodes;
+        }
+
+        private static bool HasThreeDistinctVertices(ReadOnlySpan<Point2D> vertices)
+        {
+            Point2D first = vertices[0];
+            int secondIndex = 1;
+            while (secondIndex < vertices.Length && vertices[secondIndex] == first)
+                secondIndex++;
+
+            if (secondIndex >= vertices.Length)
+                return false;
+
+            Point2D second = vertices[secondIndex];
+            for (int i = secondIndex + 1; i < vertices.Length; i++)
+            {
+                if (vertices[i] != first && vertices[i] != second)
+                    return true;
+            }
+
+            return false;
         }
 
         private static List<ConnectedTilePlacement> BuildPlacements(SearchNode finalNode)
@@ -666,8 +850,14 @@ namespace TSMapEditor.Models
             {
                 if (node.Tile != null)
                 {
+                    TileConnectionPoint? entryPoint = node.EntryPointIndex >= 0
+                        ? node.Tile.ConnectionPoints[node.EntryPointIndex]
+                        : null;
+                    TileConnectionPoint? exitPoint = node.ExitPointIndex >= 0
+                        ? node.Tile.ConnectionPoints[node.ExitPointIndex]
+                        : null;
                     placements.Add(new ConnectedTilePlacement(node.Tile, node.Location,
-                        node.EntryPoint, node.ExitPoint));
+                        entryPoint, exitPoint));
                 }
 
                 node = node.Parent;
@@ -684,7 +874,7 @@ namespace TSMapEditor.Models
             if (node.Tile == null)
                 return fScore;
 
-            int foundationCellCount = Math.Max(node.Tile.Foundation?.Count ?? 1, 1);
+            int foundationCellCount = Math.Max(node.SearchTile.FoundationCells.Length, 1);
             float sizePenalty = (foundationCellCount - 1) * TileSizePenaltyPerFoundationCell;
             float repeatedWeightedUseCount = CountPreviousTileUsesInRecentAncestors(
                 node, RepeatPenaltyAncestorWindow);
@@ -704,7 +894,7 @@ namespace TSMapEditor.Models
             hash = MixHash(hash, unchecked((uint)randomSeed));
             hash = MixHash(hash, unchecked((uint)node.Location.X));
             hash = MixHash(hash, unchecked((uint)node.Location.Y));
-            hash = MixHash(hash, unchecked((uint)(node.ExitPoint?.Index ?? -1)));
+            hash = MixHash(hash, unchecked((uint)node.ExitPointIndex));
             hash = MixHash(hash, unchecked((uint)(node.Tile?.Index ?? -1)));
             return hash;
         }
