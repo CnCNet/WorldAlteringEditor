@@ -76,7 +76,7 @@ public sealed class MapTools
     }
 
     [McpServerTool(Name = "get_connected_tile_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Returns WAE Connected Tiles configurations that are enabled and valid for the current map's theater. Use draw_connected_tiles with an INI name from this result to lay out cliffs, shores, roads, rivers, and other configured connected terrain.")]
+    [Description("Returns WAE Connected Tiles configurations that are enabled and valid for the current map's theater, including whether each type supports ending pieces. Use draw_connected_tiles with an INI name from this result to lay out cliffs, shores, roads, rivers, and other configured connected terrain.")]
     public Task<List<MapConnectedTileTypeInfo>> GetConnectedTileTypes(
         [Description("Optional case-insensitive filter matched against INI name and display name.")] string nameFilter = null,
         CancellationToken cancellationToken = default)
@@ -385,14 +385,28 @@ public sealed class MapTools
         }
     }
 
+    public Task<MapEditResult> DrawConnectedTiles(
+        string connectedTileTypeName,
+        List<MapConnectedTilePathVertex> path,
+        string side,
+        int randomSeed,
+        int extraHeight,
+        CancellationToken cancellationToken)
+    {
+        return DrawConnectedTiles(connectedTileTypeName, path, side, randomSeed, extraHeight,
+            useEndPieces: false, closed: false, cancellationToken: cancellationToken);
+    }
+
     [McpServerTool(Name = "draw_connected_tiles", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Uses WAE's Connected Tiles pathfinder to draw a connected terrain line through two or more map-cell vertices. The line can overwrite terrain and update cell heights. The operation is one undo entry and one revision bump.")]
+    [Description("Uses WAE's Connected Tiles pathfinder to draw an open or closed connected terrain formation through map-cell vertices. The operation can optionally cap open paths with configured ending pieces. It can overwrite terrain and update cell heights, and is one undo entry and one revision bump.")]
     public async Task<MapEditResult> DrawConnectedTiles(
         [Description("INI name of a Connected Tiles configuration returned by get_connected_tile_types.")] string connectedTileTypeName,
-        [Description("Ordered polyline vertices for the connected terrain path. Each consecutive pair defines one segment; at least two and at most 256 vertices are supported.")] List<MapConnectedTilePathVertex> path,
+        [Description("Ordered polyline vertices for the connected terrain path. Each consecutive pair defines one segment. Open paths require at least two vertices; closed paths require at least three distinct vertices. At most 256 vertices are supported.")] List<MapConnectedTilePathVertex> path,
         [Description("Starting side of the connected terrain: Front or Back. Front-only types require Front.")] string side = "Front",
         [Description("Seed used to select and score tile variants. Change it to request a different pattern while keeping the same path. Defaults to 0.")] int randomSeed = 0,
         [Description("Non-negative height offset added to the first vertex's current level before the connected tiles' own height offsets are applied. Defaults to 0.")] int extraHeight = 0,
+        [Description("Whether to cap both ends of an open path with configured one-connection-point ending pieces. The selected type must support ending pieces. Ignored for closed paths. Defaults to false.")] bool useEndPieces = false,
+        [Description("Whether to connect the last vertex back to the first. Closed paths require at least three distinct vertices and never use ending pieces. Defaults to false.")] bool closed = false,
         CancellationToken cancellationToken = default)
     {
         Logger.Log($"{nameof(MapTools)}.{nameof(DrawConnectedTiles)}");
@@ -400,7 +414,7 @@ public sealed class MapTools
         try
         {
             return await gameThreadDispatcher.InvokeAsync(
-                () => mapFacade.DrawConnectedTiles(connectedTileTypeName, path, side, randomSeed, extraHeight),
+                () => mapFacade.DrawConnectedTiles(connectedTileTypeName, path, side, randomSeed, extraHeight, useEndPieces, closed),
                 cancellationToken);
         }
         catch (MapFacadeValidationException ex)

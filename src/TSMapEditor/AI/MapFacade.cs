@@ -431,7 +431,8 @@ public class MapFacade
                 connectedTileType.IniName,
                 connectedTileType.Name,
                 connectedTileType.FrontOnly,
-                connectedTileType.Tiles.Count))
+                connectedTileType.Tiles.Count,
+                connectedTileType.SupportsEndPieces))
             .Where(typeInfo => string.IsNullOrWhiteSpace(normalizedFilter) ||
                 ContainsIgnoringCase(typeInfo.ININame, normalizedFilter) ||
                 ContainsIgnoringCase(typeInfo.Name, normalizedFilter))
@@ -800,6 +801,13 @@ public class MapFacade
     public MapEditResult DrawConnectedTiles(string connectedTileTypeName, List<MapConnectedTilePathVertex> path,
         string side, int randomSeed, int extraHeight)
     {
+        return DrawConnectedTiles(connectedTileTypeName, path, side, randomSeed, extraHeight,
+            useEndPieces: false, closed: false);
+    }
+
+    public MapEditResult DrawConnectedTiles(string connectedTileTypeName, List<MapConnectedTilePathVertex> path,
+        string side, int randomSeed, int extraHeight, bool useEndPieces = false, bool closed = false)
+    {
         if (string.IsNullOrWhiteSpace(connectedTileTypeName))
             throw new MapFacadeValidationException("A connected tile type INI name must be provided.");
 
@@ -833,6 +841,9 @@ public class MapFacade
             pathCoords.Add(coords);
         }
 
+        if (closed && pathCoords.Distinct().Count() < 3)
+            throw new MapFacadeValidationException("A closed connected tile path must contain at least three distinct vertices.");
+
         ConnectedTileSide startingSide;
         if (string.Equals(side, nameof(ConnectedTileSide.Front), StringComparison.OrdinalIgnoreCase))
             startingSide = ConnectedTileSide.Front;
@@ -844,6 +855,9 @@ public class MapFacade
         if (connectedTileType.FrontOnly && startingSide != ConnectedTileSide.Front)
             throw new MapFacadeValidationException($"Connected tile type '{connectedTileType.IniName}' only supports the Front side.");
 
+        if (useEndPieces && !closed && !connectedTileType.SupportsEndPieces)
+            throw new MapFacadeValidationException($"Connected tile type '{connectedTileType.IniName}' does not support ending pieces.");
+
         int originLevel = map.GetTile(pathCoords[0]).Level;
         if (extraHeight < 0 || extraHeight > Constants.MaxMapHeightLevel - originLevel)
         {
@@ -853,11 +867,35 @@ public class MapFacade
 
         ValidateConnectedTileType(connectedTileType);
 
+        bool effectiveUseEndPieces = useEndPieces && !closed;
+        var planResult = ConnectedTilePlanner.Plan(
+            connectedTileType,
+            pathCoords,
+            startingSide,
+            randomSeed,
+            effectiveUseEndPieces,
+            closed,
+            coords => map.GetTile(coords) != null);
+
+        if (!planResult.IsSuccess)
+        {
+            string failureReason = string.IsNullOrWhiteSpace(planResult.Message)
+                ? planResult.Status switch
+                {
+                    ConnectedTilePlanStatus.InvalidInput => "the path is invalid",
+                    ConnectedTilePlanStatus.NoSolution => "no exact connection pattern fits the requested path",
+                    ConnectedTilePlanStatus.SearchLimit => "the search limit was reached before an exact pattern was found",
+                    _ => "the connected tile planner failed"
+                }
+                : planResult.Message;
+
+            throw new MapFacadeValidationException(
+                $"Unable to plan the connected tile formation: {failureReason}");
+        }
+
         var mutation = new DrawConnectedTilesMutation(
             mutationTarget,
-            pathCoords,
-            connectedTileType,
-            startingSide,
+            planResult.Plan,
             randomSeed,
             (byte)extraHeight);
 

@@ -18,7 +18,7 @@ namespace TSMapEditor.Models
     public readonly struct TileConnectionPoint
     {
         /// <summary>
-        /// Index of the connection point, 0 or 1
+        /// Zero-based index of the connection point within its tile.
         /// </summary>
         public int Index { get; init; }
 
@@ -54,162 +54,6 @@ namespace TSMapEditor.Models
         public ConnectedTileSide Side { get; init; }
     }
 
-    public class ConnectedTileAStarNode
-    {
-        private ConnectedTileAStarNode() {}
-
-        public ConnectedTileAStarNode(ConnectedTileAStarNode parent, TileConnectionPoint exit, Point2D location, ConnectedTile tile)
-        {
-            Location = location;
-            Tile = tile;
-
-            Parent = parent;
-            Exit = exit;
-            Destination = Parent.Destination;
-            GScore = Parent.GScore + Vector2.Distance(Parent.ExitCoords.ToXNAVector(), ExitCoords.ToXNAVector());
-
-            OccupiedCells = new HashSet<Point2D>(parent.OccupiedCells);
-            foreach (var foundationCell in tile.Foundation)
-            {
-                OccupiedCells.Add(foundationCell + Location);
-            }
-        }
-
-        /// <summary>
-        /// Absolute world coordinates of the node's tile
-        /// </summary>
-        public Point2D Location;
-
-        /// <summary>
-        /// Absolute world coordinates of the node's tile's exit
-        /// </summary>
-        public Point2D ExitCoords => Location + Exit.CoordinateOffset;
-
-        /// <summary>
-        /// Tile data
-        /// </summary>
-        public ConnectedTile Tile;
-
-        ///// A* Stuff
-
-        /// <summary>
-        /// A* end point
-        /// </summary>
-        public Point2D Destination;
-
-        /// <summary>
-        /// Where this node connects to the next node
-        /// </summary>
-        public TileConnectionPoint Exit;
-
-        /// <summary>
-        /// Distance from starting node
-        /// </summary>
-        public float GScore { get; private set; }
-
-        /// <summary>
-        /// Distance to end node
-        /// </summary>
-        public float HScore => Vector2.Distance(Destination.ToXNAVector(), ExitCoords.ToXNAVector());
-        public float FScore => GScore * 0.7f + HScore + (Tile?.DistanceModifier ?? 0);
-
-        /// <summary>
-        /// Previous node
-        /// </summary>
-        public ConnectedTileAStarNode Parent;
-
-        /// <summary>
-        /// Accumulated set of all cell coordinates occupied up to this node
-        /// </summary>
-        public HashSet<Point2D> OccupiedCells = new HashSet<Point2D>();
-
-        public static ConnectedTileAStarNode MakeStartNode(Point2D location, Point2D destination, ConnectedTileSide startingSide)
-        {
-            TileConnectionPoint connectionPoint = new TileConnectionPoint
-            {
-                Index = 0,
-                ConnectionMask = 0b11111111,
-                CoordinateOffset = Point2D.Zero,
-                Side = startingSide,
-                RequiredTiles = Array.Empty<int>(),
-                ForbiddenTiles = Array.Empty<int>()
-            };
-
-            var startNode = new ConnectedTileAStarNode()
-            {
-                Location = location,
-                Tile = null,
-
-                Parent = null,
-                Exit = connectionPoint,
-                Destination = destination,
-                GScore = 0
-            };
-
-            return startNode;
-        }
-
-        public List<ConnectedTileAStarNode> GetNextNodes(ConnectedTile tile)
-        {
-            var neighbors = new List<ConnectedTileAStarNode>();
-
-            foreach (TileConnectionPoint cp in tile.ConnectionPoints)
-            {
-                if (Tile != null)
-                {
-                    if ((cp.RequiredTiles?.Length > 0 && !cp.RequiredTiles.Contains(Tile.Index)) ||
-                        (cp.ForbiddenTiles?.Length > 0 && cp.ForbiddenTiles.Contains(Tile.Index)))
-                        continue;
-                }
-                
-                var possibleDirections = Helpers.GetDirectionsInMask((byte)(cp.ReversedConnectionMask & Exit.ConnectionMask));
-                if (possibleDirections.Count == 0)
-                    continue;
-
-                if (cp.Side != Exit.Side)
-                    continue;
-
-                foreach (Direction dir in possibleDirections)
-                {
-                    Point2D placementOffset = Helpers.VisualDirectionToPoint(dir) - cp.CoordinateOffset;
-                    Point2D placementCoords = ExitCoords + placementOffset;
-
-                    bool overlaps = false;
-                    foreach (var foundationCell in tile.Foundation)
-                    {
-                        if (OccupiedCells.Contains(foundationCell + placementCoords))
-                        {
-                            overlaps = true;
-                            break;
-                        }
-                    }
-
-                    if (overlaps)
-                        continue;
-
-                    var exit = tile.GetExit(cp.Index);
-                    neighbors.Add(new ConnectedTileAStarNode(this, exit, placementCoords, tile));
-                }
-            }
-            
-            return neighbors;
-        }
-
-        public List<ConnectedTileAStarNode> GetNextNodes(List<ConnectedTile> tiles, bool allowTurn)
-        {
-            List <ConnectedTileAStarNode > nextNodes = new List<ConnectedTileAStarNode>();
-            foreach (var tile in tiles)
-            {
-                if (!allowTurn && tile.ConnectionPoints[0].Side != tile.ConnectionPoints[1].Side)
-                    continue;
-
-                nextNodes.AddRange(GetNextNodes(tile));
-            }
-
-            return nextNodes;
-        }
-    }
-
     public class ConnectedTile
     {
         public ConnectedTile(IniSection iniSection, int index)
@@ -229,18 +73,56 @@ namespace TSMapEditor.Models
 
             IndicesInTileSet = indicesString.Split(',').Select(s => int.Parse(s, CultureInfo.InvariantCulture)).ToList();
 
-            ConnectionPoints = new TileConnectionPoint[2];
+            var connectionPointValues = new SortedDictionary<int, string>();
+
+            foreach (var keyValuePair in iniSection.Keys)
+            {
+                Match match = Regex.Match(keyValuePair.Key, "^ConnectionPoint(\\d+)$",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                if (!match.Success)
+                    continue;
+
+                if (!int.TryParse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture,
+                        out int connectionPointIndex))
+                {
+                    throw new INIConfigException(
+                        $"Connected Tile {iniSection.SectionName} has an invalid connection point index in key {keyValuePair.Key}!");
+                }
+
+                if (!connectionPointValues.TryAdd(connectionPointIndex, keyValuePair.Value))
+                {
+                    throw new INIConfigException(
+                        $"Connected Tile {iniSection.SectionName} defines ConnectionPoint{connectionPointIndex} multiple times!");
+                }
+            }
+
+            if (!connectionPointValues.ContainsKey(0))
+                throw new INIConfigException($"Connected Tile {iniSection.SectionName} has no ConnectionPoint0!");
+
+            int expectedConnectionPointIndex = 0;
+            foreach (int connectionPointIndex in connectionPointValues.Keys)
+            {
+                if (connectionPointIndex != expectedConnectionPointIndex)
+                {
+                    throw new INIConfigException(
+                        $"Connected Tile {iniSection.SectionName} has no ConnectionPoint{expectedConnectionPointIndex}; connection point indices must be contiguous!");
+                }
+
+                expectedConnectionPointIndex++;
+            }
+
+            ConnectionPoints = new TileConnectionPoint[connectionPointValues.Count];
 
             for (int i = 0; i < ConnectionPoints.Length; i++)
             {
-                string coordsString = iniSection.GetStringValue($"ConnectionPoint{i}", null);
+                string coordsString = connectionPointValues[i];
                 if (coordsString == null || !Regex.IsMatch(coordsString, "^\\d+?,\\d+?$"))
                     throw new INIConfigException($"Connected Tile {iniSection.SectionName} has invalid ConnectionPoint{i} value: {coordsString}!");
 
                 Point2D coords = Point2D.FromString(coordsString);
 
                 string directionsString = iniSection.GetStringValue($"ConnectionPoint{i}.Directions", null);
-                string[] directionParts = directionsString.Split(',');
+                string[] directionParts = directionsString?.Split(',') ?? Array.Empty<string>();
                 byte directions = 0;
 
                 // Try parsing the string as a comma-separated list of named directions
@@ -336,6 +218,21 @@ namespace TSMapEditor.Models
         public TileConnectionPoint[] ConnectionPoints { get; set; }
 
         /// <summary>
+        /// Whether this tile has one connection point and can cap an open connected-tile path.
+        /// </summary>
+        public bool IsEndingPiece => ConnectionPoints.Length == 1;
+
+        /// <summary>
+        /// Whether this tile has two connection points and can be used as a linear path segment.
+        /// </summary>
+        public bool IsLinear => ConnectionPoints.Length == 2;
+
+        /// <summary>
+        /// Whether this tile has three or more connection points and can form a junction.
+        /// </summary>
+        public bool IsJunction => ConnectionPoints.Length >= 3;
+
+        /// <summary>
         /// Set of all relative cell coordinates this tile occupies
         /// </summary>
         public HashSet<Point2D> Foundation { get; set; }
@@ -350,19 +247,20 @@ namespace TSMapEditor.Models
         /// </summary>
         public int DistanceModifier { get; set; }
 
-        public TileConnectionPoint GetExit(int entryIndex)
-        {
-            return ConnectionPoints[0].Index == entryIndex ? ConnectionPoints[1] : ConnectionPoints[0];
-        }
-
         private bool IsStraight(TileConnectionPoint[] connectionPoints)
         {
+            if (connectionPoints.Length != 2)
+                return false;
+
             int mask = connectionPoints[0].ConnectionMask & connectionPoints[1].ReversedConnectionMask;
             return mask > 0;
         }
 
         private bool IsDiagonal(TileConnectionPoint[] connectionPoints)
         {
+            if (connectionPoints.Length != 2)
+                return false;
+
             var directions = Helpers.GetDirectionsInMask((byte)(connectionPoints[0].ConnectionMask &
                                                                 connectionPoints[1].ReversedConnectionMask));
 
@@ -469,5 +367,6 @@ namespace TSMapEditor.Models
         public Color? Color { get; set; }
         public List<string> AllowedTheaters { get; set; }
         public List<ConnectedTile> Tiles { get; }
+        public bool SupportsEndPieces => Tiles.Exists(tile => tile.IsEndingPiece);
     }
 }

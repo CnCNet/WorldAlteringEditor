@@ -10,7 +10,7 @@ using TSMapEditor.Mutations.Classes;
 namespace TSMapEditor.UI.CursorActions
 {
     /// <summary>
-    /// Cursor action for placing bridges.
+    /// Cursor action for drawing connected tiles.
     /// </summary>
     public class DrawConnectedTilesCursorAction : CursorAction
     {
@@ -31,6 +31,10 @@ namespace TSMapEditor.UI.CursorActions
         private List<Point2D> connectedTilePath;
         private ConnectedTileSide connectedTileSide = ConnectedTileSide.Front;
         private DrawConnectedTilesMutation previewMutation;
+        private ConnectedTilePlan previewPlan;
+        private string previewPlanFailureText;
+        private bool useEndPieces;
+        private bool closed;
         private byte extraHeight = 0;
 
         private int randomSeed = new Random().Next();
@@ -38,32 +42,59 @@ namespace TSMapEditor.UI.CursorActions
         public override void OnActionEnter()
         {
             connectedTilePath = new List<Point2D>();
+            previewMutation = null;
+            previewPlan = null;
+            previewPlanFailureText = null;
+            useEndPieces = false;
+            closed = false;
 
             base.OnActionEnter();
         }
 
         public override void DrawPreview(Point2D cellCoords, Point2D cameraTopLeftPoint)
         {
-            string mainText = Translate("MainText.V2", "Click on a cell to place a new vertex.\r\n\r\n" +
+            string mainText = Translate("MainText.V3", "Click on a cell to place a new vertex.\r\n\r\n" +
+                "After placing at least three distinct vertices, you can optionally\r\nclick the first one to close the formation.\r\n\r\n" +
                 "ENTER to confirm\r\n" +
                 "Backspace to go back one step\r\n" +
                 "R to re-generate the pattern\r\n");
 
             string tabText = Translate("TabText", "TAB to toggle between front and back sides\r\n");
             string pageUpDownText = Translate("PageUpDownText", "PageUp to raise the tiles, PageDown to lower them\r\n");
+            string endPiecesText = string.Empty;
+            if (connectedTileType.SupportsEndPieces && !closed)
+            {
+                endPiecesText = string.Format(
+                    Translate("EndPiecesText", "E to toggle ending pieces ({0})\r\n"),
+                    useEndPieces ? Translate("EndPieces.Enabled", "enabled") : Translate("EndPieces.Disabled", "disabled"));
+            }
+
+            string closedText = closed
+                ? Translate("ClosedText", "Closed formation (ending pieces disabled); Backspace to reopen\r\n")
+                : string.Empty;
             string exitText = Translate("ExitText", "Right-click or ESC to exit");
 
-            string text = (Constants.IsFlatWorld, connectedTileType.FrontOnly) switch
-            {
-                (true, true) => mainText + exitText,
-                (true, false) => mainText + tabText + exitText,
-                (false, true) => mainText + pageUpDownText + exitText,
-                (false, false) => mainText + tabText + pageUpDownText + exitText
-            };
+            string text = mainText + endPiecesText + closedText;
+            if (!connectedTileType.FrontOnly)
+                text += tabText;
+            if (!Constants.IsFlatWorld)
+                text += pageUpDownText;
+            text += exitText;
 
-            DrawText(cellCoords, cameraTopLeftPoint, 60, -150, text, Color.Yellow);
+            if (!string.IsNullOrEmpty(previewPlanFailureText))
+            {
+                text += "\r\n\r\n" + string.Format(
+                    Translate("PlanFailureText", "Cannot create an exact connected pattern: {0}\r\nAdjust the vertices or press R to try another pattern."),
+                    previewPlanFailureText);
+            }
+
+            DrawText(cellCoords, cameraTopLeftPoint, 60, -180, text,
+                string.IsNullOrEmpty(previewPlanFailureText) ? Color.Yellow : Color.OrangeRed);
 
             Func<Point2D, Map, Point2D> getCellCenterPoint = Is2DMode ? CellMath.CellCenterPointFromCellCoords : CellMath.CellCenterPointFromCellCoords_3D;
+
+            bool pointingAtFirstVertex = connectedTilePath.Count > 0 && cellCoords == connectedTilePath[0];
+            bool showingClosingGuide = closed || (pointingAtFirstVertex && HasEnoughVerticesToClose());
 
             if (connectedTilePath.Count > 0)
             {
@@ -71,7 +102,11 @@ namespace TSMapEditor.UI.CursorActions
                 start = getCellCenterPoint(start, CursorActionTarget.Map) - cameraTopLeftPoint;
                 start = start.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
 
-                Color color = Color.Red;
+                Color color = closed && previewPlan == null
+                    ? Color.OrangeRed
+                    : showingClosingGuide
+                        ? Color.LimeGreen
+                        : Color.Red;
                 int precision = 8;
                 int thickness = 3;
                 Renderer.DrawCircle(start.ToXNAVector(), Constants.CellSizeY * 0.25f, color, precision, thickness);
@@ -93,6 +128,18 @@ namespace TSMapEditor.UI.CursorActions
                 int thickness = 3;
 
                 Renderer.DrawLine(start.ToXNAVector(), end.ToXNAVector(), color, thickness);
+            }
+
+            if (showingClosingGuide && connectedTilePath.Count > 1)
+            {
+                Point2D start = getCellCenterPoint(connectedTilePath[connectedTilePath.Count - 1], CursorActionTarget.Map) - cameraTopLeftPoint;
+                start = start.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
+
+                Point2D end = getCellCenterPoint(connectedTilePath[0], CursorActionTarget.Map) - cameraTopLeftPoint;
+                end = end.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
+
+                Color closingGuideColor = closed && previewPlan == null ? Color.OrangeRed : Color.LimeGreen;
+                Renderer.DrawLine(start.ToXNAVector(), end.ToXNAVector(), closingGuideColor, 3);
             }
         }
 
@@ -116,10 +163,26 @@ namespace TSMapEditor.UI.CursorActions
             }
             else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.Back)
             {
-                if (connectedTilePath.Count > 0)
+                if (closed)
+                {
+                    closed = false;
+                }
+                else if (connectedTilePath.Count > 0)
+                {
                     connectedTilePath.RemoveAt(connectedTilePath.Count - 1);
-                
+                }
+
                 RedrawPreview();
+
+                e.Handled = true;
+            }
+            else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.E)
+            {
+                if (connectedTileType.SupportsEndPieces && !closed)
+                {
+                    useEndPieces = !useEndPieces;
+                    RedrawPreview();
+                }
 
                 e.Handled = true;
             }
@@ -163,12 +226,20 @@ namespace TSMapEditor.UI.CursorActions
 
                 e.Handled = true;
             }
-            else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.Enter && connectedTilePath.Count >= 2)
+            else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.Enter)
             {
-                previewMutation?.Undo();
-                CursorActionTarget.MutationManager.PerformMutation(new DrawConnectedTilesMutation(MutationTarget, connectedTilePath, connectedTileType, connectedTileSide, randomSeed, extraHeight));
+                if (previewPlan != null)
+                {
+                    ConnectedTilePlan planToCommit = previewPlan;
+                    previewMutation?.Undo();
+                    previewMutation = null;
+                    previewPlan = null;
 
-                ExitAction();
+                    CursorActionTarget.MutationManager.PerformMutation(
+                        new DrawConnectedTilesMutation(MutationTarget, planToCommit, randomSeed, extraHeight));
+
+                    ExitAction();
+                }
 
                 e.Handled = true;
             }
@@ -176,6 +247,16 @@ namespace TSMapEditor.UI.CursorActions
 
         public override void LeftClick(Point2D cellCoords)
         {
+            if (closed)
+                return;
+
+            if (connectedTilePath.Count > 0 && cellCoords == connectedTilePath[0] && HasEnoughVerticesToClose())
+            {
+                closed = true;
+                RedrawPreview();
+                return;
+            }
+
             connectedTilePath.Add(cellCoords);
             RedrawPreview();
         }
@@ -183,21 +264,54 @@ namespace TSMapEditor.UI.CursorActions
         private void RedrawPreview()
         {
             previewMutation?.Undo();
+            previewMutation = null;
+            previewPlan = null;
+            previewPlanFailureText = null;
 
-            if (connectedTilePath.Count >= 2)
+            if (connectedTilePath.Count < 2 || (closed && !HasEnoughVerticesToClose()))
+                return;
+
+            ConnectedTilePlanResult planResult = ConnectedTilePlanner.Plan(
+                connectedTileType,
+                connectedTilePath,
+                connectedTileSide,
+                randomSeed,
+                useEndPieces && !closed,
+                closed,
+                coords => MutationTarget.Map.GetTile(coords) != null);
+
+            if (!planResult.IsSuccess)
             {
-                previewMutation = new DrawConnectedTilesMutation(MutationTarget, connectedTilePath, connectedTileType, connectedTileSide, randomSeed, extraHeight);
-                previewMutation.Perform();
+                previewPlanFailureText = GetPlanFailureText(planResult);
+                return;
             }
-            else
+
+            previewPlan = planResult.Plan;
+            previewMutation = new DrawConnectedTilesMutation(MutationTarget, previewPlan, randomSeed, extraHeight);
+            previewMutation.Perform();
+        }
+
+        private bool HasEnoughVerticesToClose()
+        {
+            return new HashSet<Point2D>(connectedTilePath).Count >= 3;
+        }
+
+        private string GetPlanFailureText(ConnectedTilePlanResult planResult)
+        {
+            return planResult.Status switch
             {
-                previewMutation = null;
-            }
+                ConnectedTilePlanStatus.InvalidInput => Translate("PlanStatus.InvalidInput", "the selected path is invalid"),
+                ConnectedTilePlanStatus.NoSolution => Translate("PlanStatus.NoSolution", "no exact connection pattern fits the selected vertices"),
+                ConnectedTilePlanStatus.SearchLimit => Translate("PlanStatus.SearchLimit", "the search limit was reached before an exact pattern was found"),
+                _ when !string.IsNullOrWhiteSpace(planResult.Message) => planResult.Message,
+                _ => Translate("PlanStatus.Unknown", "the connected tile planner failed")
+            };
         }
 
         private void UndoOnExit(object sender, EventArgs e)
         {
             previewMutation?.Undo();
+            previewMutation = null;
         }
     }
 }
