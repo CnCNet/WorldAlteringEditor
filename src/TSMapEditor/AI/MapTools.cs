@@ -3,8 +3,10 @@ using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Rampastring.Tools;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using TSMapEditor.Rendering;
@@ -17,6 +19,7 @@ public sealed class MapTools
     private const int MaxRegionDimension = 256;
     private const int MaxRegionCellCount = 10_000;
     private const int MaxScreenshotPixelCount = 8_000_000;
+    private const string MappingInstructionsFileName = "AIMappingInstructions.md";
 
     public MapTools(MapFacade mapFacade, GameThreadDispatcher gameThreadDispatcher, IMapScreenCropper mapScreenCropper)
     {
@@ -28,6 +31,45 @@ public sealed class MapTools
     private readonly MapFacade mapFacade;
     private readonly GameThreadDispatcher gameThreadDispatcher;
     private readonly IMapScreenCropper mapScreenCropper;
+
+    [McpServerTool(Name = "get_mapping_instructions", ReadOnly = true, OpenWorld = false)]
+    [Description("Returns the active mod's AI mapping instructions as Markdown.")]
+    public async Task<string> GetMappingInstructions(CancellationToken cancellationToken)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetMappingInstructions)}");
+
+        string customPath = Path.Combine(Environment.CurrentDirectory, "Config", MappingInstructionsFileName);
+        string defaultPath = Path.Combine(Environment.CurrentDirectory, "Config", "Default", MappingInstructionsFileName);
+        string instructionsPath;
+
+        if (File.Exists(customPath))
+            instructionsPath = customPath;
+        else if (File.Exists(defaultPath))
+            instructionsPath = defaultPath;
+        else
+            throw new McpException("No mapping instruction file exists for the active mod.");
+
+        try
+        {
+            return await File.ReadAllTextAsync(instructionsPath, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (FileNotFoundException)
+        {
+            throw new McpException("No mapping instruction file exists for the active mod.");
+        }
+        catch (DirectoryNotFoundException)
+        {
+            throw new McpException("No mapping instruction file exists for the active mod.");
+        }
+        catch (Exception ex)
+        {
+            throw new McpException($"Failed to read the mapping instruction file for the active mod: {ex.Message}");
+        }
+    }
 
     [McpServerTool(Name = "get_map_info", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns basic information about the map currently open in the World-Altering Editor.")]
