@@ -95,6 +95,7 @@ namespace TSMapEditor.Models
         private const int MaxQueuedNodesPerStrictSegment = 100_000;
         private const int MaxPlacementCount = 2_048;
         private const int MaxBoundaryStates = 24;
+        private const int MaxInitialBoundaryStates = 8;
         private const int MaxStackAllocatedPathVertexCount = 256;
 
         private const float TileSizePenaltyPerFoundationCell = 0.07f;
@@ -371,7 +372,16 @@ namespace TSMapEditor.Models
                         ? SegmentGoal.EndingPiece
                         : SegmentGoal.Point;
 
-                int exactResultLimit = strict && !isLastSegment ? MaxBoundaryStates : 1;
+                // A broad initial frontier can include paths that reach the first vertex by circling
+                // most of a closed outline, effectively erasing the requested starting side.
+                int exactResultLimit;
+                if (!strict || isLastSegment)
+                    exactResultLimit = 1;
+                else if (isFirstSegment)
+                    exactResultLimit = MaxInitialBoundaryStates;
+                else
+                    exactResultLimit = MaxBoundaryStates;
+
                 SegmentSearchResult searchResult = SearchSegment(
                     openSet,
                     frontier,
