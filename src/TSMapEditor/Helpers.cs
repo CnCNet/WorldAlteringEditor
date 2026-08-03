@@ -147,6 +147,13 @@ namespace TSMapEditor
             }
         }
 
+        public static bool IsLandTypeImpassable(LandType landType, bool considerLandUnitsOnly)
+        {
+            return landType == LandType.Rock || (considerLandUnitsOnly && landType == LandType.Water);
+        }
+
+        public static bool IsLandTypeImpassableForNavalUnits(LandType landType) => IsLandTypeImpassableForNavalUnits((int)landType);
+
         public static bool IsLandTypeImpassableForNavalUnits(int landType)
         {
             // TODO make this dependent on SpeedType and Rules.ini values
@@ -163,11 +170,6 @@ namespace TSMapEditor
                 default:
                     return true;
             }
-        }
-
-        public static bool IsLandTypeImpassable(LandType landType, bool considerLandUnitsOnly)
-        {
-            return landType == LandType.Rock || (considerLandUnitsOnly && landType == LandType.Water);
         }
 
         public static bool IsLandTypeWater(int landType)

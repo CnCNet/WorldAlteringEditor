@@ -6,6 +6,7 @@ using TSMapEditor.CCEngine;
 using TSMapEditor.CCEngine.TileData;
 using TSMapEditor.GameMath;
 using TSMapEditor.Models;
+using TSMapEditor.Models.Enums;
 using TSMapEditor.Mutations;
 using TSMapEditor.Mutations.Classes;
 using TSMapEditor.Mutations.Classes.AIMutations;
@@ -112,7 +113,8 @@ public class MapFootInfo : MapTechnoInfo
 
 public class CellInfo
 {
-    public CellInfo(int x, int y, string tileSetName, int tileIndex, int tileIndexInTileSet, int subTileIndex, int height,
+    public CellInfo(int x, int y, string tileSetName, int tileIndex, int tileIndexInTileSet, int subTileIndex, string landType, 
+        bool passableForLandUnits, bool passableForNavalUnits, int height,
         MapObjectInfo terrainObjectInfo, MapOverlayInfo overlayInfo, List<MapBuildingInfo> buildingInfos, List<MapFootInfo> footInfos,
         List<MapWaypointInfo> waypointInfos)
     {
@@ -122,6 +124,9 @@ public class CellInfo
         TileIndex = tileIndex;
         TileIndexInTileSet = tileIndexInTileSet;
         SubTileIndex = subTileIndex;
+        LandType = landType;
+        PassableForLandUnits = passableForLandUnits;
+        PassableForNavalUnits = passableForNavalUnits;
         Height = height;
         TerrainObjectInfo = terrainObjectInfo;
         OverlayInfo = overlayInfo;
@@ -136,6 +141,9 @@ public class CellInfo
     public int TileIndex { get; }
     public int TileIndexInTileSet { get; }
     public int SubTileIndex { get; }
+    public string LandType { get; }
+    public bool PassableForLandUnits { get; }
+    public bool PassableForNavalUnits { get; }
     public int Height { get; }
     public MapObjectInfo TerrainObjectInfo { get; }
     public MapOverlayInfo OverlayInfo { get; }
@@ -157,8 +165,13 @@ public class CellInfo
         var aircraftInfos = mapTile.Aircraft.Select(a => (MapFootInfo)FromTechno(map, a));
         var waypointInfos = mapTile.Waypoints.OrderBy(waypoint => waypoint.Identifier).Select(FromWaypoint).ToList();
 
+        var tileInfo = theater.GetTile(mapTile.TileIndex);
+        var subTileInfo = tileInfo.GetSubTile(mapTile.SubTileIndex);
+        LandType landType = (LandType)subTileInfo.TmpImage.TerrainType;
+
         return new CellInfo(mapTile.X, mapTile.Y, tileSet.SetName, mapTile.TileIndex, mapTile.TileIndex - tileSet.StartTileIndex,
-            mapTile.SubTileIndex, mapTile.Level, terrainObjectInfo, overlayInfo, buildingInfos,
+            mapTile.SubTileIndex, landType.ToString(), !Helpers.IsLandTypeImpassable(landType, true), !Helpers.IsLandTypeImpassableForNavalUnits(landType),
+            mapTile.Level, terrainObjectInfo, overlayInfo, buildingInfos,
             vehicleInfos.Concat(infantryInfos).Concat(aircraftInfos).ToList(), waypointInfos);
     }
 
