@@ -73,7 +73,7 @@ namespace TSMapEditor.Rendering
             private readonly CancellationTokenRegistration cancellationTokenRegistration;
 
             public Rectangle CellRectangle { get; }
-            public Rectangle CalculatedPixelRectangle { get; set; }
+            public ScreenCropLayout CalculatedPixelLayout { get; set; }
             public CancellationToken CancellationToken { get; }
             public bool IsProcessing { get; set; }
             public Task<byte[]> Task => completionSource.Task;
@@ -82,6 +82,22 @@ namespace TSMapEditor.Rendering
             public void TrySetException(Exception exception) => completionSource.TrySetException(exception);
 
             public void Dispose() => cancellationTokenRegistration.Dispose();
+        }
+
+        private readonly struct ScreenCropLayout
+        {
+            public ScreenCropLayout(int outputWidth, int outputHeight, Rectangle sourceRectangle, Rectangle destinationRectangle)
+            {
+                OutputWidth = outputWidth;
+                OutputHeight = outputHeight;
+                SourceRectangle = sourceRectangle;
+                DestinationRectangle = destinationRectangle;
+            }
+
+            public int OutputWidth { get; }
+            public int OutputHeight { get; }
+            public Rectangle SourceRectangle { get; }
+            public Rectangle DestinationRectangle { get; }
         }
 
         struct WaypointDrawStruct
@@ -253,8 +269,9 @@ namespace TSMapEditor.Rendering
                     return false;
                 }
 
+                ScreenCropLayout pixelLayout = GetScreenCropLayout(cellRectangle);
                 var request = new ScreenCropRequest(cellRectangle, cancellationToken, ScreenCropRequest_Canceled);
-                request.CalculatedPixelRectangle = GetScreenCropSourceRectangle(cellRectangle);
+                request.CalculatedPixelLayout = pixelLayout;
                 screenCropRequest = request;
                 screenCropTask = request.Task;
 
@@ -328,53 +345,63 @@ namespace TSMapEditor.Rendering
             return null;
         }
 
-        private Rectangle GetScreenCropSourceRectangle(Rectangle cellRectangle)
+        private ScreenCropLayout GetScreenCropLayout(Rectangle cellRectangle)
         {
             if (compositeRenderTarget == null)
                 throw new MapScreenCropException("The map renderer is not available.");
 
-            long rightCellX = (long)cellRectangle.X + cellRectangle.Width - 1L;
-            long bottomCellY = (long)cellRectangle.Y + cellRectangle.Height - 1L;
-            long halfCellWidth = Constants.CellSizeX / 2L;
-            long halfCellHeight = Constants.CellSizeY / 2L;
+            int rightCellX = cellRectangle.X + cellRectangle.Width - 1;
+            int bottomCellY = cellRectangle.Y + cellRectangle.Height - 1;
+            int halfCellWidth = Constants.CellSizeX / 2;
+            int halfCellHeight = Constants.CellSizeY / 2;
 
-            long left = ((long)cellRectangle.X - 1L) * halfCellWidth + ((long)Map.Size.X - bottomCellY) * halfCellWidth;
-            long top = ((long)cellRectangle.X - 1L) * halfCellHeight - ((long)Map.Size.X - cellRectangle.Y) * halfCellHeight + Constants.MapYBaseline;
-            long right = (rightCellX - 1L) * halfCellWidth + ((long)Map.Size.X - cellRectangle.Y) * halfCellWidth + Constants.CellSizeX;
-            long bottom = (rightCellX - 1L) * halfCellHeight - ((long)Map.Size.X - bottomCellY) * halfCellHeight + Constants.MapYBaseline + Constants.CellSizeY;
+            int left = (cellRectangle.X - 1) * halfCellWidth + (Map.Size.X - bottomCellY) * halfCellWidth;
+            int top = (cellRectangle.X - 1) * halfCellHeight - (Map.Size.X - cellRectangle.Y) * halfCellHeight + Constants.MapYBaseline;
+            int right = (rightCellX - 1) * halfCellWidth + (Map.Size.X - cellRectangle.Y) * halfCellWidth + Constants.CellSizeX;
+            int bottom = (rightCellX - 1) * halfCellHeight - (Map.Size.X - bottomCellY) * halfCellHeight + Constants.MapYBaseline + Constants.CellSizeY;
 
             // Terrain is drawn upwards from its flat cell position. Keep a stable logical-cell crop while
             // reserving enough space above it for terrain at the maximum supported height level.
             if (!EditorState.Is2DMode)
                 top -= Constants.MapYBaseline;
 
-            if (left < 0L || top < 0L || right > compositeRenderTarget.Width || bottom > compositeRenderTarget.Height ||
-                right <= left || bottom <= top)
+            int outputWidth = right - left;
+            int outputHeight = bottom - top;
+            if (outputWidth <= 0L || outputHeight <= 0L || outputWidth > RenderingConstants.MaximumDX11TextureSize || outputHeight > RenderingConstants.MaximumDX11TextureSize)
             {
-                throw new MapScreenCropException("The requested screenshot region projects outside the map texture.");
+                throw new MapScreenCropException("The requested screenshot region has invalid projected dimensions.");
             }
 
-            return new Rectangle((int)left, (int)top, (int)(right - left), (int)(bottom - top));
+            int clippedLeft = Math.Max(0, left);
+            int clippedTop = Math.Max(0, top);
+            int clippedRight = Math.Min(compositeRenderTarget.Width, right);
+            int clippedBottom = Math.Min(compositeRenderTarget.Height, bottom);
+
+            if (clippedRight <= clippedLeft || clippedBottom <= clippedTop)
+            {
+                throw new MapScreenCropException("The requested screenshot region is completely outside of the map.");
+            }
+
+            var sourceRectangle = new Rectangle(clippedLeft, clippedTop, clippedRight - clippedLeft, clippedBottom - clippedTop);
+            var destinationRectangle = new Rectangle(clippedLeft - left, clippedTop - top, sourceRectangle.Width, sourceRectangle.Height);
+            return new ScreenCropLayout(outputWidth, outputHeight, sourceRectangle, destinationRectangle);
         }
 
-        private byte[] CaptureScreenCrop(Rectangle sourceRectangle)
+        private byte[] CaptureScreenCrop(ScreenCropLayout layout)
         {
             using var cropRenderTarget = new RenderTarget2D(
                 GraphicsDevice,
-                sourceRectangle.Width,
-                sourceRectangle.Height,
+                layout.OutputWidth,
+                layout.OutputHeight,
                 false,
                 SurfaceFormat.Color,
                 DepthFormat.None);
 
             Renderer.PushRenderTarget(cropRenderTarget);
 
-            GraphicsDevice.Clear(Color.Black);
-            Renderer.DrawTexture(
-                compositeRenderTarget,
-                sourceRectangle,
-                new Rectangle(0, 0, cropRenderTarget.Width, cropRenderTarget.Height),
-                Color.White);
+            GraphicsDevice.Clear(Color.Transparent);
+
+            Renderer.DrawTexture(compositeRenderTarget, layout.SourceRectangle, layout.DestinationRectangle, Color.White);
 
             Renderer.PopRenderTarget();
 
@@ -383,11 +410,11 @@ namespace TSMapEditor.Rendering
             return stream.ToArray();
         }
 
-        private void CompleteScreenCropRequest(ScreenCropRequest request, Rectangle sourceRectangle)
+        private void CompleteScreenCropRequest(ScreenCropRequest request, ScreenCropLayout layout)
         {
             // No need for exception handling here because the caller already has a try-catch
             if (!request.CancellationToken.IsCancellationRequested && !request.Task.IsCompleted)
-                request.TrySetResult(CaptureScreenCrop(sourceRectangle));
+                request.TrySetResult(CaptureScreenCrop(layout));
 
             renderingWholeMapForScreenCrop = false;
             ReleaseScreenCropRequest(request);
@@ -1847,12 +1874,11 @@ namespace TSMapEditor.Rendering
         public void Draw(bool isActive, TechnoBase technoUnderCursor, MapTile tileUnderCursor, CursorAction cursorAction)
         {
             ScreenCropRequest currentScreenCropRequest = TryBeginScreenCropRequest();
-            Rectangle screenCropSourceRectangle = Rectangle.Empty;
+            ScreenCropLayout screenCropLayout = default;
 
             if (currentScreenCropRequest != null)
             {
-                screenCropSourceRectangle = currentScreenCropRequest.CalculatedPixelRectangle;
-
+                screenCropLayout = currentScreenCropRequest.CalculatedPixelLayout;
                 renderingWholeMapForScreenCrop = true;
                 InvalidateMap();
             }
@@ -1881,16 +1907,13 @@ namespace TSMapEditor.Rendering
                 {
                     ScreenCropRequest requestToComplete = currentScreenCropRequest;
                     currentScreenCropRequest = null;
-                    CompleteScreenCropRequest(requestToComplete, screenCropSourceRectangle);
+                    CompleteScreenCropRequest(requestToComplete, screenCropLayout);
                 }
 
                 if (EditorState.DrawMapWideOverlay)
                 {
-                    MapWideOverlay.Draw(new Rectangle(
-                            (int)(-Camera.TopLeftPoint.X * Camera.ZoomLevel),
-                            (int)((-Camera.TopLeftPoint.Y + Constants.MapYBaseline) * Camera.ZoomLevel),
-                            (int)(mapRenderTarget.Width * Camera.ZoomLevel),
-                            (int)((mapRenderTarget.Height - Constants.MapYBaseline) * Camera.ZoomLevel)));
+                    MapWideOverlay.Draw(new Rectangle(Camera.ScaleIntWithZoom(-Camera.TopLeftPoint.X), Camera.ScaleIntWithZoom(-Camera.TopLeftPoint.Y + Constants.MapYBaseline),
+                            Camera.ScaleIntWithZoom(mapRenderTarget.Width), Camera.ScaleIntWithZoom(mapRenderTarget.Height - Constants.MapYBaseline)));
                 }
 
                 if (isActive && tileUnderCursor != null && cursorAction != null)

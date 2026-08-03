@@ -268,7 +268,7 @@ public sealed class MapTools
     }
 
     [McpServerTool(Name = "screenshot_map_region", ReadOnly = true, OpenWorld = false)]
-    [Description("Renders the entire open map and returns a PNG screenshot of the axis-aligned pixel bounds for a rectangular region of cells. In normal 3D mode, the image includes fixed vertical padding above those bounds for terrain at the maximum supported height. Because the map is isometric, the requested cells form a diamond within the returned rectangular image, whose corners can contain map content outside the requested cells.")]
+    [Description("Renders the entire open map and returns a PNG screenshot of the axis-aligned pixel bounds for a rectangular region of cells. In normal 3D mode, the image includes fixed vertical padding above those bounds for terrain at the maximum supported height. Because the map is isometric, the requested cells form a diamond within the returned rectangular image, whose corners can contain map content outside the requested cells. Regions may partially cross the map boundary, with pixels outside the map's render bounds left transparent, but must overlap the map.")]
     public async Task<ImageContentBlock> ScreenshotMapRegion(
         [Description("X coordinate of the region's top-left cell.")] int x,
         [Description("Y coordinate of the region's top-left cell.")] int y,
