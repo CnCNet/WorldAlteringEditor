@@ -103,6 +103,11 @@ namespace TSMapEditor.CCEngine
 
             MixFileHeader header = new MixFileHeader(buffer);
 
+            // A zero file count means the (possibly encrypted) index came out garbage.
+            // Fail loudly rather than silently registering an empty MIX.
+            if (header.FileCount == 0)
+                throw new MixParseException($"Invalid MIX index (fileCount=0, encrypted={isEncrypted}).");
+
             bodyOffset = INDEX_POSITION + MixFileEntry.SIZE_OF_FILE_ENTRY * header.FileCount;
 
             if (isEncrypted)
@@ -259,14 +264,14 @@ namespace TSMapEditor.CCEngine
             if (buffer.Length < SIZE_OF_HEADER)
                 throw new ArgumentException("buffer is not long enough");
 
-            FileCount = BitConverter.ToInt16(buffer, 0);
+            FileCount = BitConverter.ToUInt16(buffer, 0);
             BodySize = BitConverter.ToInt32(buffer, 2);
         }
 
         /// <summary>
         /// The number of files in the MIX file.
         /// </summary>
-        public short FileCount { get; private set; }
+        public ushort FileCount { get; private set; }
 
         /// <summary>
         /// The size of the MIX file, excluding the header and index.

@@ -93,7 +93,16 @@ namespace TSMapEditor.CCEngine
                 {
                     // Logger.Log("Loading MIX file " + name + " from existing MIX file " + Path.GetFileName(value.MixFile.FilePath));
                     var mixFile = new MixFile(value.MixFile, value.Offset);
-                    mixFile.Parse();
+
+                    try
+                    {
+                        mixFile.Parse();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log($"Failed to parse MIX file {name}: {ex.Message}");
+                    }
+
                     AddMix(mixFile);
                     return true;
                 }
@@ -129,7 +138,16 @@ namespace TSMapEditor.CCEngine
 
             Logger.Log("Loading MIX file " + name + " from " + searchDir);
             var mixFile = new MixFile();
-            mixFile.Parse(Path.Combine(searchDir, name));
+
+            try
+            {
+                mixFile.Parse(Path.Combine(searchDir, name));
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Failed to parse MIX file {name}: {ex.Message}");
+            }
+
             AddMix(mixFile);
 
             return true;
