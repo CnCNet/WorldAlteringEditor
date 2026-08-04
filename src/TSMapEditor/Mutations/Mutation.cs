@@ -32,6 +32,18 @@ namespace TSMapEditor.Mutations
 
         public int EventID { get; protected set; } = -1;
 
+        public MutationHistoryMetadata HistoryMetadata { get; private set; }
+
+        public void SetHistoryMetadata(MutationHistoryMetadata historyMetadata)
+        {
+            ArgumentNullException.ThrowIfNull(historyMetadata);
+
+            if (HistoryMetadata != null)
+                throw new InvalidOperationException("Mutation history metadata has already been set.");
+
+            HistoryMetadata = historyMetadata;
+        }
+
 
         private static readonly Point2D[] surroundingTiles = new Point2D[] { new Point2D(-1, 0), new Point2D(1, 0), new Point2D(0, -1), new Point2D(0, 1) };
 

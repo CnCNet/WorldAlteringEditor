@@ -19,6 +19,8 @@ public sealed class MapTools
     private const int MaxRegionDimension = 256;
     private const int MaxRegionCellCount = 10_000;
     private const int MaxScreenshotPixelCount = 8_000_000;
+    private const int MaxWholeMapPreviewDimension = 4_096;
+    private const int DefaultWholeMapPreviewDimension = 2_048;
     private const string MappingInstructionsFileName = "AIMappingInstructions.md";
 
     public MapTools(MapFacade mapFacade, GameThreadDispatcher gameThreadDispatcher, IMapScreenCropper mapScreenCropper)
@@ -87,6 +89,68 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(mapFacade.GetMapRevision, cancellationToken);
     }
 
+    [McpServerTool(Name = "get_mutation_history", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns the real editor undo and redo stacks in newest-first order, along with the current map revision. MCP mutations include stable IDs, tool names, and affected-cell summaries. Editor-driven mutations remain visible but have no metadata and cannot be undone or redone through MCP.")]
+    public async Task<MapMutationHistoryInfo> GetMutationHistory(
+        [Description("Maximum number of entries returned from each stack. Defaults to 50 and may be at most 1000.")] int limit = 50,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetMutationHistory)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.GetMutationHistory(limit),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "undo_latest", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Undoes exactly the current top MCP mutation on the real editor undo stack. Both guards are required and must match get_mutation_history, preventing an interleaved editor or MCP edit from being undone accidentally. Editor-driven entries cannot be undone through MCP.")]
+    public async Task<MapMutationOperationResult> UndoLatest(
+        [Description("Exact current map revision returned by get_mutation_history.")] int expectedRevision,
+        [Description("Mutation ID of the first undoHistory entry returned by get_mutation_history.")] long expectedMutationId,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(UndoLatest)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.UndoLatest(expectedRevision, expectedMutationId),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "redo_latest", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Redoes exactly the current top MCP mutation on the real editor redo stack. Both guards are required and must match get_mutation_history, preventing an interleaved editor or MCP action from being redone accidentally. Editor-driven entries cannot be redone through MCP.")]
+    public async Task<MapMutationOperationResult> RedoLatest(
+        [Description("Exact current map revision returned by get_mutation_history.")] int expectedRevision,
+        [Description("Mutation ID of the first redoHistory entry returned by get_mutation_history.")] long expectedMutationId,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(RedoLatest)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.RedoLatest(expectedRevision, expectedMutationId),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
     [McpServerTool(Name = "get_terrain_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns terrain object types that are visible in the editor and valid for the current map's theater.")]
     public Task<List<MapObjectTypeInfo>> GetTerrainTypes(
@@ -97,6 +161,16 @@ public sealed class MapTools
         return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetTerrainTypes(nameFilter), cancellationToken);
     }
 
+    [McpServerTool(Name = "get_terrain_object_collections", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns non-empty terrain object collections available in the current map's theater. Entries are returned in configured order and may repeat because duplicate entries increase their random placement weight.")]
+    public Task<List<MapTerrainObjectCollectionInfo>> GetTerrainObjectCollections(
+        [Description("Optional case-insensitive filter matched against collection names and entry INI/UI names.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetTerrainObjectCollections)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetTerrainObjectCollections(nameFilter), cancellationToken);
+    }
+
     [McpServerTool(Name = "get_overlay_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Returns regular overlay types that are visible in the editor and valid for the current map's theater, including placeable frame counts and connected-overlay memberships. frameCount counts placeable artwork only; higher raw SHP frames, conventionally the upper half, are engine-managed shadow data.")]
     public Task<List<MapOverlayTypeInfo>> GetOverlayTypes(
@@ -105,6 +179,16 @@ public sealed class MapTools
     {
         Logger.Log($"{nameof(MapTools)}.{nameof(GetOverlayTypes)}");
         return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetOverlayTypes(nameFilter), cancellationToken);
+    }
+
+    [McpServerTool(Name = "get_overlay_collections", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns non-empty overlay collections available in the current map's theater, including every overlay type and configured frame. Entries are returned in configured order and may repeat because duplicate entries increase their random placement weight.")]
+    public Task<List<MapOverlayCollectionInfo>> GetOverlayCollections(
+        [Description("Optional case-insensitive filter matched against collection names and entry INI/UI names.")] string nameFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetOverlayCollections)}");
+        return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetOverlayCollections(nameFilter), cancellationToken);
     }
 
     [McpServerTool(Name = "get_connected_overlay_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
@@ -246,7 +330,7 @@ public sealed class MapTools
     }
 
     [McpServerTool(Name = "inspect_map_region", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Returns terrain, overlays, waypoints, and placed map objects from a rectangular region of the open map.")]
+    [Description("Returns terrain, overlays, waypoints, and placed map objects from a rectangular region of the open map. Each dimension may be at most 256 cells and the region may contain at most 10,000 cells.")]
     public Task<List<CellInfo>> InspectMapRegion(
         [Description("X coordinate of the region's top-left cell.")] int x,
         [Description("Y coordinate of the region's top-left cell.")] int y,
@@ -267,13 +351,42 @@ public sealed class MapTools
             cancellationToken);
     }
 
+    [McpServerTool(Name = "calculate_resource_field_value", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Calculates the total credit value, resource-cell count, and bounding rectangle of the contiguous resource field containing a given cell. Diagonally touching harvestable resource cells are considered part of the same field. Resource values use the same frame-index calculation as WAE's Calculate Credits cursor tool.")]
+    public async Task<MapResourceFieldInfo> CalculateResourceFieldValue(
+        [Description("X coordinate of a cell containing a harvestable resource.")] int x,
+        [Description("Y coordinate of a cell containing a harvestable resource.")] int y,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(CalculateResourceFieldValue)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.CalculateResourceFieldValue(x, y),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "validate_map", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Runs WAE's standard map issue checks and scans for non-overlapping 10x10 underdetailed areas. An underdetailed area contains only clear terrain and has no terrain objects, overlays, smudges, technos, infantry, or aircraft.")]
+    public Task<MapValidationResult> ValidateMap(CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(ValidateMap)}");
+        return gameThreadDispatcher.InvokeAsync(mapFacade.ValidateMap, cancellationToken);
+    }
+
     [McpServerTool(Name = "screenshot_map_region", ReadOnly = true, OpenWorld = false)]
-    [Description("Renders the entire open map and returns a PNG screenshot of the axis-aligned pixel bounds for a rectangular region of cells. In normal 3D mode, the image includes fixed vertical padding above those bounds for terrain at the maximum supported height. Because the map is isometric, the requested cells form a diamond within the returned rectangular image, whose corners can contain map content outside the requested cells. Regions may partially cross the map boundary, with pixels outside the map's render bounds left transparent, but must overlap the map.")]
+    [Description("Renders the entire open map and returns a PNG screenshot of the axis-aligned pixel bounds for a rectangular region of cells. Each dimension may be at most 256 cells, the region may contain at most 10,000 cells, and the projected output may contain at most 8,000,000 pixels. In normal 3D mode, the image includes fixed vertical padding above those bounds for terrain at the maximum supported height. Because the map is isometric, the requested cells form a diamond within the returned rectangular image, whose corners can contain map content outside the requested cells. Regions may partially cross the map boundary, with pixels outside the map's render bounds left transparent, but must overlap the map.")]
     public async Task<ImageContentBlock> ScreenshotMapRegion(
         [Description("X coordinate of the region's top-left cell.")] int x,
         [Description("Y coordinate of the region's top-left cell.")] int y,
-        [Description("Width of the region in cells.")] int width,
-        [Description("Height of the region in cells.")] int height,
+        [Description("Width of the region in cells. Must be at most 256; width multiplied by height must be at most 10,000.")] int width,
+        [Description("Height of the region in cells. Must be at most 256; width multiplied by height must be at most 10,000.")] int height,
         CancellationToken cancellationToken)
     {
         Logger.Log($"{nameof(MapTools)}.{nameof(ScreenshotMapRegion)}");
@@ -304,6 +417,42 @@ public sealed class MapTools
         try
         {
             byte[] pngData = await screenCropTask.ConfigureAwait(false);
+            return ImageContentBlock.FromBytes(pngData, "image/png");
+        }
+        catch (MapScreenCropException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "screenshot_whole_map", ReadOnly = true, OpenWorld = false)]
+    [Description("Renders the entire open map, scales the existing full-map render directly into a bounded preview, and returns it as PNG. The aspect ratio is preserved, neither requested dimension may exceed 4,096 pixels, and their product may not exceed 8,000,000 pixels. Defaults to a 2,048x2,048 envelope. This avoids allocating or encoding an additional full-resolution screenshot.")]
+    public async Task<ImageContentBlock> ScreenshotWholeMap(
+        [Description("Maximum preview width in pixels. Defaults to 2,048 and may be at most 4,096.")] int maxWidth = DefaultWholeMapPreviewDimension,
+        [Description("Maximum preview height in pixels. Defaults to 2,048 and may be at most 4,096.")] int maxHeight = DefaultWholeMapPreviewDimension,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(ScreenshotWholeMap)}");
+
+        if (maxWidth <= 0 || maxHeight <= 0)
+            throw new McpException("The maximum preview width and height must both be greater than zero.");
+        if (maxWidth > MaxWholeMapPreviewDimension || maxHeight > MaxWholeMapPreviewDimension)
+        {
+            throw new McpException(
+                $"The maximum preview width and height may each be at most {MaxWholeMapPreviewDimension} pixels.");
+        }
+        if ((long)maxWidth * maxHeight > MaxScreenshotPixelCount)
+        {
+            throw new McpException(
+                $"The maximum preview dimensions may contain at most {MaxScreenshotPixelCount} pixels.");
+        }
+
+        if (!mapScreenCropper.TryRequestWholeMapPreview(maxWidth, maxHeight, cancellationToken, out Task<byte[]> previewTask))
+            throw new McpException("The renderer is already busy with a previous screenshot request.");
+
+        try
+        {
+            byte[] pngData = await previewTask.ConfigureAwait(false);
             return ImageContentBlock.FromBytes(pngData, "image/png");
         }
         catch (MapScreenCropException ex)
@@ -403,6 +552,30 @@ public sealed class MapTools
         }
     }
 
+    [McpServerTool(Name = "place_overlay_collection", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Places random entries from an editor overlay collection across a rectangular brush area, replacing existing overlay. This uses WAE's existing collection randomizer and Tiberium placement behavior. The operation is one undo entry and one revision bump.")]
+    public async Task<MapEditResult> PlaceOverlayCollection(
+        [Description("Configuration name of an overlay collection returned by get_overlay_collections.")] string collectionName,
+        [Description("X coordinate of the area's top-left cell.")] int x,
+        [Description("Y coordinate of the area's top-left cell.")] int y,
+        [Description("Area width in cells. Defaults to 1.")] int width = 1,
+        [Description("Area height in cells. Defaults to 1.")] int height = 1,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceOverlayCollection)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.PlaceOverlayCollection(collectionName, x, y, width, height),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
     [McpServerTool(Name = "place_connected_overlay", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Places a WAE connected-overlay configuration in a rectangular map area, replacing existing overlay and automatically selecting frames and reconnecting neighboring members. The operation is one undo entry and one revision bump.")]
     public async Task<MapEditResult> PlaceConnectedOverlay(
@@ -488,20 +661,41 @@ public sealed class MapTools
         }
     }
 
-    [McpServerTool(Name = "place_terrain_object", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Places one terrain object, such as a tree, on an empty map cell. The placement is added to the editor's undo history.")]
-    public async Task<MapEditResult> PlaceTerrainObject(
-        [Description("INI name of the terrain object type to place.")] string terrainTypeName,
-        [Description("X coordinate of the destination cell.")] int x,
-        [Description("Y coordinate of the destination cell.")] int y,
-        CancellationToken cancellationToken)
+    [McpServerTool(Name = "place_terrain_objects_batch", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Atomically places multiple explicitly selected terrain object types on empty cells. Every placement is validated before any object is added; an invalid, duplicate, or occupied cell rejects the whole batch. The operation is one undo entry and one revision bump.")]
+    public async Task<MapEditResult> PlaceTerrainObjectsBatch(
+        [Description("One or more terrain object types and destination cells. At most 10,000 placements are supported.")] List<MapTerrainObjectPlacement> placements,
+        [Description("Optional map revision returned by get_map_revision or another map tool. When supplied, placement fails if the map has changed; omit it to allow concurrent human edits.")] int? expectedRevision = null,
+        CancellationToken cancellationToken = default)
     {
-        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceTerrainObject)}");
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceTerrainObjectsBatch)}");
 
         try
         {
             return await gameThreadDispatcher.InvokeAsync(
-                () => mapFacade.PlaceTerrainObject(terrainTypeName, x, y),
+                () => mapFacade.PlaceTerrainObjectsBatch(placements, expectedRevision),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "place_terrain_object_collection_batch", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Atomically places random entries from one editor terrain object collection on multiple explicit empty cells. Every coordinate is validated before placement; an invalid, duplicate, or occupied cell rejects the whole batch. The operation is one undo entry and one revision bump.")]
+    public async Task<MapEditResult> PlaceTerrainObjectCollectionBatch(
+        [Description("Configuration name of a terrain object collection returned by get_terrain_object_collections.")] string collectionName,
+        [Description("One or more distinct empty map-cell coordinates. At most 10,000 entries are supported.")] List<MapCellCoordinate> cells,
+        [Description("Optional map revision returned by get_map_revision or another map tool. When supplied, placement fails if the map has changed; omit it to allow concurrent human edits.")] int? expectedRevision = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceTerrainObjectCollectionBatch)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.PlaceTerrainObjectCollectionBatch(collectionName, cells, expectedRevision),
                 cancellationToken);
         }
         catch (MapFacadeValidationException ex)

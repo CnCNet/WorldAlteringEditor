@@ -22,8 +22,6 @@ public sealed class GameThreadDispatcher
 
     public async Task<T> InvokeAsync<T>(Func<T> operation, CancellationToken cancellationToken = default)
     {
-        Logger.Log("GameThreadDispatcher: Adding WindowManager callback.");
-
         ArgumentNullException.ThrowIfNull(operation);
 
         using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(

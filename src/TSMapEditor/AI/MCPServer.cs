@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using ModelContextProtocol;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
@@ -49,12 +52,17 @@ public sealed class MCPServer : IDisposable
 
         builder.WebHost.UseUrls(ServerUrl);
         builder.Configuration["AllowedHosts"] = "localhost;127.0.0.1;[::1]";
+        builder.Logging.AddProvider(new MapEditorMcpLogger());
 
         builder.Services.AddSingleton(mapFacade);
         builder.Services.AddSingleton(mapScreenCropper);
         builder.Services.AddSingleton(new GameThreadDispatcher(windowManager, shutdownCancellationTokenSource.Token));
         builder.Services
-            .AddMcpServer()
+            .AddMcpServer(options => options.Filters.Request.CallToolFilters.Add(next =>
+                (request, requestCancellationToken) => InvokeToolWithDetailedErrors(
+                    next,
+                    request,
+                    requestCancellationToken)))
             .WithHttpTransport(options => options.Stateless = true)
             .WithTools<MapTools>();
 
@@ -112,6 +120,51 @@ public sealed class MCPServer : IDisposable
         finally
         {
             shutdownCancellationTokenSource.Dispose();
+        }
+    }
+
+    private static async ValueTask<CallToolResult> InvokeToolWithDetailedErrors(
+        McpRequestHandler<CallToolRequestParams, CallToolResult> next,
+        RequestContext<CallToolRequestParams> request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await next(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not McpException &&
+                                   ex is not McpProtocolException &&
+                                   ex is not InputRequiredException &&
+                                   ex is not OperationCanceledException)
+        {
+            throw new McpException(ex.Message, ex);
+        }
+    }
+
+    private sealed class MapEditorMcpLogger : ILoggerProvider, ILogger
+    {
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public void Dispose()
+        {
+        }
+
+        public IDisposable BeginScope<TState>(TState state) => null;
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Error;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception exception,
+            Func<TState, Exception, string> formatter)
+        {
+            if (!IsEnabled(logLevel))
+                return;
+
+            string exceptionDetails = exception == null ? string.Empty : Environment.NewLine + exception;
+            Logger.Log($"MCP server {logLevel}: {formatter(state, exception)}{exceptionDetails}");
         }
     }
 }

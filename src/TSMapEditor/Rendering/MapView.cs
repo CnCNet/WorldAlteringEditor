@@ -24,6 +24,7 @@ namespace TSMapEditor.Rendering
     public interface IMapScreenCropper
     {
         bool TryRequestScreenCrop(Rectangle cellRectangle, CancellationToken cancellationToken, out Task<byte[]> screenCropTask);
+        bool TryRequestWholeMapPreview(int maxPixelWidth, int maxPixelHeight, CancellationToken cancellationToken, out Task<byte[]> previewTask);
         void StopScreenCropRequests();
     }
 
@@ -241,6 +242,32 @@ namespace TSMapEditor.Rendering
 
         public bool TryRequestScreenCrop(Rectangle cellRectangle, CancellationToken cancellationToken, out Task<byte[]> screenCropTask)
         {
+            return TryRequestScreenCapture(
+                cellRectangle,
+                () => GetScreenCropLayout(cellRectangle),
+                cancellationToken,
+                out screenCropTask);
+        }
+
+        public bool TryRequestWholeMapPreview(
+            int maxPixelWidth,
+            int maxPixelHeight,
+            CancellationToken cancellationToken,
+            out Task<byte[]> previewTask)
+        {
+            return TryRequestScreenCapture(
+                Rectangle.Empty,
+                () => GetWholeMapPreviewLayout(maxPixelWidth, maxPixelHeight),
+                cancellationToken,
+                out previewTask);
+        }
+
+        private bool TryRequestScreenCapture(
+            Rectangle cellRectangle,
+            Func<ScreenCropLayout> getPixelLayout,
+            CancellationToken cancellationToken,
+            out Task<byte[]> screenCropTask)
+        {
             cancellationToken.ThrowIfCancellationRequested();
 
             ScreenCropRequest canceledRequest = null;
@@ -269,7 +296,7 @@ namespace TSMapEditor.Rendering
                     return false;
                 }
 
-                ScreenCropLayout pixelLayout = GetScreenCropLayout(cellRectangle);
+                ScreenCropLayout pixelLayout = getPixelLayout();
                 var request = new ScreenCropRequest(cellRectangle, cancellationToken, ScreenCropRequest_Canceled);
                 request.CalculatedPixelLayout = pixelLayout;
                 screenCropRequest = request;
@@ -387,6 +414,26 @@ namespace TSMapEditor.Rendering
             return new ScreenCropLayout(outputWidth, outputHeight, sourceRectangle, destinationRectangle);
         }
 
+        private ScreenCropLayout GetWholeMapPreviewLayout(int maxPixelWidth, int maxPixelHeight)
+        {
+            if (compositeRenderTarget == null)
+                throw new MapScreenCropException("The map renderer is not available.");
+            if (maxPixelWidth <= 0 || maxPixelHeight <= 0)
+                throw new MapScreenCropException("The maximum preview width and height must both be greater than zero.");
+
+            int sourceWidth = compositeRenderTarget.Width;
+            int sourceHeight = compositeRenderTarget.Height;
+            double scale = Math.Min(
+                1.0,
+                Math.Min((double)maxPixelWidth / sourceWidth, (double)maxPixelHeight / sourceHeight));
+            int outputWidth = Math.Max(1, (int)Math.Floor(sourceWidth * scale));
+            int outputHeight = Math.Max(1, (int)Math.Floor(sourceHeight * scale));
+
+            var sourceRectangle = new Rectangle(0, 0, sourceWidth, sourceHeight);
+            var destinationRectangle = new Rectangle(0, 0, outputWidth, outputHeight);
+            return new ScreenCropLayout(outputWidth, outputHeight, sourceRectangle, destinationRectangle);
+        }
+
         private byte[] CaptureScreenCrop(ScreenCropLayout layout)
         {
             using var cropRenderTarget = new RenderTarget2D(
@@ -397,7 +444,9 @@ namespace TSMapEditor.Rendering
                 SurfaceFormat.Color,
                 DepthFormat.None);
 
-            Renderer.PushRenderTarget(cropRenderTarget);
+            Renderer.PushRenderTarget(
+                cropRenderTarget,
+                new SpriteBatchSettings(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, null, null, null));
 
             GraphicsDevice.Clear(Color.Transparent);
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace TSMapEditor.Mutations
 {
@@ -7,10 +8,14 @@ namespace TSMapEditor.Mutations
     /// </summary>
     public class MutationManager
     {
+        public const string MCPMutationOrigin = "MCP";
+
         public List<IMutation> UndoList { get; } = new List<IMutation>();
         public List<IMutation> RedoList { get; } = new List<IMutation>();
 
         public int Revision { get; private set; }
+
+        private long nextMutationId = 1;
 
         /// <summary>
         /// Performs a new mutation on the map.
@@ -22,6 +27,21 @@ namespace TSMapEditor.Mutations
             RedoList.Clear();
             UndoList.Add(mutation);
             Revision++;
+        }
+
+        /// <summary>
+        /// Performs a new MCP mutation on the map and records information about its source.
+        /// </summary>
+        public void PerformMutation(Mutation mutation, string origin, string toolName, MutationAffectedCells affectedCells)
+        {
+            PerformMutation(mutation);
+
+            mutation.SetHistoryMetadata(new MutationHistoryMetadata(nextMutationId, Revision,
+                string.IsNullOrWhiteSpace(origin) ? MCPMutationOrigin : origin,
+                string.IsNullOrWhiteSpace(toolName) ? mutation.GetType().Name : toolName,
+                affectedCells ?? throw new ArgumentNullException(nameof(affectedCells))));
+
+            nextMutationId++;
         }
 
         public bool CanUndo() => UndoList.Count > 0;

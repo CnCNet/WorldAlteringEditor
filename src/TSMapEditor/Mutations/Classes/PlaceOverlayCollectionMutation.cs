@@ -12,10 +12,15 @@ namespace TSMapEditor.Mutations.Classes
     /// </summary>
     class PlaceOverlayCollectionMutation : Mutation, ICheckableMutation
     {
-        public PlaceOverlayCollectionMutation(IMutationTarget mutationTarget, OverlayCollection overlayCollection, Point2D cellCoords) : base(mutationTarget)
+        public PlaceOverlayCollectionMutation(IMutationTarget mutationTarget, OverlayCollection overlayCollection, Point2D cellCoords)
+            : this(mutationTarget, overlayCollection, cellCoords, mutationTarget.BrushSize)
+        {
+        }
+
+        public PlaceOverlayCollectionMutation(IMutationTarget mutationTarget, OverlayCollection overlayCollection, Point2D cellCoords, BrushSize brush) : base(mutationTarget)
         {
             this.overlayCollection = overlayCollection;
-            this.brush = mutationTarget.BrushSize;
+            this.brush = brush ?? throw new ArgumentNullException(nameof(brush));
             this.cellCoords = cellCoords;
         }
 

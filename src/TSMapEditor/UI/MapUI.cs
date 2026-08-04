@@ -123,6 +123,9 @@ namespace TSMapEditor.UI
         public bool TryRequestScreenCrop(Rectangle cellRectangle, CancellationToken cancellationToken, out Task<byte[]> screenCropTask)
             => mapView.TryRequestScreenCrop(cellRectangle, cancellationToken, out screenCropTask);
 
+        public bool TryRequestWholeMapPreview(int maxPixelWidth, int maxPixelHeight, CancellationToken cancellationToken, out Task<byte[]> previewTask)
+            => mapView.TryRequestWholeMapPreview(maxPixelWidth, maxPixelHeight, cancellationToken, out previewTask);
+
         public void StopScreenCropRequests() => mapView.StopScreenCropRequests();
 
         public Camera Camera => mapView.Camera;

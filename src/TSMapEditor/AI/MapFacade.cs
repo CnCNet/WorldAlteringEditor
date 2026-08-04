@@ -330,6 +330,8 @@ public class MapFacade
     private const int MaxConnectedTilePathVertexCount = 256;
     private const int MaxMapOperationDimension = 256;
     private const int MaxMapOperationCellCount = 10_000;
+    private const int MaxMutationHistoryEntries = 1_000;
+    private const int UnderdetailedAreaSize = 10;
 
     private static readonly string[] ValidMissions = new[]
     {
@@ -338,6 +340,13 @@ public class MapFacade
     };
 
     private static readonly int[] ValidVeterancyLevels = new[] { 0, 50, 100, 150, 200 };
+
+    private static readonly Point2D[] ResourceFieldNeighborOffsets = new[]
+    {
+        new Point2D(-1, -1), new Point2D(0, -1), new Point2D(1, -1),
+        new Point2D(-1, 0),                            new Point2D(1, 0),
+        new Point2D(-1, 1),  new Point2D(0, 1),  new Point2D(1, 1)
+    };
 
     public MapFacade(Map map, MutationManager mutationManager, IMutationTarget mutationTarget)
     {
@@ -360,6 +369,92 @@ public class MapFacade
         return mutationManager.Revision;
     }
 
+    public MapMutationHistoryInfo GetMutationHistory(int limit)
+    {
+        if (limit < 1 || limit > MaxMutationHistoryEntries)
+        {
+            throw new MapFacadeValidationException(
+                $"Mutation history limit must be from 1 through {MaxMutationHistoryEntries}.");
+        }
+
+        var undoHistory = new List<MapMutationHistoryEntry>(Math.Min(limit, mutationManager.UndoList.Count));
+        for (int i = mutationManager.UndoList.Count - 1; i >= 0 && undoHistory.Count < limit; i--)
+        {
+            undoHistory.Add(CreateMutationHistoryEntry(
+                mutationManager.UndoList[i],
+                canUndo: i == mutationManager.UndoList.Count - 1,
+                canRedo: false));
+        }
+
+        var redoHistory = new List<MapMutationHistoryEntry>(Math.Min(limit, mutationManager.RedoList.Count));
+        for (int i = mutationManager.RedoList.Count - 1; i >= 0 && redoHistory.Count < limit; i--)
+        {
+            redoHistory.Add(CreateMutationHistoryEntry(
+                mutationManager.RedoList[i],
+                canUndo: false,
+                canRedo: i == mutationManager.RedoList.Count - 1));
+        }
+
+        return new MapMutationHistoryInfo(
+            mutationManager.Revision,
+            mutationManager.UndoList.Count,
+            mutationManager.RedoList.Count,
+            undoHistory,
+            redoHistory);
+    }
+
+    public MapMutationOperationResult UndoLatest(int expectedRevision, long expectedMutationId)
+    {
+        ValidateExpectedRevision(expectedRevision, "undoing the latest mutation");
+
+        if (!mutationManager.CanUndo())
+            throw new MapFacadeValidationException("The editor undo history is empty.");
+
+        IMutation mutation = mutationManager.UndoList[^1];
+        MutationHistoryMetadata metadata = GetMutationMetadata(mutation);
+        if (metadata.MutationId != expectedMutationId)
+        {
+            throw new MapFacadeValidationException(
+                $"The latest undo mutation changed from ID {expectedMutationId} to {metadata.MutationId}. Query mutation history again before undoing it.");
+        }
+
+        mutationManager.UndoOne();
+
+        return new MapMutationOperationResult(
+            mutationManager.Revision,
+            CreateMutationHistoryEntry(mutation, canUndo: false, canRedo: true),
+            mutationManager.UndoList.Count,
+            mutationManager.RedoList.Count,
+            CanUndoLatestMutationThroughMCP(),
+            CanRedoLatestMutationThroughMCP());
+    }
+
+    public MapMutationOperationResult RedoLatest(int expectedRevision, long expectedMutationId)
+    {
+        ValidateExpectedRevision(expectedRevision, "redoing the latest mutation");
+
+        if (!mutationManager.CanRedo())
+            throw new MapFacadeValidationException("The editor redo history is empty.");
+
+        IMutation mutation = mutationManager.RedoList[^1];
+        MutationHistoryMetadata metadata = GetMutationMetadata(mutation);
+        if (metadata.MutationId != expectedMutationId)
+        {
+            throw new MapFacadeValidationException(
+                $"The latest redo mutation changed from ID {expectedMutationId} to {metadata.MutationId}. Query mutation history again before redoing it.");
+        }
+
+        mutationManager.Redo();
+
+        return new MapMutationOperationResult(
+            mutationManager.Revision,
+            CreateMutationHistoryEntry(mutation, canUndo: true, canRedo: false),
+            mutationManager.UndoList.Count,
+            mutationManager.RedoList.Count,
+            CanUndoLatestMutationThroughMCP(),
+            CanRedoLatestMutationThroughMCP());
+    }
+
     public List<MapObjectTypeInfo> GetTerrainTypes(string nameFilter = null)
     {
         string normalizedFilter = nameFilter?.Trim();
@@ -377,6 +472,31 @@ public class MapFacade
             .OrderBy(typeInfo => typeInfo.EditorCategory)
             .ThenBy(typeInfo => typeInfo.UIName)
             .ThenBy(typeInfo => typeInfo.ININame)
+            .ToList();
+    }
+
+    public List<MapTerrainObjectCollectionInfo> GetTerrainObjectCollections(string nameFilter = null)
+    {
+        string normalizedFilter = nameFilter?.Trim();
+
+        return map.EditorConfig.TerrainObjectCollections
+            .Where(collection => collection.Entries.Length > 0 && collection.IsValidForTheater(map.LoadedTheaterName))
+            .Select(collection => new MapTerrainObjectCollectionInfo(
+                collection.Name,
+                collection.UIName,
+                collection.Entries
+                    .Select(entry => new MapTerrainObjectCollectionEntryInfo(
+                        entry.TerrainType.ININame,
+                        entry.TerrainType.GetEditorDisplayName()))
+                    .ToList()))
+            .Where(collectionInfo => string.IsNullOrWhiteSpace(normalizedFilter) ||
+                ContainsIgnoringCase(collectionInfo.Name, normalizedFilter) ||
+                ContainsIgnoringCase(collectionInfo.UIName, normalizedFilter) ||
+                collectionInfo.Entries.Exists(entry =>
+                    ContainsIgnoringCase(entry.ININame, normalizedFilter) ||
+                    ContainsIgnoringCase(entry.UIName, normalizedFilter)))
+            .OrderBy(collectionInfo => collectionInfo.UIName)
+            .ThenBy(collectionInfo => collectionInfo.Name)
             .ToList();
     }
 
@@ -409,6 +529,32 @@ public class MapFacade
             .OrderBy(typeInfo => typeInfo.EditorCategory)
             .ThenBy(typeInfo => typeInfo.UIName)
             .ThenBy(typeInfo => typeInfo.ININame)
+            .ToList();
+    }
+
+    public List<MapOverlayCollectionInfo> GetOverlayCollections(string nameFilter = null)
+    {
+        string normalizedFilter = nameFilter?.Trim();
+
+        return map.EditorConfig.OverlayCollections
+            .Where(collection => collection.Entries.Length > 0 && collection.IsValidForTheater(map.LoadedTheaterName))
+            .Select(collection => new MapOverlayCollectionInfo(
+                collection.Name,
+                collection.UIName,
+                collection.Entries
+                    .Select(entry => new MapOverlayCollectionEntryInfo(
+                        entry.OverlayType.ININame,
+                        entry.OverlayType.GetEditorDisplayName(),
+                        entry.Frame))
+                    .ToList()))
+            .Where(collectionInfo => string.IsNullOrWhiteSpace(normalizedFilter) ||
+                ContainsIgnoringCase(collectionInfo.Name, normalizedFilter) ||
+                ContainsIgnoringCase(collectionInfo.UIName, normalizedFilter) ||
+                collectionInfo.Entries.Exists(entry =>
+                    ContainsIgnoringCase(entry.ININame, normalizedFilter) ||
+                    ContainsIgnoringCase(entry.UIName, normalizedFilter)))
+            .OrderBy(collectionInfo => collectionInfo.UIName)
+            .ThenBy(collectionInfo => collectionInfo.Name)
             .ToList();
     }
 
@@ -620,6 +766,73 @@ public class MapFacade
         return returnValue;
     }
 
+    public MapResourceFieldInfo CalculateResourceFieldValue(int x, int y)
+    {
+        var startCoords = new Point2D(x, y);
+        var startTile = map.GetTile(startCoords);
+        if (startTile == null)
+            throw new MapFacadeValidationException($"Cell ({x}, {y}) is outside the map.");
+        if (!startTile.HasTiberium())
+            throw new MapFacadeValidationException($"Cell ({x}, {y}) does not contain a harvestable resource.");
+
+        var fieldCellCoords = new HashSet<Point2D> { startCoords };
+        var cellsToVisit = new Queue<Point2D>();
+        cellsToVisit.Enqueue(startCoords);
+
+        long totalValue = 0;
+        int minX = x;
+        int minY = y;
+        int maxX = x;
+        int maxY = y;
+
+        while (cellsToVisit.Count > 0)
+        {
+            Point2D cellCoords = cellsToVisit.Dequeue();
+            MapTile mapTile = map.GetTile(cellCoords);
+            TiberiumType tiberiumType = mapTile.Overlay.OverlayType.TiberiumType;
+            if (tiberiumType != null)
+                totalValue += (long)mapTile.Overlay.FrameIndex * tiberiumType.Value;
+
+            minX = Math.Min(minX, cellCoords.X);
+            minY = Math.Min(minY, cellCoords.Y);
+            maxX = Math.Max(maxX, cellCoords.X);
+            maxY = Math.Max(maxY, cellCoords.Y);
+
+            foreach (Point2D neighborOffset in ResourceFieldNeighborOffsets)
+            {
+                Point2D neighborCoords = cellCoords + neighborOffset;
+                if (fieldCellCoords.Contains(neighborCoords))
+                    continue;
+
+                MapTile neighborTile = map.GetTile(neighborCoords);
+                if (neighborTile == null || !neighborTile.HasTiberium())
+                    continue;
+
+                fieldCellCoords.Add(neighborCoords);
+                cellsToVisit.Enqueue(neighborCoords);
+            }
+        }
+
+        return new MapResourceFieldInfo(
+            totalValue,
+            fieldCellCoords.Count,
+            new MapCellArea(minX, minY, maxX - minX + 1, maxY - minY + 1));
+    }
+
+    public MapValidationResult ValidateMap()
+    {
+        List<string> issues = map.CheckForIssues();
+        List<MapCellArea> underdetailedAreas = FindUnderdetailedAreas();
+
+        foreach (MapCellArea area in underdetailedAreas)
+        {
+            issues.Add(
+                $"Underdetailed area at ({area.X}, {area.Y}) with size {area.Width}x{area.Height} contains only clear terrain and no map objects or overlays.");
+        }
+
+        return new MapValidationResult(mutationManager.Revision, issues, underdetailedAreas);
+    }
+
     public MapEditResult ModifyTechnos(List<MapTechnoReference> technoReferences, MapTechnoModificationProperties properties, int? expectedRevision)
     {
         if (expectedRevision.HasValue && expectedRevision.Value != mutationManager.Revision)
@@ -655,12 +868,15 @@ public class MapFacade
         if (changes.Count == 0)
             throw new MapFacadeValidationException("All selected technos already have the requested property values.");
 
-        mutationManager.PerformMutation(new ModifyTechnosMutation(mutationTarget, changes));
-
-        var affectedCells = technos
+        var affectedMapTiles = technos
             .Select(techno => map.GetTile(techno.Position))
             .Where(mapTile => mapTile != null)
             .Distinct()
+            .ToList();
+
+        PerformMCPMutation(new ModifyTechnosMutation(mutationTarget, changes), "modify_technos", affectedMapTiles);
+
+        var affectedCells = affectedMapTiles
             .Select(mapTile => CellInfo.FromMapCell(map, mapTile))
             .ToList();
 
@@ -701,7 +917,7 @@ public class MapFacade
             throw new MapFacadeValidationException("The object reference lists contain duplicates.");
 
         var affectedMapTiles = GetAffectedMapTiles(objects);
-        mutationManager.PerformMutation(new DeleteMapObjectsMutation(mutationTarget, objects));
+        PerformMCPMutation(new DeleteMapObjectsMutation(mutationTarget, objects), "delete_objects", affectedMapTiles);
 
         return new MapEditResult(
             mutationManager.Revision,
@@ -739,7 +955,7 @@ public class MapFacade
             .ToList();
 
         var mutation = new PlaceOverlayMutation(mutationTarget, null, null, new Point2D(x, y), new BrushSize(width, height));
-        mutationManager.PerformMutation(mutation);
+        PerformMCPMutation(mutation, "erase_overlay", affectedMapTiles);
 
         return new MapEditResult(
             mutationManager.Revision,
@@ -774,7 +990,51 @@ public class MapFacade
         if (!mutation.ShouldPerform())
             throw new MapFacadeValidationException($"The requested area already contains overlay '{overlayType.ININame}' with the requested frame settings.");
 
-        mutationManager.PerformMutation(mutation);
+        PerformMCPMutation(mutation, "place_overlay", affectedMapTiles);
+
+        return new MapEditResult(
+            mutationManager.Revision,
+            affectedMapTiles.Select(mapTile => CellInfo.FromMapCell(map, mapTile)).ToList());
+    }
+
+    public MapEditResult PlaceOverlayCollection(string collectionName, int x, int y, int width, int height)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+            throw new MapFacadeValidationException("An overlay collection name must be provided.");
+
+        var collection = map.EditorConfig.OverlayCollections.Find(
+            candidate => string.Equals(candidate.Name, collectionName, StringComparison.OrdinalIgnoreCase));
+        if (collection == null)
+            throw new MapFacadeValidationException($"Overlay collection '{collectionName}' does not exist in the editor configuration.");
+        if (collection.Entries.Length == 0)
+            throw new MapFacadeValidationException($"Overlay collection '{collection.Name}' contains no entries.");
+        if (!collection.IsValidForTheater(map.LoadedTheaterName))
+            throw new MapFacadeValidationException($"Overlay collection '{collection.Name}' is not valid for theater '{map.LoadedTheaterName}'.");
+
+        foreach (var entry in collection.Entries)
+        {
+            if (!entry.OverlayType.IsValidForTheater(map.LoadedTheaterName))
+            {
+                throw new MapFacadeValidationException(
+                    $"Overlay collection '{collection.Name}' contains overlay '{entry.OverlayType.ININame}', which is not valid for theater '{map.LoadedTheaterName}'.");
+            }
+
+            ValidateOverlayFrame(entry.OverlayType, entry.Frame);
+        }
+
+        var targetMapTiles = GetValidatedMapTilesInArea(x, y, width, height, "overlay collection placement");
+        var affectedMapTiles = targetMapTiles
+            .SelectMany(mapTile => GetMapTileAndSurroundings(mapTile.CoordsToPoint()))
+            .Distinct()
+            .ToList();
+
+        var mutation = new PlaceOverlayCollectionMutation(
+            mutationTarget,
+            collection,
+            new Point2D(x, y),
+            new BrushSize(width, height));
+
+        PerformMCPMutation(mutation, "place_overlay_collection", affectedMapTiles);
 
         return new MapEditResult(
             mutationManager.Revision,
@@ -802,11 +1062,14 @@ public class MapFacade
             .Distinct()
             .ToList();
 
-        mutationManager.PerformMutation(new PlaceConnectedOverlayMutation(
-            mutationTarget,
-            connectedOverlay,
-            new Point2D(x, y),
-            new BrushSize(width, height)));
+        PerformMCPMutation(
+            new PlaceConnectedOverlayMutation(
+                mutationTarget,
+                connectedOverlay,
+                new Point2D(x, y),
+                new BrushSize(width, height)),
+            "place_connected_overlay",
+            affectedMapTiles);
 
         return new MapEditResult(
             mutationManager.Revision,
@@ -919,7 +1182,7 @@ public class MapFacade
             randomSeed,
             (byte)extraHeight);
 
-        mutationManager.PerformMutation(mutation);
+        PerformMCPMutation(mutation, "draw_connected_tiles", mutation.AffectedCellCoords);
 
         return new MapEditResult(
             mutationManager.Revision,
@@ -947,48 +1210,139 @@ public class MapFacade
             throw new MapFacadeValidationException($"Cell ({x}, {y}) is outside the map.");
 
         string resolvedEditorColor = ResolveWaypointColor(editorColor);
-        mutationManager.PerformMutation(new PlaceWaypointMutation(mutationTarget, cellCoords, identifier, resolvedEditorColor));
+        PerformMCPMutation(
+            new PlaceWaypointMutation(mutationTarget, cellCoords, identifier, resolvedEditorColor),
+            "place_waypoint",
+            new[] { mapTile });
 
         return new MapEditResult(
             mutationManager.Revision,
             new List<CellInfo> { CellInfo.FromMapCell(map, mapTile) });
     }
 
-    public MapEditResult PlaceTerrainObject(string terrainTypeName, int x, int y)
+    public MapEditResult PlaceTerrainObjectsBatch(
+        List<MapTerrainObjectPlacement> placements,
+        int? expectedRevision)
     {
-        if (string.IsNullOrWhiteSpace(terrainTypeName))
-            throw new MapFacadeValidationException("A terrain object type INI name must be provided.");
+        if (expectedRevision.HasValue && expectedRevision.Value != mutationManager.Revision)
+        {
+            throw new MapFacadeValidationException(
+                $"The map revision changed from {expectedRevision.Value} to {mutationManager.Revision}. Query the map again before placing terrain objects.");
+        }
 
-        var cellCoords = new Point2D(x, y);
-        if (!map.IsCoordWithinMap(cellCoords))
-            throw new MapFacadeValidationException($"Cell ({x}, {y}) is outside the map.");
+        if (placements == null || placements.Count == 0)
+            throw new MapFacadeValidationException("At least one terrain object placement must be provided.");
+        if (placements.Count > MaxMapOperationCellCount)
+            throw new MapFacadeValidationException($"At most {MaxMapOperationCellCount} terrain objects can be placed in one batch.");
 
-        var mapTile = map.GetTile(cellCoords);
-        if (mapTile == null)
-            throw new MapFacadeValidationException($"Cell ({x}, {y}) is outside the map.");
+        var resolvedPlacements = new List<(TerrainType TerrainType, Point2D CellCoords)>(placements.Count);
+        var distinctCellCoords = new HashSet<Point2D>();
+        for (int i = 0; i < placements.Count; i++)
+        {
+            MapTerrainObjectPlacement placement = placements[i];
+            if (placement == null)
+                throw new MapFacadeValidationException($"Terrain object placement {i} cannot be null.");
+            if (string.IsNullOrWhiteSpace(placement.TerrainTypeName))
+                throw new MapFacadeValidationException($"Terrain object placement {i} must specify a terrain object type INI name.");
 
-        var terrainType = map.Rules.TerrainTypes.Find(tt => string.Equals(tt.ININame, terrainTypeName, StringComparison.OrdinalIgnoreCase));
-        if (terrainType == null)
-            throw new MapFacadeValidationException($"Terrain object type '{terrainTypeName}' does not exist in the loaded rules.");
+            TerrainType terrainType = map.Rules.TerrainTypes.Find(
+                candidate => string.Equals(candidate.ININame, placement.TerrainTypeName, StringComparison.OrdinalIgnoreCase));
+            if (terrainType == null)
+                throw new MapFacadeValidationException($"Terrain object type '{placement.TerrainTypeName}' does not exist in the loaded rules.");
+            if (!terrainType.EditorVisible)
+                throw new MapFacadeValidationException($"Terrain object type '{terrainType.ININame}' is not available for placement in the editor.");
+            if (!terrainType.IsValidForTheater(map.LoadedTheaterName))
+            {
+                throw new MapFacadeValidationException(
+                    $"Terrain object type '{terrainType.ININame}' is not valid for theater '{map.LoadedTheaterName}'.");
+            }
 
-        if (!terrainType.EditorVisible)
-            throw new MapFacadeValidationException($"Terrain object type '{terrainType.ININame}' is not available for placement in the editor.");
+            var cellCoords = new Point2D(placement.X, placement.Y);
+            MapTile mapTile = map.GetTile(cellCoords);
+            if (mapTile == null)
+                throw new MapFacadeValidationException($"Terrain object placement {i} at ({placement.X}, {placement.Y}) is outside the map.");
+            if (!distinctCellCoords.Add(cellCoords))
+                throw new MapFacadeValidationException($"Cell coordinate ({placement.X}, {placement.Y}) is included more than once.");
+            if (mapTile.TerrainObject != null)
+            {
+                throw new MapFacadeValidationException(
+                    $"Cell ({placement.X}, {placement.Y}) already contains terrain object '{mapTile.TerrainObject.TerrainType.ININame}'.");
+            }
 
-        if (!terrainType.IsValidForTheater(map.LoadedTheaterName))
-            throw new MapFacadeValidationException($"Terrain object type '{terrainType.ININame}' is not valid for theater '{map.LoadedTheaterName}'.");
+            resolvedPlacements.Add((terrainType, cellCoords));
+        }
 
-        if (mapTile.TerrainObject != null)
-            throw new MapFacadeValidationException($"Cell ({x}, {y}) already contains terrain object '{mapTile.TerrainObject.TerrainType.ININame}'.");
-
-        var mutation = new PlaceTerrainObjectMutation(mutationTarget, terrainType, cellCoords);
-        if (!mutation.ShouldPerform())
-            throw new MapFacadeValidationException($"Terrain object '{terrainType.ININame}' cannot be placed at ({x}, {y}).");
-
-        mutationManager.PerformMutation(mutation);
+        var mutation = new PlaceTerrainObjectBatchMutation(mutationTarget, resolvedPlacements);
+        PerformMCPMutation(
+            mutation,
+            "place_terrain_objects_batch",
+            resolvedPlacements.Select(placement => placement.CellCoords).ToList());
 
         return new MapEditResult(
             mutationManager.Revision,
-            new List<CellInfo> { CellInfo.FromMapCell(map, mapTile) });
+            resolvedPlacements
+                .Select(placement => CellInfo.FromMapCell(map, map.GetTile(placement.CellCoords)))
+                .ToList());
+    }
+
+    public MapEditResult PlaceTerrainObjectCollectionBatch(
+        string collectionName,
+        List<MapCellCoordinate> cells,
+        int? expectedRevision)
+    {
+        if (expectedRevision.HasValue && expectedRevision.Value != mutationManager.Revision)
+        {
+            throw new MapFacadeValidationException(
+                $"The map revision changed from {expectedRevision.Value} to {mutationManager.Revision}. Query the map again before placing the terrain object collection.");
+        }
+
+        if (string.IsNullOrWhiteSpace(collectionName))
+            throw new MapFacadeValidationException("A terrain object collection name must be provided.");
+        if (cells == null || cells.Count == 0)
+            throw new MapFacadeValidationException("At least one cell coordinate must be provided.");
+        if (cells.Count > MaxMapOperationCellCount)
+            throw new MapFacadeValidationException($"At most {MaxMapOperationCellCount} terrain objects can be placed in one batch.");
+
+        var collection = map.EditorConfig.TerrainObjectCollections.Find(
+            candidate => string.Equals(candidate.Name, collectionName, StringComparison.OrdinalIgnoreCase));
+        if (collection == null)
+            throw new MapFacadeValidationException($"Terrain object collection '{collectionName}' does not exist in the editor configuration.");
+        if (collection.Entries.Length == 0)
+            throw new MapFacadeValidationException($"Terrain object collection '{collection.Name}' contains no entries.");
+        if (!collection.IsValidForTheater(map.LoadedTheaterName))
+            throw new MapFacadeValidationException($"Terrain object collection '{collection.Name}' is not valid for theater '{map.LoadedTheaterName}'.");
+
+        var distinctCellCoords = new HashSet<Point2D>();
+        for (int i = 0; i < cells.Count; i++)
+        {
+            MapCellCoordinate cell = cells[i];
+            if (cell == null)
+                throw new MapFacadeValidationException($"Cell coordinate {i} cannot be null.");
+
+            var cellCoords = new Point2D(cell.X, cell.Y);
+            MapTile mapTile = map.GetTile(cellCoords);
+            if (mapTile == null)
+                throw new MapFacadeValidationException($"Cell coordinate {i} at ({cell.X}, {cell.Y}) is outside the map.");
+            if (!distinctCellCoords.Add(cellCoords))
+                throw new MapFacadeValidationException($"Cell coordinate ({cell.X}, {cell.Y}) is included more than once.");
+            if (mapTile.TerrainObject != null)
+            {
+                throw new MapFacadeValidationException(
+                    $"Cell ({cell.X}, {cell.Y}) already contains terrain object '{mapTile.TerrainObject.TerrainType.ININame}'.");
+            }
+        }
+
+        var orderedCellCoords = distinctCellCoords
+            .OrderBy(coords => coords.Y)
+            .ThenBy(coords => coords.X)
+            .ToList();
+
+        var mutation = new PlaceTerrainObjectCollectionBatchMutation(mutationTarget, collection, orderedCellCoords);
+        PerformMCPMutation(mutation, "place_terrain_object_collection_batch", orderedCellCoords);
+
+        return new MapEditResult(
+            mutationManager.Revision,
+            orderedCellCoords.Select(coords => CellInfo.FromMapCell(map, map.GetTile(coords))).ToList());
     }
 
     public MapEditResult PlaceBuilding(string buildingTypeName, string ownerName, int x, int y, bool allowOverlap, MapBuildingPlacementProperties properties)
@@ -1053,7 +1407,7 @@ public class MapFacade
                 $"Building '{buildingType.ININame}' cannot be placed at ({x}, {y}) because its foundation overlaps another building.");
         }
 
-        mutationManager.PerformMutation(new PlaceBuildingMutation(mutationTarget, structure));
+        PerformMCPMutation(new PlaceBuildingMutation(mutationTarget, structure), "place_building", foundationCells);
 
         return new MapEditResult(
             mutationManager.Revision,
@@ -1099,7 +1453,10 @@ public class MapFacade
             throw new MapFacadeValidationException($"Aircraft '{aircraftType.ININame}' cannot be placed at ({x}, {y}) because the cell already contains aircraft.");
         }
 
-        mutationManager.PerformMutation(new PlaceAircraftMutation(mutationTarget, aircraft));
+        PerformMCPMutation(
+            new PlaceAircraftMutation(mutationTarget, aircraft),
+            "place_aircraft",
+            new[] { map.GetTile(cellCoords) });
 
         return new MapEditResult(
             mutationManager.Revision,
@@ -1148,7 +1505,7 @@ public class MapFacade
 
         ApplyFootPlacementProperties(infantry, properties, true, true);
 
-        mutationManager.PerformMutation(new PlaceInfantryMutation(mutationTarget, infantry));
+        PerformMCPMutation(new PlaceInfantryMutation(mutationTarget, infantry), "place_infantry", new[] { mapTile });
 
         return new MapEditResult(
             mutationManager.Revision,
@@ -1194,7 +1551,10 @@ public class MapFacade
             throw new MapFacadeValidationException($"Vehicle '{vehicleType.ININame}' cannot be placed at ({x}, {y}) because the cell already contains a vehicle.");
         }
 
-        mutationManager.PerformMutation(new PlaceVehicleMutation(mutationTarget, vehicle));
+        PerformMCPMutation(
+            new PlaceVehicleMutation(mutationTarget, vehicle),
+            "place_vehicle",
+            new[] { map.GetTile(cellCoords) });
 
         return new MapEditResult(
             mutationManager.Revision,
@@ -1255,15 +1615,18 @@ public class MapFacade
             throw new MapFacadeValidationException($"Tile {tileIndexInTileSet} from tile set '{tileSet.SetName}' cannot be placed at ({x}, {y}).");
         }
 
-        mutationManager.PerformMutation(mutation);
-
         int footprintWidth = tile.Width * brushSize.Width;
         int footprintHeight = tile.Height * brushSize.Height;
         var affectedArea = autoLAT
             ? new Rectangle(x - 1, y - 1, footprintWidth + 3, footprintHeight + 3)
             : new Rectangle(x, y, footprintWidth, footprintHeight);
 
-        return new MapEditResult(mutationManager.Revision, InspectRegion(affectedArea));
+        var affectedMapTiles = GetMapTilesInRectangle(affectedArea);
+        PerformMCPMutation(mutation, "place_terrain_tile", affectedMapTiles);
+
+        return new MapEditResult(
+            mutationManager.Revision,
+            affectedMapTiles.Select(mapTile => CellInfo.FromMapCell(map, mapTile)).ToList());
     }
 
     public MapEditResult SetCellsTerrain(List<MapCellCoordinate> cells, int tileIndex, int subTileIndex, int? expectedRevision)
@@ -1319,15 +1682,166 @@ public class MapFacade
         if (changedCoords.Count == 0)
             return new MapEditResult(mutationManager.Revision, new List<CellInfo>());
 
-        mutationManager.PerformMutation(new SetCellsTerrainMutation(
-            mutationTarget,
-            changedCoords,
-            tileIndex,
-            (byte)subTileIndex));
+        PerformMCPMutation(
+            new SetCellsTerrainMutation(
+                mutationTarget,
+                changedCoords,
+                tileIndex,
+                (byte)subTileIndex),
+            "set_cells_terrain",
+            changedCoords);
 
         return new MapEditResult(
             mutationManager.Revision,
             changedCoords.Select(coords => CellInfo.FromMapCell(map, map.GetTile(coords))).ToList());
+    }
+
+    private void PerformMCPMutation(Mutation mutation, string toolName, IEnumerable<MapTile> affectedMapTiles)
+    {
+        PerformMCPMutation(
+            mutation,
+            toolName,
+            affectedMapTiles.Where(mapTile => mapTile != null).Select(mapTile => mapTile.CoordsToPoint()));
+    }
+
+    private void PerformMCPMutation(Mutation mutation, string toolName, IEnumerable<Point2D> affectedCellCoords)
+    {
+        MutationAffectedCells affectedCells = CreateMutationAffectedCells(affectedCellCoords);
+        mutationManager.PerformMutation(mutation, MutationManager.MCPMutationOrigin, toolName, affectedCells);
+    }
+
+    private static MutationAffectedCells CreateMutationAffectedCells(IEnumerable<Point2D> affectedCellCoords)
+    {
+        var distinctCoords = affectedCellCoords.Distinct().ToList();
+        if (distinctCoords.Count == 0)
+            return new MutationAffectedCells(true, 0, null, null, null, null);
+
+        return new MutationAffectedCells(
+            true,
+            distinctCoords.Count,
+            distinctCoords.Min(coords => coords.X),
+            distinctCoords.Min(coords => coords.Y),
+            distinctCoords.Max(coords => coords.X),
+            distinctCoords.Max(coords => coords.Y));
+    }
+
+    private List<MapCellArea> FindUnderdetailedAreas()
+    {
+        int mapArrayHeight = map.Tiles.Length;
+        int mapArrayWidth = map.Tiles.Length == 0 ? 0 : map.Tiles.Max(row => row.Length);
+        if (mapArrayWidth < UnderdetailedAreaSize || mapArrayHeight < UnderdetailedAreaSize)
+            return new List<MapCellArea>();
+
+        var blockedCellPrefixSums = new int[mapArrayHeight + 1, mapArrayWidth + 1];
+        for (int y = 0; y < mapArrayHeight; y++)
+        {
+            for (int x = 0; x < mapArrayWidth; x++)
+            {
+                MapTile mapTile = x < map.Tiles[y].Length ? map.Tiles[y][x] : null;
+                int blockedCell = mapTile == null || !IsUnderdetailedMapTile(mapTile) ? 1 : 0;
+                blockedCellPrefixSums[y + 1, x + 1] = blockedCell +
+                    blockedCellPrefixSums[y, x + 1] +
+                    blockedCellPrefixSums[y + 1, x] -
+                    blockedCellPrefixSums[y, x];
+            }
+        }
+
+        var claimedCells = new bool[mapArrayHeight, mapArrayWidth];
+        var underdetailedAreas = new List<MapCellArea>();
+        for (int y = 0; y <= mapArrayHeight - UnderdetailedAreaSize; y++)
+        {
+            for (int x = 0; x <= mapArrayWidth - UnderdetailedAreaSize; x++)
+            {
+                if (GetPrefixRectangleSum(blockedCellPrefixSums, x, y, UnderdetailedAreaSize, UnderdetailedAreaSize) > 0 ||
+                    IsAnyCellClaimed(claimedCells, x, y, UnderdetailedAreaSize, UnderdetailedAreaSize))
+                {
+                    continue;
+                }
+
+                underdetailedAreas.Add(new MapCellArea(x, y, UnderdetailedAreaSize, UnderdetailedAreaSize));
+                SetCellsClaimed(claimedCells, x, y, UnderdetailedAreaSize, UnderdetailedAreaSize);
+            }
+        }
+
+        return underdetailedAreas;
+    }
+
+    private static bool IsUnderdetailedMapTile(MapTile mapTile)
+    {
+        return mapTile.IsClearGround() &&
+            mapTile.TerrainObject == null &&
+            mapTile.Overlay == null &&
+            mapTile.Smudge == null &&
+            mapTile.Structures.Count == 0 &&
+            mapTile.Vehicles.Count == 0 &&
+            mapTile.Aircraft.Count == 0 &&
+            mapTile.Infantry.All(infantry => infantry == null);
+    }
+
+    private static int GetPrefixRectangleSum(int[,] prefixSums, int x, int y, int width, int height)
+    {
+        int right = x + width;
+        int bottom = y + height;
+        return prefixSums[bottom, right] - prefixSums[y, right] - prefixSums[bottom, x] + prefixSums[y, x];
+    }
+
+    private static bool IsAnyCellClaimed(bool[,] claimedCells, int x, int y, int width, int height)
+    {
+        for (int cellY = y; cellY < y + height; cellY++)
+        {
+            for (int cellX = x; cellX < x + width; cellX++)
+            {
+                if (claimedCells[cellY, cellX])
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void SetCellsClaimed(bool[,] claimedCells, int x, int y, int width, int height)
+    {
+        for (int cellY = y; cellY < y + height; cellY++)
+        {
+            for (int cellX = x; cellX < x + width; cellX++)
+                claimedCells[cellY, cellX] = true;
+        }
+    }
+
+    private MapMutationHistoryEntry CreateMutationHistoryEntry(IMutation mutation, bool canUndo, bool canRedo)
+    {
+        return new MapMutationHistoryEntry(
+            mutation.HistoryMetadata,
+            mutationManager.Revision,
+            mutation.GetType().Name,
+            mutation.GetDisplayString(),
+            canUndo,
+            canRedo);
+    }
+
+    private MutationHistoryMetadata GetMutationMetadata(IMutation mutation)
+    {
+        return mutation.HistoryMetadata ??
+            throw new MapFacadeValidationException("The latest history entry was performed by the human user and cannot be undone or redone through the MCP server.");
+    }
+
+    private bool CanUndoLatestMutationThroughMCP()
+    {
+        return mutationManager.CanUndo() && mutationManager.UndoList[^1].HistoryMetadata != null;
+    }
+
+    private bool CanRedoLatestMutationThroughMCP()
+    {
+        return mutationManager.CanRedo() && mutationManager.RedoList[^1].HistoryMetadata != null;
+    }
+
+    private void ValidateExpectedRevision(int expectedRevision, string operationDescription)
+    {
+        if (expectedRevision != mutationManager.Revision)
+        {
+            throw new MapFacadeValidationException(
+                $"The map revision changed from {expectedRevision} to {mutationManager.Revision}. Query mutation history again before {operationDescription}.");
+        }
     }
 
     private void ApplyModificationProperties(TechnoBase techno, TechnoPropertiesSnapshot snapshot, MapTechnoModificationProperties properties)
@@ -1534,6 +2048,22 @@ public class MapFacade
                     throw new MapFacadeValidationException($"The {operationName} area includes cell ({targetX}, {targetY}), which is outside the map.");
 
                 mapTiles.Add(mapTile);
+            }
+        }
+
+        return mapTiles;
+    }
+
+    private List<MapTile> GetMapTilesInRectangle(Rectangle rectangle)
+    {
+        var mapTiles = new List<MapTile>();
+        for (int y = rectangle.Y; y < rectangle.Bottom; y++)
+        {
+            for (int x = rectangle.X; x < rectangle.Right; x++)
+            {
+                var mapTile = map.GetTile(x, y);
+                if (mapTile != null)
+                    mapTiles.Add(mapTile);
             }
         }
 
