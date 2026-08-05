@@ -33,6 +33,13 @@ namespace TSMapEditor.UI.CursorActions
 
         public override void OnActionEnter() => modified = true;
 
+        private void Clear()
+        {
+            cellsToCopy.Clear();
+            cellsToCopyList.Clear();
+            modified = true;
+        }
+
         public override void LeftDown(Point2D cellCoords)
         {
             CursorActionTarget.BrushSize.DoForBrushSize(offset =>
@@ -60,7 +67,12 @@ namespace TSMapEditor.UI.CursorActions
         {
             base.OnKeyPressed(e, cellCoords);
 
-            if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.Enter)
+            if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.Escape)
+            {
+                Clear();
+                e.Handled = true;
+            }
+            else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.Enter)
             {
                 CopyFromCells(cellsToCopyList);
                 cellsToCopy.Clear();
@@ -147,7 +159,8 @@ namespace TSMapEditor.UI.CursorActions
             }
 
             string text = Translate("LeftClickText", "Press left click on cells to mark them to be copied.") + Environment.NewLine + Environment.NewLine +
-                    Translate("ShiftText", "Hold SHIFT while pressing to remove cells.") + Environment.NewLine + Environment.NewLine +
+                    Translate("ShiftText", "Hold SHIFT while pressing to remove cells.") + Environment.NewLine +
+                    Translate("ClearText", "Press ESC to clear selection.") + Environment.NewLine + Environment.NewLine +
                     Translate("EnterText", "Press ENTER when ready to copy the cells to the clipboard.");
 
             DrawText(cellCoords, cameraTopLeftPoint, 90, -200, text, Color.Yellow);
