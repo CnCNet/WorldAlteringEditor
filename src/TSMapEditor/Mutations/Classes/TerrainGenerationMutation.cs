@@ -380,17 +380,29 @@ namespace TSMapEditor.Mutations.Classes
 
     public class TerrainGenerationMutation : Mutation
     {
-        public TerrainGenerationMutation(IMutationTarget mutationTarget, List<Point2D> cells, TerrainGeneratorConfiguration configuration) : base(mutationTarget)
+        public TerrainGenerationMutation(IMutationTarget mutationTarget, List<Point2D> cells, TerrainGeneratorConfiguration configuration)
+            : this(mutationTarget, cells, configuration, mutationTarget.AutoLATEnabled)
+        {
+        }
+
+        public TerrainGenerationMutation(
+            IMutationTarget mutationTarget,
+            List<Point2D> cells,
+            TerrainGeneratorConfiguration configuration,
+            bool autoLATEnabled)
+            : base(mutationTarget)
         {
             seed = DateTime.Now.Millisecond;
             random = new Random();
             this.cells = cells;
             this.terrainGeneratorConfiguration = configuration;
+            this.autoLATEnabled = autoLATEnabled;
         }
 
         private readonly int seed;
         private readonly List<Point2D> cells;
         private readonly TerrainGeneratorConfiguration terrainGeneratorConfiguration;
+        private readonly bool autoLATEnabled;
 
         private HashSet<Point2D> occupiedCells = new HashSet<Point2D>();
         private Random random;
@@ -401,6 +413,12 @@ namespace TSMapEditor.Mutations.Classes
         private List<Point2D> placedSmudgeCellCoords;
 
         private bool wasPerformedWithAutoLatOn;
+
+        public int TerrainCellWriteCount => undoData?.Select(data => data.CellCoords).Distinct().Count() ?? 0;
+        public int PlacedTerrainObjectCount => placedTerrainObjects?.Count ?? 0;
+        public int PlacedOverlayCount => placedOverlayCellCoords?.Count ?? 0;
+        public int PlacedSmudgeCount => placedSmudgeCellCoords?.Count ?? 0;
+        public bool AutoLATApplied => wasPerformedWithAutoLatOn;
 
         public override string GetDisplayString()
         {
@@ -415,8 +433,9 @@ namespace TSMapEditor.Mutations.Classes
 
         public override void Undo()
         {
-            foreach (var originalTerrainData in undoData)
+            for (int i = undoData.Count - 1; i >= 0; i--)
             {
+                OriginalCellTerrainData originalTerrainData = undoData[i];
                 var mapCell = MutationTarget.Map.GetTile(originalTerrainData.CellCoords);
                 mapCell.ChangeTileIndex(originalTerrainData.TileIndex, originalTerrainData.SubTileIndex);
                 mapCell.Level = originalTerrainData.HeightLevel;
@@ -457,6 +476,7 @@ namespace TSMapEditor.Mutations.Classes
             placedTerrainObjects = new List<TerrainObject>();
             placedOverlayCellCoords = new List<Point2D>();
             placedSmudgeCellCoords = new List<Point2D>();
+            wasPerformedWithAutoLatOn = false;
 
             var terrainTypeGroups = terrainGeneratorConfiguration.TerrainTypeGroups;
             var tileGroups = terrainGeneratorConfiguration.TileGroups;
@@ -572,16 +592,17 @@ namespace TSMapEditor.Mutations.Classes
                         int index = random.Next(0, smudgeGroup.SmudgeTypes.Count);
                         var smudgeType = smudgeGroup.SmudgeTypes[index];
                         var mapCell = MutationTarget.Map.GetTile(cellCoords);
-                        if (mapCell.Smudge == null)
-                            mapCell.Smudge = new Smudge() { SmudgeType = smudgeType, Position = cellCoords };
+                        if (mapCell.Smudge != null)
+                            continue;
 
+                        mapCell.Smudge = new Smudge() { SmudgeType = smudgeType, Position = cellCoords };
                         placedSmudgeCellCoords.Add(cellCoords);
                     }
                 }
             }
 
             // Apply auto-LAT
-            if (MutationTarget.AutoLATEnabled)
+            if (autoLATEnabled)
             {
                 ApplyAutoLATOnArea();
                 wasPerformedWithAutoLatOn = true;
@@ -722,9 +743,8 @@ namespace TSMapEditor.Mutations.Classes
 
         private void PlaceTreeGroupOnCell(Point2D cellCoords, TerrainType treeGroup)
         {
-            var cell = MutationTarget.Map.GetTile(cellCoords);
             var terrainObject = new TerrainObject(treeGroup, cellCoords);
-            MutationTarget.Map.AddTerrainObject(new TerrainObject(treeGroup, cellCoords));
+            MutationTarget.Map.AddTerrainObject(terrainObject);
 
             if (treeGroup.ImpassableCells != null)
             {

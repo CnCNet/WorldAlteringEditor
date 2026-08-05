@@ -192,7 +192,7 @@ public sealed class MapTools
     }
 
     [McpServerTool(Name = "get_connected_overlay_types", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Returns WAE connected-overlay configurations valid for the current map's theater, including their connection masks and underlying overlay frames. Use place_connected_overlay for automatic connections, or place_overlay with this frame data for exact manual placement.")]
+    [Description("Returns WAE connected-overlay configurations valid for the current map's theater, including their connection masks and underlying overlay frames. Use place_connected_overlay for automatic connections, or place_overlays_batch with this frame data for exact manual placement.")]
     public Task<List<MapConnectedOverlayTypeInfo>> GetConnectedOverlayTypes(
         [Description("Optional case-insensitive filter matched against configuration name, UI name, related configuration names, and underlying overlay INI names.")] string nameFilter = null,
         CancellationToken cancellationToken = default)
@@ -280,13 +280,72 @@ public sealed class MapTools
     }
 
     [McpServerTool(Name = "get_tile_sets", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Returns tile sets that are available for placement in the current map's theater.")]
+    [Description("Returns tile sets available for placement in the current map's theater. Each result explicitly lists both usable and unusable tiles with their absolute and tile-set-relative indices; tileCount includes entries whose graphics files are missing or unusable.")]
     public Task<List<MapTileSetInfo>> GetTileSets(
         [Description("Optional case-insensitive filter matched against tile set name and UI name.")] string nameFilter = null,
         CancellationToken cancellationToken = default)
     {
         Logger.Log($"{nameof(MapTools)}.{nameof(GetTileSets)}");
         return gameThreadDispatcher.InvokeAsync(() => mapFacade.GetTileSets(nameFilter), cancellationToken);
+    }
+
+    [McpServerTool(Name = "get_tile_details", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns deterministic base-graphics metadata for one absolute terrain tile index, including whether it is usable, its tile set and relative index, full-tile footprint, and every valid sub-tile's slot index, coordinate offset, and height. Missing-graphics tiles return hasUsableGraphics=false and an empty validSubTiles list rather than failing.")]
+    public async Task<MapTerrainTileInfo> GetTileDetails(
+        [Description("Absolute tile index returned by get_tile_sets, inspect_map_region, or another map tool.")] int absoluteTileIndex,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetTileDetails)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.GetTileDetails(absoluteTileIndex),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "get_terrain_generator_presets", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns built-in mod presets and saved user presets available to the Terrain Generator in the current theater. Results include human-readable names, exact stable preset IDs, source, usability, and group counts; use get_terrain_generator_preset for full contents.")]
+    public async Task<List<MapTerrainGeneratorPresetSummary>> GetTerrainGeneratorPresets(
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetTerrainGeneratorPresets)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                mapFacade.GetTerrainGeneratorPresets,
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "get_terrain_generator_preset", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Returns the effective configuration of one Terrain Generator preset, including placement chances and the terrain objects, tile sets and relative indices, overlays and frames, and smudges used by each group. Also reports validation errors that would prevent generation.")]
+    public async Task<MapTerrainGeneratorPresetInfo> GetTerrainGeneratorPreset(
+        [Description("Exact stable preset ID returned by get_terrain_generator_presets.")] string presetId,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GetTerrainGeneratorPreset)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.GetTerrainGeneratorPreset(presetId),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
     }
 
     [McpServerTool(Name = "get_technos", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
@@ -527,23 +586,19 @@ public sealed class MapTools
         }
     }
 
-    [McpServerTool(Name = "place_overlay", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Places a regular overlay in a rectangular map area, replacing existing overlay. Omit frameIndex to use frame 0 and let WAE automatically smooth Tiberium; specify a placeable artwork frame for exact manual placement. Raw SHP frames at or above the frameCount returned by get_overlay_types are engine-managed shadows and are rejected. The operation is one undo entry and one revision bump.")]
-    public async Task<MapEditResult> PlaceOverlay(
-        [Description("INI name of an overlay type returned by get_overlay_types.")] string overlayTypeName,
-        [Description("X coordinate of the area's top-left cell.")] int x,
-        [Description("Y coordinate of the area's top-left cell.")] int y,
-        [Description("Area width in cells. Defaults to 1.")] int width = 1,
-        [Description("Area height in cells. Defaults to 1.")] int height = 1,
-        [Description("Optional zero-based placeable artwork frame index, which must be lower than frameCount from get_overlay_types. The upper raw SHP half contains engine-managed shadow frames and cannot be placed. Omit it for WAE's normal placement behavior and automatic Tiberium smoothing.")] int? frameIndex = null,
+    [McpServerTool(Name = "place_overlays_batch", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Atomically places explicitly selected overlays on individual cells using a 1x1 brush per placement, replacing existing overlay. Omit a placement's frameIndex to use frame 0 and automatically smooth neighboring resources; specify a placeable artwork frame for exact manual placement. Manually framed target cells remain exact during this batch. Raw SHP shadow frames are rejected. The operation is one undo entry and one revision bump.")]
+    public async Task<MapEditResult> PlaceOverlaysBatch(
+        [Description("One or more overlay types, optional frames, and destination cells. Coordinates must be distinct. At most 10,000 placements are supported.")] List<MapOverlayPlacement> placements,
+        [Description("Optional map revision returned by get_map_revision or another map tool. When supplied, placement fails if the map has changed; omit it to allow concurrent human edits.")] int? expectedRevision = null,
         CancellationToken cancellationToken = default)
     {
-        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceOverlay)}");
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceOverlaysBatch)}");
 
         try
         {
             return await gameThreadDispatcher.InvokeAsync(
-                () => mapFacade.PlaceOverlay(overlayTypeName, x, y, width, height, frameIndex),
+                () => mapFacade.PlaceOverlaysBatch(placements, expectedRevision),
                 cancellationToken);
         }
         catch (MapFacadeValidationException ex)
@@ -552,22 +607,20 @@ public sealed class MapTools
         }
     }
 
-    [McpServerTool(Name = "place_overlay_collection", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Places random entries from an editor overlay collection across a rectangular brush area, replacing existing overlay. This uses WAE's existing collection randomizer and Tiberium placement behavior. The operation is one undo entry and one revision bump.")]
-    public async Task<MapEditResult> PlaceOverlayCollection(
+    [McpServerTool(Name = "place_overlay_collection_batch", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Atomically places random entries from one editor overlay collection on multiple individual cells using a 1x1 brush per cell, replacing existing overlay. This preserves WAE's collection randomizer, impassable-resource avoidance, and resource smoothing behavior. Coordinates must be distinct. The operation is one undo entry and one revision bump.")]
+    public async Task<MapEditResult> PlaceOverlayCollectionBatch(
         [Description("Configuration name of an overlay collection returned by get_overlay_collections.")] string collectionName,
-        [Description("X coordinate of the area's top-left cell.")] int x,
-        [Description("Y coordinate of the area's top-left cell.")] int y,
-        [Description("Area width in cells. Defaults to 1.")] int width = 1,
-        [Description("Area height in cells. Defaults to 1.")] int height = 1,
+        [Description("One or more distinct destination map-cell coordinates. At most 10,000 entries are supported.")] List<MapCellCoordinate> cells,
+        [Description("Optional map revision returned by get_map_revision or another map tool. When supplied, placement fails if the map has changed; omit it to allow concurrent human edits.")] int? expectedRevision = null,
         CancellationToken cancellationToken = default)
     {
-        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceOverlayCollection)}");
+        Logger.Log($"{nameof(MapTools)}.{nameof(PlaceOverlayCollectionBatch)}");
 
         try
         {
             return await gameThreadDispatcher.InvokeAsync(
-                () => mapFacade.PlaceOverlayCollection(collectionName, x, y, width, height),
+                () => mapFacade.PlaceOverlayCollectionBatch(collectionName, cells, expectedRevision),
                 cancellationToken);
         }
         catch (MapFacadeValidationException ex)
@@ -807,7 +860,7 @@ public sealed class MapTools
     [Description("Places a full terrain tile by tile set and tile-set-relative index. Supports configured brush sizes and optional AutoLAT. Existing terrain in the footprint may be replaced, and the edit is added to undo history.")]
     public async Task<MapEditResult> PlaceTerrainTile(
         [Description("Internal name of the tile set returned by get_tile_sets.")] string tileSetName,
-        [Description("Zero-based tile index relative to the start of the tile set.")] int tileIndexInTileSet,
+        [Description("Zero-based relative index from a get_tile_sets tilesWithUsableGraphics entry.")] int tileIndexInTileSet,
         [Description("X coordinate of the placement's top-left cell.")] int x,
         [Description("Y coordinate of the placement's top-left cell.")] int y,
         [Description("Width of the configured brush in repeated full tiles. Defaults to 1.")] int brushWidth = 1,
@@ -829,12 +882,38 @@ public sealed class MapTools
         }
     }
 
+    [McpServerTool(Name = "generate_terrain", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Runs the editor's Terrain Generator over every valid map cell inside a rectangular coordinate area using an existing preset. The generator randomly attempts the preset's terrain objects, full terrain tiles, overlays, and smudges while preserving its normal placement restrictions. Cells outside the map diamond are clipped from the rectangle. The operation is one undo entry and one revision bump and returns compact placement counts plus a potential affected-cell summary.")]
+    public async Task<MapTerrainGenerationResult> GenerateTerrain(
+        [Description("Exact stable preset ID returned by get_terrain_generator_presets.")] string presetId,
+        [Description("X coordinate of the rectangular area's top-left cell.")] int x,
+        [Description("Y coordinate of the rectangular area's top-left cell.")] int y,
+        [Description("Rectangle width in logical cells. Each dimension may be at most 256 and total rectangular area at most 10,000 cells.")] int width,
+        [Description("Rectangle height in logical cells. Each dimension may be at most 256 and total rectangular area at most 10,000 cells.")] int height,
+        [Description("Whether to apply automatic LAT transitions after generation. Defaults to true and is captured for consistent undo and redo behavior.")] bool autoLAT = true,
+        [Description("Optional map revision returned by get_map_revision or another map tool. When supplied, generation fails if the map has changed; omit it to allow concurrent human edits.")] int? expectedRevision = null,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(GenerateTerrain)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(
+                () => mapFacade.GenerateTerrain(presetId, x, y, width, height, autoLAT, expectedRevision),
+                cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
     [McpServerTool(Name = "set_cells_terrain", ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Directly sets the same absolute tile index and sub-tile index on one or more map cells. Duplicate coordinates and cells that already have the requested terrain are ignored. The batch is one atomic undo entry and one revision bump when any cells change. This low-level operation does not apply a brush or AutoLAT.")]
     public async Task<MapEditResult> SetCellsTerrain(
         [Description("One or more map-cell coordinates. At most 10,000 entries are supported.")] List<MapCellCoordinate> cells,
-        [Description("Absolute tile index in the loaded theater.")] int tileIndex,
-        [Description("Sub-tile index within the selected full tile.")] int subTileIndex,
+        [Description("Absolute tile index from a get_tile_sets tilesWithUsableGraphics entry or get_tile_details.")] int tileIndex,
+        [Description("Sub-tile index from get_tile_details.validSubTiles for the selected full tile.")] int subTileIndex,
         [Description("Optional map revision returned by get_map_revision or another map tool. When supplied, the operation fails if the map has changed; omit it to allow concurrent human edits.")] int? expectedRevision = null,
         CancellationToken cancellationToken = default)
     {

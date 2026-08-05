@@ -12,7 +12,7 @@ Despite the isometric perspective, a TS/RA2 map appears rectangular in-game. In 
 
 The map's width and height do not define independent valid ranges for the X and Y coordinates. Do not assume that a 100×100 map uses coordinates from (0, 0) through (99, 99). Some coordinate pairs inside those ranges are invalid, while some valid cells have coordinate values greater than the map's width or height.
 
-Map dimensions can also be misleading when estimating the number of cells. Each unit of map height contains two logical rows to produce the isometric layout. A map with dimensions `width × height` therefore contains `2 × width × height` cells. For example, a 100×100 map contains 20,000 cells rather than 10,000.
+Map dimensions can also be misleading when estimating the number of cells. Each unit of map height contains two logical rows to produce the isometric layout: a primary row containing `width` cells and an adjacent row containing `width - 1` cells because of the isometric map border. A map with dimensions `width × height` therefore contains `height × (2 × width - 1)` valid cells. For example, a 100×100 map contains 19,900 cells rather than 10,000.
 
 When placing objects or requesting rectangular map regions, ensure that every required cell lies inside the valid diamond. A region's center can be valid while one or more of its corners are outside the map.
 
@@ -48,6 +48,8 @@ The following usually looks better and more natural:
 --XX--
 ```
 
+AutoLAT smooths tile transtitions: it DOES NOT make a rectangular large-brush placement organically shaped.
+
 Isolated AutoLAT placements may produce only transition tiles. Connected rows with sufficient thickness are needed to create core LAT.
 
 ### AutoLAT Behaviour
@@ -64,6 +66,16 @@ Disable AutoLAT only when:
 
 Do not use individual raw tiles as decorative accents from a LAT-capable tileset. Paint connected or clustered areas through AutoLAT so their edges transition correctly.
 
+### Natural LAT Masks
+
+For natural terrain such as Tall Grass or Dirt:
+
+- Build a connected mask predominantly 1–3 cells wide.
+- Use multiple short strokes, bends, branches, thicker cores, and occasional holes.
+- Avoid any single rectangular brush whose width and height are both greater than 3, unless the shape represents something intentionally regular.
+
+Before accepting the result, inspect the mask visually. If its rectangular brush origins are obvious, revise it.
+
 ## Detailing Areas
 
 Aside from LATs, try to also use various other pieces when detailing large areas. Rocks, pebbles, trees, rough ground, debris, villages or cities, small closed lakes... there's usually a lot you can detail a map with. Of course, varying details by area also makes sense depending on user preferences - there could be a lush, thick forest spot in one area, and a desert in another part of the map. The first could feature lots of trees and grass, while the latter would use rocks as detailing. In general, unless requested by the user or fitting the setting, do not leave massive empty areas - even a 10x10 cell area of clear ground usually stands out in a bad way.
@@ -76,9 +88,25 @@ The Tiberian Sun and Red Alert 2 game engines and gameplay design don't work wel
 
 Layouts are often planned with cliffs and shorelines. You can place these by invoking the Connected Tiles tool. Often other kinds of more complicated elements, like thick forests and cities, can also be used as "soft" layout elements because they obstruct movement of large armies.
 
+## Map Validation
+
+`validate_map` is a diagnostic tool, not a map-quality target. Do not resolve under-detailed-area warnings primarily by scattering isolated pebbles, decals, or other passable accents.
+
+Group nearby warnings into larger thematic regions. Resolve them with intentional features such as forests, rocky clearings, burned woodland, farms, ruins, villages, or mixed terrain. Pebbles and similar details should support those features rather than substitute for them.
+
 ## Connected Tile Facings
 
 When placing connected tiles, consider their facing. For example, if you are creating a hill surrounded by cliffs, you need to consider whether to place front or back facing cliffs to give the illusion of the cliff being higher than the surrounding terrain. You can always ask the user, or use the MCP server's screen-cropping endpoint for visual verification.
+
+### Closed Shoreline Verification
+
+For lakes and other closed shorelines:
+
+- Draw the shoreline before filling the interior.
+- Render a close regional preview.
+- Verify that the water-facing artwork points toward the enclosed area.
+- If it faces outward, completely clear the failed formation before redrawing it with the opposite side.
+- Fill the interior by flood-filling the region enclosed by the finished shore tiles, rather than estimating a smaller geometric mask.
 
 ## Placement Order
 

@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using TSMapEditor.CCEngine;
 using TSMapEditor.CCEngine.TileData;
@@ -11,6 +12,7 @@ using TSMapEditor.Mutations;
 using TSMapEditor.Mutations.Classes;
 using TSMapEditor.Mutations.Classes.AIMutations;
 using TSMapEditor.Rendering;
+using TSMapEditor.Settings;
 using TSMapEditor.UI;
 
 namespace TSMapEditor.AI;
@@ -283,7 +285,15 @@ public class MapHouseInfo
 
 public class MapTileSetInfo
 {
-    public MapTileSetInfo(int index, string setName, string uiName, int startTileIndex, int tileCount, bool only1x1)
+    public MapTileSetInfo(
+        int index,
+        string setName,
+        string uiName,
+        int startTileIndex,
+        int tileCount,
+        bool only1x1,
+        List<MapTileIndexInfo> tilesWithUsableGraphics,
+        List<MapTileIndexInfo> tilesWithoutUsableGraphics)
     {
         Index = index;
         SetName = setName;
@@ -291,14 +301,39 @@ public class MapTileSetInfo
         StartTileIndex = startTileIndex;
         TileCount = tileCount;
         Only1x1 = only1x1;
+        TilesWithUsableGraphics = tilesWithUsableGraphics;
+        TilesWithoutUsableGraphics = tilesWithoutUsableGraphics;
     }
 
+    [Description("Zero-based tile-set index in the loaded theater.")]
     public int Index { get; }
+
+    [Description("Internal tile-set name used by place_terrain_tile.")]
     public string SetName { get; }
+
+    [Description("Localized tile-set name shown by the editor.")]
     public string UIName { get; }
+
+    [Description("Absolute theater index of the tile set's first tile.")]
     public int StartTileIndex { get; }
+
+    [Description("Total number of tile entries in the set, including entries with missing or unusable graphics.")]
     public int TileCount { get; }
+
+    [Description("Whether the editor restricts this tile set to a 1x1 placement brush.")]
     public bool Only1x1 { get; }
+
+    [Description("Number of tile entries that have at least one valid graphical subtile.")]
+    public int UsableTileCount => TilesWithUsableGraphics.Count;
+
+    [Description("Number of tile entries whose graphics are missing or unusable.")]
+    public int UnusableTileCount => TilesWithoutUsableGraphics.Count;
+
+    [Description("Tiles that can be placed, identified by both absolute and tile-set-relative index.")]
+    public List<MapTileIndexInfo> TilesWithUsableGraphics { get; }
+
+    [Description("Tiles whose graphics are missing or unusable, identified by both absolute and tile-set-relative index.")]
+    public List<MapTileIndexInfo> TilesWithoutUsableGraphics { get; }
 }
 
 public class MapEditResult
@@ -728,19 +763,152 @@ public class MapFacade
 
         return map.TheaterInstance.Theater.TileSets
             .Where(IsTileSetPlaceable)
-            .Select(tileSet => new MapTileSetInfo(
-                tileSet.Index,
-                tileSet.SetName,
-                tileSet.TranslatedName,
-                tileSet.StartTileIndex,
-                tileSet.LoadedTileCount,
-                tileSet.Only1x1))
+            .Select(tileSet =>
+            {
+                var tilesWithUsableGraphics = new List<MapTileIndexInfo>();
+                var tilesWithoutUsableGraphics = new List<MapTileIndexInfo>();
+
+                for (int tileIndexInTileSet = 0; tileIndexInTileSet < tileSet.LoadedTileCount; tileIndexInTileSet++)
+                {
+                    int absoluteTileIndex = tileSet.StartTileIndex + tileIndexInTileSet;
+                    var tileIndexInfo = new MapTileIndexInfo(absoluteTileIndex, tileIndexInTileSet);
+                    TileImage tile = mutationTarget.TheaterGraphics.GetTileImage(absoluteTileIndex);
+
+                    if (HasUsableTileGraphics(tile))
+                        tilesWithUsableGraphics.Add(tileIndexInfo);
+                    else
+                        tilesWithoutUsableGraphics.Add(tileIndexInfo);
+                }
+
+                return new MapTileSetInfo(
+                    tileSet.Index,
+                    tileSet.SetName,
+                    tileSet.TranslatedName,
+                    tileSet.StartTileIndex,
+                    tileSet.LoadedTileCount,
+                    tileSet.Only1x1,
+                    tilesWithUsableGraphics,
+                    tilesWithoutUsableGraphics);
+            })
             .Where(tileSetInfo => string.IsNullOrWhiteSpace(normalizedFilter) ||
                 ContainsIgnoringCase(tileSetInfo.SetName, normalizedFilter) ||
                 ContainsIgnoringCase(tileSetInfo.UIName, normalizedFilter))
             .OrderBy(tileSetInfo => tileSetInfo.UIName)
             .ThenBy(tileSetInfo => tileSetInfo.SetName)
             .ToList();
+    }
+
+    public MapTerrainTileInfo GetTileDetails(int absoluteTileIndex)
+    {
+        if (absoluteTileIndex < 0 || absoluteTileIndex >= mutationTarget.TheaterGraphics.TileCount)
+        {
+            throw new MapFacadeValidationException(
+                $"Absolute tile index {absoluteTileIndex} is outside the loaded theater's range of 0 through {mutationTarget.TheaterGraphics.TileCount - 1}.");
+        }
+
+        TileImage tile = mutationTarget.TheaterGraphics.GetTileImage(absoluteTileIndex);
+        if (tile == null || tile.TileSetId < 0 || tile.TileSetId >= map.TheaterInstance.Theater.TileSets.Count)
+            throw new MapFacadeValidationException($"Absolute tile index {absoluteTileIndex} has invalid tile-set metadata.");
+
+        TileSet tileSet = map.TheaterInstance.Theater.TileSets[tile.TileSetId];
+        var validSubTiles = new List<MapTerrainSubTileInfo>();
+        if (tile.Width > 0 && tile.Height > 0)
+        {
+            for (int subTileIndex = 0; subTileIndex < tile.SubTileCount; subTileIndex++)
+            {
+                ISubTileImage subTile = tile.GetSubTile(subTileIndex);
+                Point2D? coordOffset = tile.GetSubTileCoordOffset(subTileIndex);
+                if (subTile?.TmpImage == null || !coordOffset.HasValue)
+                    continue;
+
+                validSubTiles.Add(new MapTerrainSubTileInfo(
+                    subTileIndex,
+                    coordOffset.Value.X,
+                    coordOffset.Value.Y,
+                    subTile.TmpImage.Height));
+            }
+        }
+
+        return new MapTerrainTileInfo(
+            absoluteTileIndex,
+            tileSet.Index,
+            tileSet.SetName,
+            tileSet.TranslatedName,
+            tile.TileIndexInTileSet,
+            HasUsableTileGraphics(tile),
+            tile.Width,
+            tile.Height,
+            tile.SubTileCount,
+            validSubTiles);
+    }
+
+    public List<MapTerrainGeneratorPresetSummary> GetTerrainGeneratorPresets()
+    {
+        return LoadTerrainGeneratorPresets()
+            .Select(preset =>
+            {
+                TerrainGeneratorConfiguration configuration = preset.Configuration;
+                return new MapTerrainGeneratorPresetSummary(
+                    preset.PresetId,
+                    configuration.Name,
+                    configuration.Theater,
+                    configuration.IsUserConfiguration,
+                    GetTerrainGeneratorValidationErrors(configuration).Count == 0,
+                    configuration.TerrainTypeGroups.Count,
+                    configuration.TileGroups.Count,
+                    configuration.OverlayGroups.Count,
+                    configuration.SmudgeGroups.Count);
+            })
+            .OrderBy(preset => preset.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(preset => preset.PresetId, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    public MapTerrainGeneratorPresetInfo GetTerrainGeneratorPreset(string presetId)
+    {
+        TerrainGeneratorPresetDefinition preset = FindTerrainGeneratorPreset(presetId);
+        TerrainGeneratorConfiguration configuration = preset.Configuration;
+
+        return new MapTerrainGeneratorPresetInfo(
+            preset.PresetId,
+            configuration.Name,
+            configuration.Theater,
+            configuration.IsUserConfiguration,
+            GetTerrainGeneratorValidationErrors(configuration),
+            configuration.TerrainTypeGroups
+                .Select(group => new MapTerrainGeneratorTerrainTypeGroupInfo(
+                    group.OpenChance,
+                    group.OverlapChance,
+                    group.TerrainTypes
+                        .Where(terrainType => terrainType != null)
+                        .Select(terrainType => terrainType.ININame)
+                        .ToList()))
+                .ToList(),
+            configuration.TileGroups
+                .Select(group => new MapTerrainGeneratorTileGroupInfo(
+                    group.OpenChance,
+                    group.OverlapChance,
+                    group.TileSet?.SetName,
+                    group.TileIndicesInSet == null || group.TileIndicesInSet.Count == 0,
+                    group.TileIndicesInSet?.ToList() ?? new List<int>()))
+                .ToList(),
+            configuration.OverlayGroups
+                .Select(group => new MapTerrainGeneratorOverlayGroupInfo(
+                    group.OpenChance,
+                    group.OverlapChance,
+                    group.OverlayType?.ININame,
+                    group.FrameIndices == null || group.FrameIndices.Count == 0,
+                    group.FrameIndices?.ToList() ?? new List<int>()))
+                .ToList(),
+            configuration.SmudgeGroups
+                .Select(group => new MapTerrainGeneratorSmudgeGroupInfo(
+                    group.OpenChance,
+                    group.OverlapChance,
+                    group.SmudgeTypes
+                        .Where(smudgeType => smudgeType != null)
+                        .Select(smudgeType => smudgeType.ININame)
+                        .ToList()))
+                .ToList());
     }
 
     public List<CellInfo> InspectRegion(Rectangle rectangle)
@@ -962,45 +1130,93 @@ public class MapFacade
             affectedMapTiles.Select(mapTile => CellInfo.FromMapCell(map, mapTile)).ToList());
     }
 
-    public MapEditResult PlaceOverlay(string overlayTypeName, int x, int y, int width, int height, int? frameIndex)
+    public MapEditResult PlaceOverlaysBatch(List<MapOverlayPlacement> placements, int? expectedRevision)
     {
-        if (string.IsNullOrWhiteSpace(overlayTypeName))
-            throw new MapFacadeValidationException("An overlay type INI name must be provided.");
+        if (expectedRevision.HasValue && expectedRevision.Value != mutationManager.Revision)
+        {
+            throw new MapFacadeValidationException(
+                $"The map revision changed from {expectedRevision.Value} to {mutationManager.Revision}. Query the map again before placing overlays.");
+        }
 
-        var overlayType = map.Rules.OverlayTypes.Find(candidate => string.Equals(candidate.ININame, overlayTypeName, StringComparison.OrdinalIgnoreCase));
+        if (placements == null || placements.Count == 0)
+            throw new MapFacadeValidationException("At least one overlay placement must be provided.");
+        if (placements.Count > MaxMapOperationCellCount)
+            throw new MapFacadeValidationException($"At most {MaxMapOperationCellCount} overlays can be placed in one batch.");
 
-        if (overlayType == null)
-            throw new MapFacadeValidationException($"Overlay type '{overlayTypeName}' does not exist in the loaded rules.");
-        if (!overlayType.EditorVisible)
-            throw new MapFacadeValidationException($"Overlay type '{overlayType.ININame}' is not available for placement in the editor.");
-        if (!overlayType.IsValidForTheater(map.LoadedTheaterName))
-            throw new MapFacadeValidationException($"Overlay type '{overlayType.ININame}' is not valid for theater '{map.LoadedTheaterName}'.");
+        var resolvedPlacements = new List<(OverlayType OverlayType, Point2D CellCoords, int? FrameIndex)>(placements.Count);
+        var distinctCellCoords = new HashSet<Point2D>();
+        bool hasChange = false;
 
-        ValidateOverlayFrame(overlayType, frameIndex ?? 0);
+        for (int i = 0; i < placements.Count; i++)
+        {
+            MapOverlayPlacement placement = placements[i];
+            if (placement == null)
+                throw new MapFacadeValidationException($"Overlay placement {i} cannot be null.");
+            if (string.IsNullOrWhiteSpace(placement.OverlayTypeName))
+                throw new MapFacadeValidationException($"Overlay placement {i} must specify an overlay type INI name.");
 
-        var targetMapTiles = GetValidatedMapTilesInArea(x, y, width, height, "overlay placement");
+            OverlayType overlayType = map.Rules.OverlayTypes.Find(
+                candidate => string.Equals(candidate.ININame, placement.OverlayTypeName, StringComparison.OrdinalIgnoreCase));
+            if (overlayType == null)
+                throw new MapFacadeValidationException($"Overlay type '{placement.OverlayTypeName}' does not exist in the loaded rules.");
+            if (!overlayType.EditorVisible)
+                throw new MapFacadeValidationException($"Overlay type '{overlayType.ININame}' is not available for placement in the editor.");
+            if (!overlayType.IsValidForTheater(map.LoadedTheaterName))
+                throw new MapFacadeValidationException($"Overlay type '{overlayType.ININame}' is not valid for theater '{map.LoadedTheaterName}'.");
 
-        var affectedMapTiles = targetMapTiles
-            .SelectMany(mapTile => GetMapTileAndSurroundings(mapTile.CoordsToPoint()))
+            ValidateOverlayFrame(overlayType, placement.FrameIndex ?? 0);
+
+            var cellCoords = new Point2D(placement.X, placement.Y);
+            MapTile mapTile = map.GetTile(cellCoords);
+            if (mapTile == null)
+                throw new MapFacadeValidationException($"Overlay placement {i} at ({placement.X}, {placement.Y}) is outside the map.");
+            if (!distinctCellCoords.Add(cellCoords))
+                throw new MapFacadeValidationException($"Cell coordinate ({placement.X}, {placement.Y}) is included more than once.");
+
+            int requestedFrameIndex = placement.FrameIndex ?? 0;
+            if (mapTile.Overlay?.OverlayType != overlayType || mapTile.Overlay.FrameIndex != requestedFrameIndex)
+                hasChange = true;
+
+            resolvedPlacements.Add((overlayType, cellCoords, placement.FrameIndex));
+        }
+
+        if (!hasChange)
+            throw new MapFacadeValidationException("Every requested cell already contains the requested overlay and frame settings.");
+
+        var affectedMapTiles = distinctCellCoords
+            .SelectMany(GetMapTileAndSurroundings)
             .Distinct()
+            .OrderBy(mapTile => mapTile.Y)
+            .ThenBy(mapTile => mapTile.X)
             .ToList();
 
-        var mutation = new PlaceOverlayMutation(mutationTarget, overlayType, frameIndex, new Point2D(x, y), new BrushSize(width, height));
-
-        if (!mutation.ShouldPerform())
-            throw new MapFacadeValidationException($"The requested area already contains overlay '{overlayType.ININame}' with the requested frame settings.");
-
-        PerformMCPMutation(mutation, "place_overlay", affectedMapTiles);
+        PerformMCPMutation(
+            new PlaceOverlayBatchMutation(mutationTarget, resolvedPlacements),
+            "place_overlays_batch",
+            affectedMapTiles);
 
         return new MapEditResult(
             mutationManager.Revision,
             affectedMapTiles.Select(mapTile => CellInfo.FromMapCell(map, mapTile)).ToList());
     }
 
-    public MapEditResult PlaceOverlayCollection(string collectionName, int x, int y, int width, int height)
+    public MapEditResult PlaceOverlayCollectionBatch(
+        string collectionName,
+        List<MapCellCoordinate> cells,
+        int? expectedRevision)
     {
+        if (expectedRevision.HasValue && expectedRevision.Value != mutationManager.Revision)
+        {
+            throw new MapFacadeValidationException(
+                $"The map revision changed from {expectedRevision.Value} to {mutationManager.Revision}. Query the map again before placing the overlay collection.");
+        }
+
         if (string.IsNullOrWhiteSpace(collectionName))
             throw new MapFacadeValidationException("An overlay collection name must be provided.");
+        if (cells == null || cells.Count == 0)
+            throw new MapFacadeValidationException("At least one cell coordinate must be provided.");
+        if (cells.Count > MaxMapOperationCellCount)
+            throw new MapFacadeValidationException($"At most {MaxMapOperationCellCount} overlay collection entries can be placed in one batch.");
 
         var collection = map.EditorConfig.OverlayCollections.Find(
             candidate => string.Equals(candidate.Name, collectionName, StringComparison.OrdinalIgnoreCase));
@@ -1022,19 +1238,35 @@ public class MapFacade
             ValidateOverlayFrame(entry.OverlayType, entry.Frame);
         }
 
-        var targetMapTiles = GetValidatedMapTilesInArea(x, y, width, height, "overlay collection placement");
-        var affectedMapTiles = targetMapTiles
-            .SelectMany(mapTile => GetMapTileAndSurroundings(mapTile.CoordsToPoint()))
+        var distinctCellCoords = new HashSet<Point2D>();
+        for (int i = 0; i < cells.Count; i++)
+        {
+            MapCellCoordinate cell = cells[i];
+            if (cell == null)
+                throw new MapFacadeValidationException($"Cell coordinate {i} cannot be null.");
+
+            var cellCoords = new Point2D(cell.X, cell.Y);
+            if (map.GetTile(cellCoords) == null)
+                throw new MapFacadeValidationException($"Cell coordinate {i} at ({cell.X}, {cell.Y}) is outside the map.");
+            if (!distinctCellCoords.Add(cellCoords))
+                throw new MapFacadeValidationException($"Cell coordinate ({cell.X}, {cell.Y}) is included more than once.");
+        }
+
+        var orderedCellCoords = distinctCellCoords
+            .OrderBy(coords => coords.Y)
+            .ThenBy(coords => coords.X)
+            .ToList();
+        var affectedMapTiles = orderedCellCoords
+            .SelectMany(GetMapTileAndSurroundings)
             .Distinct()
+            .OrderBy(mapTile => mapTile.Y)
+            .ThenBy(mapTile => mapTile.X)
             .ToList();
 
-        var mutation = new PlaceOverlayCollectionMutation(
-            mutationTarget,
-            collection,
-            new Point2D(x, y),
-            new BrushSize(width, height));
-
-        PerformMCPMutation(mutation, "place_overlay_collection", affectedMapTiles);
+        PerformMCPMutation(
+            new PlaceOverlayCollectionBatchMutation(mutationTarget, collection, orderedCellCoords),
+            "place_overlay_collection_batch",
+            affectedMapTiles);
 
         return new MapEditResult(
             mutationManager.Revision,
@@ -1593,7 +1825,7 @@ public class MapFacade
             throw new MapFacadeValidationException($"Absolute tile index {tileIndex} is not loaded.");
 
         ITileImage tile = map.TheaterInstance.GetTile(tileIndex);
-        if (tile == null || tile.Width <= 0 || tile.Height <= 0 || tile.SubTileCount <= 0)
+        if (!HasUsableTileGraphics(tile))
         {
             throw new MapFacadeValidationException($"Tile {tileIndexInTileSet} from tile set '{tileSet.SetName}' has no usable tile graphics.");
         }
@@ -1646,10 +1878,11 @@ public class MapFacade
             throw new MapFacadeValidationException($"Absolute tile index {tileIndex} is not loaded.");
 
         TileImage tile = mutationTarget.TheaterGraphics.GetTileImage(tileIndex);
-        if (tile == null || tile.SubTileCount <= 0)
+        if (!HasUsableTileGraphics(tile))
             throw new MapFacadeValidationException($"Absolute tile index {tileIndex} has no usable tile graphics.");
 
-        if (subTileIndex < 0 || subTileIndex >= tile.SubTileCount || subTileIndex > byte.MaxValue || tile.GetSubTile(subTileIndex) == null)
+        if (subTileIndex < 0 || subTileIndex >= tile.SubTileCount || subTileIndex > byte.MaxValue ||
+            tile.GetSubTile(subTileIndex)?.TmpImage == null || !tile.GetSubTileCoordOffset(subTileIndex).HasValue)
         {
             throw new MapFacadeValidationException(
                 $"Sub-tile index {subTileIndex} is not valid for absolute tile index {tileIndex}.");
@@ -1694,6 +1927,78 @@ public class MapFacade
         return new MapEditResult(
             mutationManager.Revision,
             changedCoords.Select(coords => CellInfo.FromMapCell(map, map.GetTile(coords))).ToList());
+    }
+
+    public MapTerrainGenerationResult GenerateTerrain(
+        string presetId,
+        int x,
+        int y,
+        int width,
+        int height,
+        bool autoLAT,
+        int? expectedRevision)
+    {
+        if (expectedRevision.HasValue && expectedRevision.Value != mutationManager.Revision)
+        {
+            throw new MapFacadeValidationException(
+                $"The map revision changed from {expectedRevision.Value} to {mutationManager.Revision}. Query the map again before generating terrain, or omit expectedRevision to allow concurrent edits.");
+        }
+
+        if (width <= 0 || height <= 0)
+            throw new MapFacadeValidationException("The terrain generation width and height must both be greater than zero.");
+
+        if (width > MaxMapOperationDimension || height > MaxMapOperationDimension || (long)width * height > MaxMapOperationCellCount)
+        {
+            throw new MapFacadeValidationException(
+                $"The terrain generation area is too large. Each dimension may be at most {MaxMapOperationDimension} cells and the total rectangular area may be at most {MaxMapOperationCellCount} cells.");
+        }
+
+        long lastX = (long)x + width - 1;
+        long lastY = (long)y + height - 1;
+        if (lastX > int.MaxValue || lastX < int.MinValue || lastY > int.MaxValue || lastY < int.MinValue)
+            throw new MapFacadeValidationException("The terrain generation rectangle exceeds the supported coordinate range.");
+
+        TerrainGeneratorPresetDefinition preset = FindTerrainGeneratorPreset(presetId);
+        List<string> validationErrors = GetTerrainGeneratorValidationErrors(preset.Configuration);
+        if (validationErrors.Count > 0)
+        {
+            throw new MapFacadeValidationException(
+                $"Terrain Generator preset '{preset.Configuration.Name}' is not usable: {string.Join(" ", validationErrors)}");
+        }
+
+        var cells = new List<Point2D>(width * height);
+        for (int yOffset = 0; yOffset < height; yOffset++)
+        {
+            for (int xOffset = 0; xOffset < width; xOffset++)
+            {
+                var cellCoords = new Point2D((int)((long)x + xOffset), (int)((long)y + yOffset));
+                if (map.GetTile(cellCoords) != null)
+                    cells.Add(cellCoords);
+            }
+        }
+
+        if (cells.Count == 0)
+            throw new MapFacadeValidationException("The terrain generation rectangle contains no valid map cells.");
+
+        List<MapTile> affectedMapTiles = GetPotentialTerrainGenerationAffectedMapTiles(cells, preset.Configuration, autoLAT);
+        MutationAffectedCells potentialAffectedCells = CreateMutationAffectedCells(
+            affectedMapTiles.Select(mapTile => mapTile.CoordsToPoint()));
+        var mutation = new TerrainGenerationMutation(mutationTarget, cells, preset.Configuration, autoLAT);
+        PerformMCPMutation(
+            mutation,
+            "generate_terrain",
+            affectedMapTiles);
+
+        return new MapTerrainGenerationResult(
+            mutationManager.Revision,
+            preset.PresetId,
+            cells.Count,
+            mutation.TerrainCellWriteCount,
+            mutation.PlacedTerrainObjectCount,
+            mutation.PlacedOverlayCount,
+            mutation.PlacedSmudgeCount,
+            mutation.AutoLATApplied,
+            potentialAffectedCells);
     }
 
     private void PerformMCPMutation(Mutation mutation, string toolName, IEnumerable<MapTile> affectedMapTiles)
@@ -2070,6 +2375,260 @@ public class MapFacade
         return mapTiles;
     }
 
+    private List<TerrainGeneratorPresetDefinition> LoadTerrainGeneratorPresets()
+    {
+        try
+        {
+            var presets = new List<TerrainGeneratorPresetDefinition>();
+            var presetsIni = Helpers.ReadConfigINI("TerrainGeneratorPresets.ini");
+
+            foreach (string sectionName in presetsIni.GetSections())
+            {
+                string theater = presetsIni.GetStringValue(sectionName, "Theater", string.Empty);
+                if (!string.IsNullOrWhiteSpace(theater) &&
+                    !theater.Equals(map.TheaterName, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    continue;
+                }
+
+                TerrainGeneratorConfiguration configuration = TerrainGeneratorConfiguration.FromConfigSection(
+                    presetsIni.GetSection(sectionName),
+                    false,
+                    map.Rules.TerrainTypes,
+                    map.TheaterInstance.Theater.TileSets,
+                    map.Rules.OverlayTypes,
+                    map.Rules.SmudgeTypes);
+
+                if (configuration != null)
+                    presets.Add(new TerrainGeneratorPresetDefinition($"built-in:{sectionName}", configuration));
+            }
+
+            var userPresets = new TerrainGeneratorUserPresets(map);
+            userPresets.Load();
+            foreach (TerrainGeneratorConfiguration configuration in userPresets.GetConfigurationsForCurrentTheater())
+            {
+                presets.Add(new TerrainGeneratorPresetDefinition($"user:{configuration.Name}", configuration));
+            }
+
+            return presets;
+        }
+        catch (Exception ex)
+        {
+            throw new MapFacadeValidationException($"Failed to load Terrain Generator presets: {ex.Message}");
+        }
+    }
+
+    private TerrainGeneratorPresetDefinition FindTerrainGeneratorPreset(string presetId)
+    {
+        if (string.IsNullOrWhiteSpace(presetId))
+            throw new MapFacadeValidationException("A Terrain Generator preset ID must be provided.");
+
+        TerrainGeneratorPresetDefinition preset = LoadTerrainGeneratorPresets()
+            .Find(candidate => string.Equals(candidate.PresetId, presetId, StringComparison.Ordinal));
+
+        if (preset == null)
+        {
+            throw new MapFacadeValidationException(
+                $"Terrain Generator preset ID '{presetId}' does not exist for the loaded theater. Query get_terrain_generator_presets for exact IDs.");
+        }
+
+        return preset;
+    }
+
+    private List<string> GetTerrainGeneratorValidationErrors(TerrainGeneratorConfiguration configuration)
+    {
+        var errors = new List<string>();
+        if (configuration == null)
+        {
+            errors.Add("The preset has no configuration.");
+            return errors;
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuration.Theater) &&
+            !configuration.Theater.Equals(map.TheaterName, StringComparison.OrdinalIgnoreCase) &&
+            !configuration.Theater.Equals(map.LoadedTheaterName, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add($"The preset is for theater '{configuration.Theater}', not '{map.LoadedTheaterName}'.");
+        }
+
+        if (configuration.TerrainTypeGroups.Count == 0 && configuration.TileGroups.Count == 0 &&
+            configuration.OverlayGroups.Count == 0 && configuration.SmudgeGroups.Count == 0)
+        {
+            errors.Add("The preset contains no generator groups.");
+        }
+
+        for (int i = 0; i < configuration.TerrainTypeGroups.Count; i++)
+        {
+            TerrainGeneratorTerrainTypeGroup group = configuration.TerrainTypeGroups[i];
+            ValidateTerrainGeneratorChances(group.OpenChance, group.OverlapChance, $"Terrain-object group {i}", errors);
+
+            if (group.TerrainTypes == null || group.TerrainTypes.Count == 0)
+            {
+                errors.Add($"Terrain-object group {i} contains no loaded terrain types.");
+                continue;
+            }
+
+            if (group.TerrainTypes.Any(terrainType => terrainType == null || !terrainType.IsValidForTheater(map.LoadedTheaterName)))
+                errors.Add($"Terrain-object group {i} contains a terrain type that is not valid for the loaded theater.");
+        }
+
+        for (int i = 0; i < configuration.TileGroups.Count; i++)
+        {
+            TerrainGeneratorTileGroup group = configuration.TileGroups[i];
+            ValidateTerrainGeneratorChances(group.OpenChance, group.OverlapChance, $"Tile group {i}", errors);
+
+            if (group.TileSet == null || !group.TileSet.AllowToPlace || group.TileSet.LoadedTileCount <= 0)
+            {
+                errors.Add($"Tile group {i} does not reference a loaded, placeable tile set.");
+                continue;
+            }
+
+            IEnumerable<int> tileIndices = group.TileIndicesInSet == null || group.TileIndicesInSet.Count == 0
+                ? Enumerable.Range(0, group.TileSet.LoadedTileCount)
+                : group.TileIndicesInSet;
+            bool hasUsableTile = false;
+
+            foreach (int tileIndexInSet in tileIndices)
+            {
+                if (tileIndexInSet < 0 || tileIndexInSet >= group.TileSet.LoadedTileCount)
+                {
+                    errors.Add($"Tile group {i} references invalid relative tile index {tileIndexInSet} in tile set '{group.TileSet.SetName}'.");
+                    continue;
+                }
+
+                int absoluteTileIndex = group.TileSet.StartTileIndex + tileIndexInSet;
+                if (absoluteTileIndex >= 0 && absoluteTileIndex < mutationTarget.TheaterGraphics.TileCount &&
+                    HasUsableTileGraphics(mutationTarget.TheaterGraphics.GetTileImage(absoluteTileIndex)))
+                {
+                    hasUsableTile = true;
+                }
+            }
+
+            if (!hasUsableTile)
+                errors.Add($"Tile group {i} contains no tile with usable graphics.");
+        }
+
+        for (int i = 0; i < configuration.OverlayGroups.Count; i++)
+        {
+            TerrainGeneratorOverlayGroup group = configuration.OverlayGroups[i];
+            ValidateTerrainGeneratorChances(group.OpenChance, group.OverlapChance, $"Overlay group {i}", errors);
+
+            if (group.OverlayType == null || !group.OverlayType.IsValidForTheater(map.LoadedTheaterName))
+            {
+                errors.Add($"Overlay group {i} does not reference an overlay valid for the loaded theater.");
+                continue;
+            }
+
+            int frameCount = map.TheaterInstance.GetOverlayFrameCount(group.OverlayType);
+            if (frameCount <= 0)
+            {
+                errors.Add($"Overlay group {i} references overlay '{group.OverlayType.ININame}', which has no loaded frames.");
+                continue;
+            }
+
+            if (group.FrameIndices != null)
+            {
+                foreach (int frameIndex in group.FrameIndices)
+                {
+                    if (frameIndex < 0 || frameIndex >= frameCount)
+                    {
+                        errors.Add($"Overlay group {i} references invalid frame {frameIndex} for overlay '{group.OverlayType.ININame}'.");
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < configuration.SmudgeGroups.Count; i++)
+        {
+            TerrainGeneratorSmudgeGroup group = configuration.SmudgeGroups[i];
+            ValidateTerrainGeneratorChances(group.OpenChance, group.OverlapChance, $"Smudge group {i}", errors);
+
+            if (group.SmudgeTypes == null || group.SmudgeTypes.Count == 0)
+            {
+                errors.Add($"Smudge group {i} contains no loaded smudge types.");
+                continue;
+            }
+
+            if (group.SmudgeTypes.Any(smudgeType => smudgeType == null || !smudgeType.IsValidForTheater(map.LoadedTheaterName)))
+                errors.Add($"Smudge group {i} contains a smudge type that is not valid for the loaded theater.");
+        }
+
+        return errors;
+    }
+
+    private static void ValidateTerrainGeneratorChances(
+        double openChance,
+        double occupiedChance,
+        string groupName,
+        List<string> errors)
+    {
+        if (double.IsNaN(openChance) || double.IsInfinity(openChance) || openChance < 0.0 || openChance > 1.0)
+            errors.Add($"{groupName} has open-cell chance {openChance}, which is outside 0.0 through 1.0.");
+
+        if (double.IsNaN(occupiedChance) || double.IsInfinity(occupiedChance) || occupiedChance < 0.0 || occupiedChance > 1.0)
+            errors.Add($"{groupName} has occupied-cell chance {occupiedChance}, which is outside 0.0 through 1.0.");
+    }
+
+    private List<MapTile> GetPotentialTerrainGenerationAffectedMapTiles(
+        List<Point2D> cells,
+        TerrainGeneratorConfiguration configuration,
+        bool autoLAT)
+    {
+        int maxTileOffsetX = 0;
+        int maxTileOffsetY = 0;
+
+        foreach (TerrainGeneratorTileGroup group in configuration.TileGroups)
+        {
+            IEnumerable<int> tileIndices = group.TileIndicesInSet == null || group.TileIndicesInSet.Count == 0
+                ? Enumerable.Range(0, group.TileSet.LoadedTileCount)
+                : group.TileIndicesInSet;
+
+            foreach (int tileIndexInSet in tileIndices)
+            {
+                if (tileIndexInSet < 0 || tileIndexInSet >= group.TileSet.LoadedTileCount)
+                    continue;
+
+                ITileImage tile = mutationTarget.TheaterGraphics.GetTileImage(group.TileSet.StartTileIndex + tileIndexInSet);
+                if (tile == null)
+                    continue;
+
+                maxTileOffsetX = Math.Max(maxTileOffsetX, tile.Width - 1);
+                maxTileOffsetY = Math.Max(maxTileOffsetY, tile.Height - 1);
+            }
+        }
+
+        int minX = cells.Min(coords => coords.X);
+        int minY = cells.Min(coords => coords.Y);
+        int maxX = cells.Max(coords => coords.X) + maxTileOffsetX;
+        int maxY = cells.Max(coords => coords.Y) + maxTileOffsetY;
+
+        if (autoLAT)
+        {
+            minX--;
+            minY--;
+            maxX = Math.Max(maxX, cells.Max(coords => coords.X) + 1);
+            maxY = Math.Max(maxY, cells.Max(coords => coords.Y) + 1);
+        }
+
+        minX = Math.Max(0, minX);
+        minY = Math.Max(0, minY);
+        maxX = Math.Min(Map.TileBufferSize - 1, maxX);
+        maxY = Math.Min(Map.TileBufferSize - 1, maxY);
+
+        var affectedMapTiles = new List<MapTile>();
+        for (int targetY = minY; targetY <= maxY; targetY++)
+        {
+            for (int targetX = minX; targetX <= maxX; targetX++)
+            {
+                MapTile mapTile = map.GetTile(targetX, targetY);
+                if (mapTile != null)
+                    affectedMapTiles.Add(mapTile);
+            }
+        }
+
+        return affectedMapTiles;
+    }
+
     private int GetPlaceableOverlayFrameCount(OverlayType overlayType)
     {
         var overlayTextures = mutationTarget.TheaterGraphics.OverlayTextures;
@@ -2395,6 +2954,20 @@ public class MapFacade
         return tileSet.AllowToPlace && tileSet.LoadedTileCount > 0 && tileSet.NonMarbleMadness < 0;
     }
 
+    private static bool HasUsableTileGraphics(ITileImage tile)
+    {
+        if (tile == null || tile.Width <= 0 || tile.Height <= 0 || tile.SubTileCount <= 0)
+            return false;
+
+        for (int subTileIndex = 0; subTileIndex < tile.SubTileCount; subTileIndex++)
+        {
+            if (tile.GetSubTile(subTileIndex)?.TmpImage != null && tile.GetSubTileCoordOffset(subTileIndex).HasValue)
+                return true;
+        }
+
+        return false;
+    }
+
     private static string GetEffectiveEditorCategory(GameObjectType gameObjectType)
     {
         string editorCategory = gameObjectType.EditorCategory;
@@ -2427,5 +3000,17 @@ public class MapFacade
     private static bool ContainsIgnoringCase(string value, string searchValue)
     {
         return value?.IndexOf(searchValue, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private sealed class TerrainGeneratorPresetDefinition
+    {
+        public TerrainGeneratorPresetDefinition(string presetId, TerrainGeneratorConfiguration configuration)
+        {
+            PresetId = presetId;
+            Configuration = configuration;
+        }
+
+        public string PresetId { get; }
+        public TerrainGeneratorConfiguration Configuration { get; }
     }
 }
