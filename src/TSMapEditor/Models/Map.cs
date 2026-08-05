@@ -574,27 +574,9 @@ namespace TSMapEditor.Models
 
         public int GetCellCount()
         {
-            int cellCount = 0;
-
-            int ox = 1;
-            int oy = Size.X;
-            while (ox <= Size.Y)
-            {
-                int tx = ox;
-                int ty = oy;
-                while (tx < Size.X + ox)
-                {
-                    cellCount += 2;
-
-                    tx++;
-                    ty--;
-                }
-
-                ox++;
-                oy++;
-            }
-
-            return cellCount;
+            // Each unit of map height consists of a full row and an adjacent row.
+            // The adjacent row has one fewer cell because of the isometric map border.
+            return Size.Y * (Size.X + (Size.X - 1));
         }
 
         /// <summary>
