@@ -1,0 +1,43 @@
+﻿using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Models;
+
+namespace MapEditorLibrary.Mutations.Classes;
+
+/// <summary>
+/// A mutation that allows placing a waypoint on the map.
+/// </summary>
+public class PlaceWaypointMutation : Mutation
+{
+    public PlaceWaypointMutation(IMutationTarget mutationTarget, Point2D cellCoords, int waypointNumber, string waypointColor = null) : base(mutationTarget)
+    {
+        this.cellCoords = cellCoords;
+        this.waypointNumber = waypointNumber;
+        this.waypointColor = waypointColor;
+    }
+
+    private readonly Point2D cellCoords;
+    private readonly int waypointNumber;
+    private readonly string waypointColor;
+    private Waypoint waypoint;
+
+    public override string GetDisplayString()
+    {
+        return string.Format(Translate(this, "DisplayString", 
+            "Place waypoint {0} at {1}"),
+                waypointNumber, cellCoords);
+    }
+
+    public override void Perform()
+    {
+        waypoint = new Waypoint() { Identifier = waypointNumber, Position = cellCoords };
+        waypoint.EditorColor = waypointColor;
+        MutationTarget.Map.AddWaypoint(waypoint);
+        MutationTarget.AddRefreshPoint(cellCoords, 1);
+    }
+
+    public override void Undo()
+    {
+        MutationTarget.Map.RemoveWaypoint(waypoint);
+        MutationTarget.AddRefreshPoint(cellCoords, 1);
+    }
+}

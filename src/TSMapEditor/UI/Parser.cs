@@ -1,520 +1,524 @@
+using MapEditorLibrary;
+using MapEditorLibrary.Misc;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace TSMapEditor.UI
+namespace TSMapEditor.UI;
+
+/// <summary>
+/// Parses arithmetic expressions.
+/// </summary>
+class Parser
 {
-    /// <summary>
-    /// Parses arithmetic expressions.
-    /// </summary>
-    class Parser
+    private const int CHAR_VALUE_ZERO = 48;
+
+    public Parser(WindowManager windowManager)
     {
-        private const int CHAR_VALUE_ZERO = 48;
+        if (_instance != null)
+            throw new InvalidOperationException("Only one instance of Parser can exist at a time.");
 
-        public Parser(WindowManager windowManager)
+        globalConstants = new Dictionary<string, int>();
+        RefreshResolutionConstants(windowManager);
+        globalConstants.Add("EMPTY_SPACE_TOP", Constants.UIEmptyTopSpace);
+        globalConstants.Add("EMPTY_SPACE_BOTTOM", Constants.UIEmptyBottomSpace);
+        globalConstants.Add("EMPTY_SPACE_SIDES", Constants.UIEmptySideSpace);
+        globalConstants.Add("HORIZONTAL_SPACING", Constants.UIHorizontalSpacing);
+        globalConstants.Add("VERTICAL_SPACING", Constants.UIVerticalSpacing);
+        globalConstants.Add("BUTTON_HEIGHT", Constants.UIButtonHeight);
+        globalConstants.Add("IS_RA2YR", Constants.IsRA2YR ? 1 : 0);
+        globalConstants.Add("OBJECT_HEALTH_MAX", Constants.ObjectHealthMax);
+        globalConstants.Add("IS_FLAT_WORLD", Constants.IsFlatWorld ? 1 : 0);
+        globalConstants.Add("CELL_WIDTH", Constants.CellSizeX);
+        globalConstants.Add("CELL_HEIGHT", Constants.CellSizeY);
+
+        _instance = this;
+    }
+
+    public void RefreshResolutionConstants(WindowManager windowManager)
+    {
+        globalConstants["RESOLUTION_WIDTH"] = windowManager.RenderResolutionX;
+        globalConstants["RESOLUTION_HEIGHT"] = windowManager.RenderResolutionY;
+    }
+
+    private static Parser _instance;
+    public static Parser Instance => _instance;
+
+    private static Dictionary<string, int> globalConstants;
+
+    public string Input { get; private set; }
+
+    private string translationKeyName;
+
+    private int tokenPlace;
+    private XNAControl primaryControl;
+    private XNAControl parsingControl;
+
+    private XNAControl GetControl(string controlName)
+    {
+        if (controlName == primaryControl.Name)
+            return primaryControl;
+
+        var control = Find(primaryControl.Children, controlName);
+        if (control == null)
+            throw new KeyNotFoundException($"Control '{controlName}' not found while parsing input '{Input}'");
+
+        return control;
+    }
+
+    private XNAControl Find(IEnumerable<XNAControl> list, string controlName)
+    {
+        foreach (XNAControl child in list)
         {
-            if (_instance != null)
-                throw new InvalidOperationException("Only one instance of Parser can exist at a time.");
+            if (child.Name == controlName)
+                return child;
 
-            globalConstants = new Dictionary<string, int>();
-            RefreshResolutionConstants(windowManager);
-            globalConstants.Add("EMPTY_SPACE_TOP", Constants.UIEmptyTopSpace);
-            globalConstants.Add("EMPTY_SPACE_BOTTOM", Constants.UIEmptyBottomSpace);
-            globalConstants.Add("EMPTY_SPACE_SIDES", Constants.UIEmptySideSpace);
-            globalConstants.Add("HORIZONTAL_SPACING", Constants.UIHorizontalSpacing);
-            globalConstants.Add("VERTICAL_SPACING", Constants.UIVerticalSpacing);
-            globalConstants.Add("BUTTON_HEIGHT", Constants.UIButtonHeight);
-            globalConstants.Add("IS_RA2YR", Constants.IsRA2YR ? 1 : 0);
-            globalConstants.Add("OBJECT_HEALTH_MAX", Constants.ObjectHealthMax);
-            globalConstants.Add("IS_FLAT_WORLD", Constants.IsFlatWorld ? 1 : 0);
-            globalConstants.Add("CELL_WIDTH", Constants.CellSizeX);
-            globalConstants.Add("CELL_HEIGHT", Constants.CellSizeY);
-
-            _instance = this;
+            XNAControl childOfChild = Find(child.Children, controlName);
+            if (childOfChild != null)
+                return childOfChild;
         }
 
-        public void RefreshResolutionConstants(WindowManager windowManager)
-        {
-            globalConstants["RESOLUTION_WIDTH"] = windowManager.RenderResolutionX;
-            globalConstants["RESOLUTION_HEIGHT"] = windowManager.RenderResolutionY;
-        }
+        return null;
+    }
 
-        private static Parser _instance;
-        public static Parser Instance => _instance;
+    private int GetConstant(string constantName)
+    {
+        return globalConstants[constantName];
+    }
 
-        private static Dictionary<string, int> globalConstants;
+    public void SetPrimaryControl(XNAControl primaryControl)
+    {
+        this.primaryControl = primaryControl;
+    }
 
-        public string Input { get; private set; }
+    private string GetExprValueStringWithContextSave(string input, XNAControl parsingControl)
+    {
+        string originalInput = Input;
+        int originalTokenPlace = tokenPlace;
+        string originalTranslationKeyName = translationKeyName;
+        string value = GetExprValueString(input, "Unused", parsingControl);
+        Input = originalInput;
+        tokenPlace = originalTokenPlace;
+        translationKeyName = originalTranslationKeyName;
 
-        private string translationKeyName;
+        return value;
+    }
 
-        private int tokenPlace;
-        private XNAControl primaryControl;
-        private XNAControl parsingControl;
+    public string GetExprValueString(string input, string translationKeyName, XNAControl parsingControl)
+    {
+        this.parsingControl = parsingControl;
+        this.translationKeyName = translationKeyName;
+        Input = input;
+        tokenPlace = 0;
 
-        private XNAControl GetControl(string controlName)
-        {
-            if (controlName == primaryControl.Name)
-                return primaryControl;
+        string value = null;
 
-            var control = Find(primaryControl.Children, controlName);
-            if (control == null)
-                throw new KeyNotFoundException($"Control '{controlName}' not found while parsing input '{Input}'");
-
-            return control;
-        }
-
-        private XNAControl Find(IEnumerable<XNAControl> list, string controlName)
-        {
-            foreach (XNAControl child in list)
-            {
-                if (child.Name == controlName)
-                    return child;
-
-                XNAControl childOfChild = Find(child.Children, controlName);
-                if (childOfChild != null)
-                    return childOfChild;
-            }
-
-            return null;
-        }
-
-        private int GetConstant(string constantName)
-        {
-            return globalConstants[constantName];
-        }
-
-        public void SetPrimaryControl(XNAControl primaryControl)
-        {
-            this.primaryControl = primaryControl;
-        }
-
-        private string GetExprValueStringWithContextSave(string input, XNAControl parsingControl)
-        {
-            string originalInput = Input;
-            int originalTokenPlace = tokenPlace;
-            string originalTranslationKeyName = translationKeyName;
-            string value = GetExprValueString(input, "Unused", parsingControl);
-            Input = originalInput;
-            tokenPlace = originalTokenPlace;
-            translationKeyName = originalTranslationKeyName;
-
-            return value;
-        }
-
-        public string GetExprValueString(string input, string translationKeyName, XNAControl parsingControl)
-        {
-            this.parsingControl = parsingControl;
-            this.translationKeyName = translationKeyName;
-            Input = input;
-            tokenPlace = 0;
-
-            string value = null;
-
-            while (true)
-            {
-                SkipWhitespace();
-
-                if (IsEndOfInput())
-                    return value;
-
-                char c = PeekChar();
-
-                switch (c)
-                {
-                    case '"':
-                        return GetLiteralString();
-                }
-
-                return GetFunctionStringValue();
-            }
-        }
-
-        public int GetExprValue(string input, XNAControl parsingControl)
-        {
-            this.parsingControl = parsingControl;
-            Input = input;
-            tokenPlace = 0;
-            return GetExprValue();
-        }
-
-        /// <summary>
-        /// Parsing a sub-expression while parsing an expression eradicates the original parsing context
-        /// (information about the input and token place).
-        ///
-        /// This function automatically saves and restores the original context while parsing a sub-expression.
-        /// </summary>
-        private int GetExprValueWithContextSave(string input, XNAControl parsingControl)
-        {
-            string originalInput = Input;
-            int originalTokenPlace = tokenPlace;
-            int value = GetExprValue(input, parsingControl);
-            Input = originalInput;
-            tokenPlace = originalTokenPlace;
-
-            return value;
-        }
-
-        private int GetExprValue()
-        {
-            int value = 0;
-
-            while (true)
-            {
-                SkipWhitespace();
-
-                if (IsEndOfInput())
-                    return value;
-
-                char c = PeekChar();
-
-                if (char.IsDigit(c))
-                {
-                    value = GetInt();
-                }
-                else if (c == '+')
-                {
-                    tokenPlace++;
-                    value += GetNumericalValue();
-                }
-                else if (c == '-')
-                {
-                    tokenPlace++;
-                    value -= GetNumericalValue();
-                }
-                else if (c == '/')
-                {
-                    tokenPlace++;
-                    value /= GetExprValue();
-                }
-                else if (c == '*')
-                {
-                    tokenPlace++;
-                    value *= GetExprValue();
-                }
-                else if (c == '(')
-                {
-                    tokenPlace++;
-                    value = GetExprValue();
-                }
-                else if (c == ')')
-                {
-                    tokenPlace++;
-                    return value;
-                }
-                else if (char.IsUpper(c))
-                {
-                    value = GetConstantValue();
-                }
-                else if (char.IsLower(c))
-                {
-                    value = GetFunctionIntegerValue();
-                }
-            }
-        }
-
-        private int GetNumericalValue()
+        while (true)
         {
             SkipWhitespace();
 
             if (IsEndOfInput())
-                return 0;
+                return value;
+
+            char c = PeekChar();
+
+            switch (c)
+            {
+                case '"':
+                    return GetLiteralString();
+            }
+
+            return GetFunctionStringValue();
+        }
+    }
+
+    public int GetExprValue(string input, XNAControl parsingControl)
+    {
+        this.parsingControl = parsingControl;
+        Input = input;
+        tokenPlace = 0;
+        return GetExprValue();
+    }
+
+    /// <summary>
+    /// Parsing a sub-expression while parsing an expression eradicates the original parsing context
+    /// (information about the input and token place).
+    ///
+    /// This function automatically saves and restores the original context while parsing a sub-expression.
+    /// </summary>
+    private int GetExprValueWithContextSave(string input, XNAControl parsingControl)
+    {
+        string originalInput = Input;
+        int originalTokenPlace = tokenPlace;
+        int value = GetExprValue(input, parsingControl);
+        Input = originalInput;
+        tokenPlace = originalTokenPlace;
+
+        return value;
+    }
+
+    private int GetExprValue()
+    {
+        int value = 0;
+
+        while (true)
+        {
+            SkipWhitespace();
+
+            if (IsEndOfInput())
+                return value;
 
             char c = PeekChar();
 
             if (char.IsDigit(c))
             {
-                return GetInt();
+                value = GetInt();
             }
-            else if (char.IsUpper(c))
+            else if (c == '+')
             {
-                return GetConstantValue();
+                tokenPlace++;
+                value += GetNumericalValue();
             }
-            else if (char.IsLower(c))
+            else if (c == '-')
             {
-                return GetFunctionIntegerValue();
+                tokenPlace++;
+                value -= GetNumericalValue();
+            }
+            else if (c == '/')
+            {
+                tokenPlace++;
+                value /= GetExprValue();
+            }
+            else if (c == '*')
+            {
+                tokenPlace++;
+                value *= GetExprValue();
             }
             else if (c == '(')
             {
                 tokenPlace++;
-                return GetExprValue();
+                value = GetExprValue();
             }
-            else
-                throw new INIConfigException("Unexpected character " + c + " when parsing input: " + Input);
-        }
-
-        private void SkipWhitespace()
-        {
-            while (true)
+            else if (c == ')')
             {
-                if (IsEndOfInput())
-                    return;
-
-                char c = PeekChar();
-                if (c == ' ' || c == '\r' || c == '\n')
-                    tokenPlace++;
-                else
-                    break;
-            }
-        }
-
-        private string GetIdentifier()
-        {
-            string identifierName = "";
-
-            while (true)
-            {
-                if (IsEndOfInput())
-                    break;
-
-                char c = PeekChar();
-                if (char.IsWhiteSpace(c))
-                    break;
-
-                if (!char.IsLetterOrDigit(c) && c != '_')
-                    break;
-
-                identifierName += c.ToString();
                 tokenPlace++;
+                return value;
             }
-
-            return identifierName;
-        }
-
-        private int GetConstantValue()
-        {
-            string constantName = GetIdentifier();
-            return GetConstant(constantName);
-        }
-
-        private (string, List<string>) GetFunctionNameAndParameters()
-        {
-            string functionName = GetIdentifier();
-            SkipWhitespace();
-            ConsumeChar('(');
-
-            var parameters = new List<string>();
-
-            var sb = new StringBuilder();
-
-            // Read all parameters
-            while (true)
+            else if (char.IsUpper(c))
             {
-                SkipWhitespace();
-
-                sb.Clear();
-                int openParenCount = 0;
-                bool openQuote = false;
-
-                // Fetch single parameter, read until ',' or ')'
-                // Ignore these if there's a literal string marked with ""
-                while (true)
-                {
-                    char c = PeekChar();
-
-                    if (c == ',' && !openQuote)
-                    {
-                        break;
-                    }
-
-                    if (!openQuote)
-                    {
-                        if (c == '(')
-                        {
-                            openParenCount++;
-                        }
-                        else if (c == ')')
-                        {
-                            openParenCount--;
-                            if (openParenCount < 0)
-                                break;
-                        }
-                    }
-
-                    if (c == '"')
-                    {
-                        openQuote = !openQuote;
-                    }
-                    else
-                    {
-                        sb.Append(c);
-                    }
-
-                    ConsumeChar(c);
-                }
-
-                string paramName = sb.ToString();
-                parameters.Add(paramName);
-
-                if (PeekChar() != ',')
-                    break;
-
-                ConsumeChar(',');
+                value = GetConstantValue();
             }
-
-            SkipWhitespace();
-            ConsumeChar(')');
-
-            return (functionName, parameters);
-        }
-
-        private int GetFunctionIntegerValue()
-        {
-            (string functionName, List<string> parameters) = GetFunctionNameAndParameters();
-
-            // Evaluate function
-            switch (functionName)
+            else if (char.IsLower(c))
             {
-                case "getX":
-                    return GetControl(parameters[0]).X;
-                case "getY":
-                    return GetControl(parameters[0]).Y;
-                case "getWidth":
-                    return GetControl(parameters[0]).Width;
-                case "getHeight":
-                    return GetControl(parameters[0]).Height;
-                case "getBottom":
-                    return GetControl(parameters[0]).Bottom;
-                case "getRight":
-                    return GetControl(parameters[0]).Right;
-                case "isGreater":
-                    if (parameters.Count != 2)
-                        throw new INIConfigException($"Incorrect number of parameters for function {functionName} in expression {Input}");
-
-                    int value = GetExprValueWithContextSave(parameters[0], parsingControl);
-                    int value2 = GetExprValueWithContextSave(parameters[1], parsingControl);
-                    return value > value2 ? 1 : 0;
-                case "max":
-                    int largest = GetExprValueWithContextSave(parameters[0], parsingControl);
-                    for (int i = 1; i < parameters.Count; i++)
-                    {
-                        int val = GetExprValueWithContextSave(parameters[i], parsingControl);
-                        if (val > largest)
-                            largest = val;
-                    }
-                    return largest;
-                case "horizontalCenterOnParent":
-                    parsingControl.CenterOnParentHorizontally();
-                    return parsingControl.X;
-                case "isVisible":
-                    return GetControl(parameters[0]).Visible ? 1 : 0;
-                case "ifElse":
-                    if (parameters.Count != 3)
-                        throw new INIConfigException($"Incorrect number of parameters for function {functionName} in expression {Input}");
-
-                    bool selector = GetExprValueWithContextSave(parameters[0], parsingControl) > 0;
-                    if (selector)
-                        return GetExprValueWithContextSave(parameters[1], parsingControl);
-
-                    return GetExprValueWithContextSave(parameters[2], parsingControl);
-
-                default:
-                    throw new INIConfigException("Unknown function " + functionName + " in expression " + Input);
+                value = GetFunctionIntegerValue();
             }
         }
+    }
 
-        private string GetLiteralString()
+    private int GetNumericalValue()
+    {
+        SkipWhitespace();
+
+        if (IsEndOfInput())
+            return 0;
+
+        char c = PeekChar();
+
+        if (char.IsDigit(c))
         {
-            ConsumeChar('"');
-
-            var sb = new StringBuilder();
-
-            while (true)
-            {
-                char c = PeekChar();
-
-                if (c == '"')
-                    break;
-
-                sb.Append(c);
-            }
-
-            return sb.ToString();
+            return GetInt();
         }
-
-        private string GetFunctionStringValue()
+        else if (char.IsUpper(c))
         {
-            (string functionName, List<string> parameters) = GetFunctionNameAndParameters();
-
-            string identifier;
-
-            switch (functionName)
-            {
-                case "translate":
-                    if (parameters.Count != 1)
-                        throw new InvalidOperationException($"Incorrect number of parameters for function {functionName} in expression {Input}");
-
-                    identifier = primaryControl.Name + ".";
-                    if (primaryControl != parsingControl)
-                        identifier += parsingControl.Name + ".";
-
-                    if (!string.IsNullOrWhiteSpace(translationKeyName))
-                        identifier += translationKeyName;
-
-                    return Translate(identifier, parameters[0].Replace("@", Environment.NewLine));
-                case "translateFunctionOutput":
-                    string functionOutput = GetExprValueStringWithContextSave(parameters[0], parsingControl);
-
-                    identifier = primaryControl.Name + ".";
-                    if (primaryControl != parsingControl)
-                        identifier += parsingControl.Name + ".";
-
-                    if (!string.IsNullOrWhiteSpace(translationKeyName))
-                        identifier += translationKeyName;
-
-                    return Translate(identifier, functionOutput);
-                case "translateWithoutContext":
-                    if (parameters.Count != 2)
-                        throw new InvalidOperationException($"Incorrect number of parameters for function {functionName} in expression {Input}");
-
-                    return Translate(parameters[0], parameters[1]);
-                case "getText":
-                    return GetControl(parameters[0]).Text;
-                default:
-                    throw new INIConfigException("Unknown function " + functionName + " in expression " + Input);
-            }
+            return GetConstantValue();
         }
-
-        private void ConsumeChar(char token)
+        else if (char.IsLower(c))
         {
-            if (Input[tokenPlace] != token)
-                throw new INIConfigException("Parse error: expected '" + token + "' in expression " + Input);
+            return GetFunctionIntegerValue();
+        }
+        else if (c == '(')
+        {
+            tokenPlace++;
+            return GetExprValue();
+        }
+        else
+            throw new INIConfigException("Unexpected character " + c + " when parsing input: " + Input);
+    }
+
+    private void SkipWhitespace()
+    {
+        while (true)
+        {
+            if (IsEndOfInput())
+                return;
+
+            char c = PeekChar();
+            if (c == ' ' || c == '\r' || c == '\n')
+                tokenPlace++;
+            else
+                break;
+        }
+    }
+
+    private string GetIdentifier()
+    {
+        string identifierName = "";
+
+        while (true)
+        {
+            if (IsEndOfInput())
+                break;
+
+            char c = PeekChar();
+            if (char.IsWhiteSpace(c))
+                break;
+
+            if (!char.IsLetterOrDigit(c) && c != '_')
+                break;
+
+            identifierName += c.ToString();
             tokenPlace++;
         }
 
-        private char PeekChar()
-        {
-            if (IsEndOfInput())
-                throw new INIConfigException("Parse error: unexpected end of input in expression " + Input);
+        return identifierName;
+    }
 
-            return Input[tokenPlace];
-        }
+    private int GetConstantValue()
+    {
+        string constantName = GetIdentifier();
+        return GetConstant(constantName);
+    }
 
-        private int GetInt()
+    private (string, List<string>) GetFunctionNameAndParameters()
+    {
+        string functionName = GetIdentifier();
+        SkipWhitespace();
+        ConsumeChar('(');
+
+        var parameters = new List<string>();
+
+        var sb = new StringBuilder();
+
+        // Read all parameters
+        while (true)
         {
-            int value = 0;
+            SkipWhitespace();
+
+            sb.Clear();
+            int openParenCount = 0;
+            bool openQuote = false;
+
+            // Fetch single parameter, read until ',' or ')'
+            // Ignore these if there's a literal string marked with ""
             while (true)
             {
-                if (IsEndOfInput())
-                    return value;
+                char c = PeekChar();
 
-                char c = Input[tokenPlace];
-                if (!char.IsDigit(c))
-                    return value;
+                if (c == ',' && !openQuote)
+                {
+                    break;
+                }
 
-                value = (value * 10) + Input[tokenPlace] - CHAR_VALUE_ZERO;
-                tokenPlace++;
+                if (!openQuote)
+                {
+                    if (c == '(')
+                    {
+                        openParenCount++;
+                    }
+                    else if (c == ')')
+                    {
+                        openParenCount--;
+                        if (openParenCount < 0)
+                            break;
+                    }
+                }
+
+                if (c == '"')
+                {
+                    openQuote = !openQuote;
+                }
+                else
+                {
+                    sb.Append(c);
+                }
+
+                ConsumeChar(c);
             }
+
+            string paramName = sb.ToString();
+            parameters.Add(paramName);
+
+            if (PeekChar() != ',')
+                break;
+
+            ConsumeChar(',');
         }
 
-        private bool IsEndOfInput()
+        SkipWhitespace();
+        ConsumeChar(')');
+
+        return (functionName, parameters);
+    }
+
+    private int GetFunctionIntegerValue()
+    {
+        (string functionName, List<string> parameters) = GetFunctionNameAndParameters();
+
+        // Evaluate function
+        switch (functionName)
         {
-            if (tokenPlace >= Input.Length)
-                return true;
+            case "getX":
+                return GetControl(parameters[0]).X;
+            case "getY":
+                return GetControl(parameters[0]).Y;
+            case "getWidth":
+                return GetControl(parameters[0]).Width;
+            case "getHeight":
+                return GetControl(parameters[0]).Height;
+            case "getBottom":
+                return GetControl(parameters[0]).Bottom;
+            case "getRight":
+                return GetControl(parameters[0]).Right;
+            case "isGreater":
+                if (parameters.Count != 2)
+                    throw new INIConfigException($"Incorrect number of parameters for function {functionName} in expression {Input}");
 
-            return false;
+                int value = GetExprValueWithContextSave(parameters[0], parsingControl);
+                int value2 = GetExprValueWithContextSave(parameters[1], parsingControl);
+                return value > value2 ? 1 : 0;
+            case "max":
+                int largest = GetExprValueWithContextSave(parameters[0], parsingControl);
+                for (int i = 1; i < parameters.Count; i++)
+                {
+                    int val = GetExprValueWithContextSave(parameters[i], parsingControl);
+                    if (val > largest)
+                        largest = val;
+                }
+                return largest;
+            case "horizontalCenterOnParent":
+                parsingControl.CenterOnParentHorizontally();
+                return parsingControl.X;
+            case "centerVerticallyOnControl":
+                var control = GetControl(parameters[0]);
+                return control.Y + (control.Height - parsingControl.Height) / 2;
+            case "isVisible":
+                return GetControl(parameters[0]).Visible ? 1 : 0;
+            case "ifElse":
+                if (parameters.Count != 3)
+                    throw new INIConfigException($"Incorrect number of parameters for function {functionName} in expression {Input}");
+
+                bool selector = GetExprValueWithContextSave(parameters[0], parsingControl) > 0;
+                if (selector)
+                    return GetExprValueWithContextSave(parameters[1], parsingControl);
+
+                return GetExprValueWithContextSave(parameters[2], parsingControl);
+
+            default:
+                throw new INIConfigException("Unknown function " + functionName + " in expression " + Input);
         }
+    }
+
+    private string GetLiteralString()
+    {
+        ConsumeChar('"');
+
+        var sb = new StringBuilder();
+
+        while (true)
+        {
+            char c = PeekChar();
+
+            if (c == '"')
+                break;
+
+            sb.Append(c);
+        }
+
+        return sb.ToString();
+    }
+
+    private string GetFunctionStringValue()
+    {
+        (string functionName, List<string> parameters) = GetFunctionNameAndParameters();
+
+        string identifier;
+
+        switch (functionName)
+        {
+            case "translate":
+                if (parameters.Count != 1)
+                    throw new InvalidOperationException($"Incorrect number of parameters for function {functionName} in expression {Input}");
+
+                identifier = primaryControl.Name + ".";
+                if (primaryControl != parsingControl)
+                    identifier += parsingControl.Name + ".";
+
+                if (!string.IsNullOrWhiteSpace(translationKeyName))
+                    identifier += translationKeyName;
+
+                return Translate(identifier, parameters[0].Replace("@", Environment.NewLine));
+            case "translateFunctionOutput":
+                string functionOutput = GetExprValueStringWithContextSave(parameters[0], parsingControl);
+
+                identifier = primaryControl.Name + ".";
+                if (primaryControl != parsingControl)
+                    identifier += parsingControl.Name + ".";
+
+                if (!string.IsNullOrWhiteSpace(translationKeyName))
+                    identifier += translationKeyName;
+
+                return Translate(identifier, functionOutput);
+            case "translateWithoutContext":
+                if (parameters.Count != 2)
+                    throw new InvalidOperationException($"Incorrect number of parameters for function {functionName} in expression {Input}");
+
+                return Translate(parameters[0], parameters[1]);
+            case "getText":
+                return GetControl(parameters[0]).Text;
+            default:
+                throw new INIConfigException("Unknown function " + functionName + " in expression " + Input);
+        }
+    }
+
+    private void ConsumeChar(char token)
+    {
+        if (Input[tokenPlace] != token)
+            throw new INIConfigException("Parse error: expected '" + token + "' in expression " + Input);
+        tokenPlace++;
+    }
+
+    private char PeekChar()
+    {
+        if (IsEndOfInput())
+            throw new INIConfigException("Parse error: unexpected end of input in expression " + Input);
+
+        return Input[tokenPlace];
+    }
+
+    private int GetInt()
+    {
+        int value = 0;
+        while (true)
+        {
+            if (IsEndOfInput())
+                return value;
+
+            char c = Input[tokenPlace];
+            if (!char.IsDigit(c))
+                return value;
+
+            value = (value * 10) + Input[tokenPlace] - CHAR_VALUE_ZERO;
+            tokenPlace++;
+        }
+    }
+
+    private bool IsEndOfInput()
+    {
+        if (tokenPlace >= Input.Length)
+            return true;
+
+        return false;
     }
 }

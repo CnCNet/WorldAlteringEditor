@@ -1,9 +1,8 @@
 ﻿using Rampastring.XNAUI.XNAControls;
 
-namespace TSMapEditor.UI.Sidebar
+namespace TSMapEditor.UI.Sidebar;
+
+interface ISearchBoxContainer
 {
-    interface ISearchBoxContainer
-    {
-        XNASuggestionTextBox SearchBox { get; }
-    }
+    XNASuggestionTextBox SearchBox { get; }
 }

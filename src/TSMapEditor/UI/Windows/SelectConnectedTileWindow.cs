@@ -1,54 +1,58 @@
-﻿using Rampastring.XNAUI;
+﻿using MapEditorLibrary.Models;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Linq;
-using TSMapEditor.Models;
 
-namespace TSMapEditor.UI.Windows
+namespace TSMapEditor.UI.Windows;
+
+public class SelectConnectedTileWindow : SelectObjectWindow<ConnectedTileType>
 {
-    public class SelectConnectedTileWindow : SelectObjectWindow<ConnectedTileType>
+    public SelectConnectedTileWindow(WindowManager windowManager, Map map) : base(windowManager)
     {
-        public SelectConnectedTileWindow(WindowManager windowManager, Map map) : base(windowManager)
+        this.map = map;
+    }
+
+    private readonly Map map;
+
+    public override void Initialize()
+    {
+        Name = nameof(SelectConnectedTileWindow);
+        base.Initialize();
+    }
+
+    protected override void LbObjectList_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (lbObjectList.SelectedItem == null)
         {
-            this.map = map;
+            SelectedObject = null;
+            return;
         }
 
-        private readonly Map map;
+        SelectedObject = (ConnectedTileType)lbObjectList.SelectedItem.Tag;
+    }
 
-        public override void Initialize()
-        {
-            Name = nameof(SelectConnectedTileWindow);
-            base.Initialize();
-        }
+    public void Open()
+    {
+        Open(null);
+    }
 
-        protected override void LbObjectList_SelectedIndexChanged(object sender, EventArgs e)
+    protected override void ListObjects()
+    {
+        lbObjectList.Clear();
+
+        foreach (ConnectedTileType connectedTileType in map.EditorConfig.ConnectedTileTypes.Where(ctt =>
+                     ctt.AllowedTheaters.Exists(theaterName => theaterName.Equals(map.TheaterName, StringComparison.OrdinalIgnoreCase))))
         {
-            if (lbObjectList.SelectedItem == null)
+            if (!connectedTileType.IsLegal)
+                continue;
+
+            lbObjectList.AddItem(new XNAListBoxItem()
             {
-                SelectedObject = null;
-                return;
-            }
-
-            SelectedObject = (ConnectedTileType)lbObjectList.SelectedItem.Tag;
-        }
-
-        public void Open()
-        {
-            Open(null);
-        }
-
-        protected override void ListObjects()
-        {
-            lbObjectList.Clear();
-
-            foreach (ConnectedTileType connectedTileType in map.EditorConfig.ConnectedTileTypes.Where(ctt =>
-                         ctt.AllowedTheaters.Exists(theaterName => theaterName.Equals(map.TheaterName, StringComparison.OrdinalIgnoreCase))))
-            {
-                if (!connectedTileType.IsLegal)
-                    continue;
-
-                lbObjectList.AddItem(new XNAListBoxItem() { Text = connectedTileType.Name, Tag = connectedTileType, TextColor = connectedTileType.Color.GetValueOrDefault(lbObjectList.DefaultItemColor) });
-            }
+                Text = connectedTileType.Name,
+                Tag = connectedTileType,
+                TextColor = connectedTileType.Color.GetValueOrDefault(lbObjectList.DefaultItemColor)
+            });
         }
     }
 }

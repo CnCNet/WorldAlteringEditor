@@ -1,15 +1,14 @@
-﻿using System;
-using TSMapEditor.Models;
+﻿using MapEditorLibrary.Models;
+using System;
 
-namespace TSMapEditor.UI
+namespace TSMapEditor.UI;
+
+public class TagEventArgs : EventArgs
 {
-    public class TagEventArgs : EventArgs
+    public TagEventArgs(Tag tag)
     {
-        public TagEventArgs(Tag tag)
-        {
-            Tag = tag;
-        }
-
-        public Tag Tag { get; }
+        Tag = tag;
     }
+
+    public Tag Tag { get; }
 }

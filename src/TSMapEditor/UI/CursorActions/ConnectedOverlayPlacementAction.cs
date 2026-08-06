@@ -1,118 +1,118 @@
-﻿using System;
+﻿using MapEditorLibrary;
+using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations;
+using MapEditorLibrary.Mutations.Classes;
+using System;
 using System.Collections.Generic;
-using TSMapEditor.GameMath;
-using TSMapEditor.Models;
-using TSMapEditor.Mutations;
-using TSMapEditor.Mutations.Classes;
 
-namespace TSMapEditor.UI.CursorActions
+namespace TSMapEditor.UI.CursorActions;
+
+public class ConnectedOverlayPlacementAction : LineAndRegularPaintingAction
 {
-    public class ConnectedOverlayPlacementAction : LineAndRegularPaintingAction
+    public ConnectedOverlayPlacementAction(ICursorActionTarget cursorActionTarget) : base(cursorActionTarget)
     {
-        public ConnectedOverlayPlacementAction(ICursorActionTarget cursorActionTarget) : base(cursorActionTarget)
+    }
+
+    public override string GetName() => Translate("Name", "Place Connected Overlay");
+    protected override bool ClearPreviousCellOnMouseUp => true;
+
+    public ConnectedOverlayType ConnectedOverlayType { get; set; }
+    struct OriginalOverlayInfo
+    {
+        public OverlayType OverlayType;
+        public int FrameIndex;
+
+        public OriginalOverlayInfo(OverlayType overlayType, int frameIndex)
         {
+            OverlayType = overlayType;
+            FrameIndex = frameIndex;
+        }
+    }
+
+    private List<OriginalOverlayInfo> originalOverlay = new List<OriginalOverlayInfo>();
+
+    public override void OnActionExit()
+    {
+        ClearLinePreview();
+        base.OnActionExit();
+    }
+
+    public override void PreMapDraw(Point2D cellCoords)
+    {
+        if (LineSourceCell.HasValue)
+        {
+            ApplyLinePreview(cellCoords);
+            return;
         }
 
-        public override string GetName() => Translate("Name", "Place Connected Overlay");
-        protected override bool ClearPreviousCellOnMouseUp => true;
+        originalOverlay.Clear();
 
-        public ConnectedOverlayType ConnectedOverlayType { get; set; }
-        struct OriginalOverlayInfo
+        CursorActionTarget.BrushSize.DoForBrushSizeAndSurroundings(offset =>
         {
-            public OverlayType OverlayType;
-            public int FrameIndex;
+            var tile = CursorActionTarget.Map.GetTile(cellCoords + offset);
+            if (tile == null)
+                return;
 
-            public OriginalOverlayInfo(OverlayType overlayType, int frameIndex)
-            {
-                OverlayType = overlayType;
-                FrameIndex = frameIndex;
-            }
-        }
+            // Store original overlay info
+            originalOverlay.Add(tile.Overlay != null
+                ? new OriginalOverlayInfo(tile.Overlay.OverlayType, tile.Overlay.FrameIndex)
+                : new OriginalOverlayInfo(null, Constants.NO_OVERLAY));
+        });
 
-        private List<OriginalOverlayInfo> originalOverlay = new List<OriginalOverlayInfo>();
+        new PlaceConnectedOverlayMutation(CursorActionTarget.MutationTarget, ConnectedOverlayType, cellCoords).Perform();
+    }
 
-        public override void OnActionExit()
+    public override void PostMapDraw(Point2D cellCoords)
+    {
+        if (LineSourceCell.HasValue)
         {
             ClearLinePreview();
-            base.OnActionExit();
+            return;
         }
 
-        public override void PreMapDraw(Point2D cellCoords)
+        int index = 0;
+
+        CursorActionTarget.BrushSize.DoForBrushSizeAndSurroundings(offset =>
         {
-            if (LineSourceCell.HasValue)
-            {
-                ApplyLinePreview(cellCoords);
+            var tile = CursorActionTarget.Map.GetTile(cellCoords + offset);
+            if (tile == null)
                 return;
+
+            var originalOverlayData = originalOverlay[index];
+
+            if (originalOverlayData.OverlayType == null)
+            {
+                tile.Overlay = null;
+            }
+            else
+            {
+                tile.Overlay.OverlayType = originalOverlayData.OverlayType;
+                tile.Overlay.FrameIndex = originalOverlayData.FrameIndex;
             }
 
-            originalOverlay.Clear();
+            index++;
+        });
 
-            CursorActionTarget.BrushSize.DoForBrushSizeAndSurroundings(offset =>
-            {
-                var tile = CursorActionTarget.Map.GetTile(cellCoords + offset);
-                if (tile == null)
-                    return;
+        originalOverlay.Clear();
 
-                // Store original overlay info
-                originalOverlay.Add(tile.Overlay != null
-                    ? new OriginalOverlayInfo(tile.Overlay.OverlayType, tile.Overlay.FrameIndex)
-                    : new OriginalOverlayInfo(null, Constants.NO_OVERLAY));
-            });
+        CursorActionTarget.AddRefreshPoint(cellCoords, Math.Max(CursorActionTarget.BrushSize.Height, CursorActionTarget.BrushSize.Width));
+    }
 
-            new PlaceConnectedOverlayMutation(CursorActionTarget.MutationTarget, ConnectedOverlayType, cellCoords).Perform();
-        }
+    protected override ICheckableMutation CreateRegularPlacementMutation(Point2D cellCoords)
+    {
+        return new PlaceConnectedOverlayMutation(CursorActionTarget.MutationTarget, ConnectedOverlayType, cellCoords);
+    }
 
-        public override void PostMapDraw(Point2D cellCoords)
-        {
-            if (LineSourceCell.HasValue)
-            {
-                ClearLinePreview();
-                return;
-            }
+    protected override Mutation CreateLinePlacementMutation(Direction direction, int length)
+    {
+        return new PlaceConnectedOverlayLineMutation(MutationTarget, ConnectedOverlayType, LineSourceCell.Value, direction, length);
+    }
 
-            int index = 0;
-
-            CursorActionTarget.BrushSize.DoForBrushSizeAndSurroundings(offset =>
-            {
-                var tile = CursorActionTarget.Map.GetTile(cellCoords + offset);
-                if (tile == null)
-                    return;
-
-                var originalOverlayData = originalOverlay[index];
-
-                if (originalOverlayData.OverlayType == null)
-                {
-                    tile.Overlay = null;
-                }
-                else
-                {
-                    tile.Overlay.OverlayType = originalOverlayData.OverlayType;
-                    tile.Overlay.FrameIndex = originalOverlayData.FrameIndex;
-                }
-
-                index++;
-            });
-
-            originalOverlay.Clear();
-
-            CursorActionTarget.AddRefreshPoint(cellCoords, Math.Max(CursorActionTarget.BrushSize.Height, CursorActionTarget.BrushSize.Width));
-        }
-
-        protected override ICheckableMutation CreateRegularPlacementMutation(Point2D cellCoords)
-        {
-            return new PlaceConnectedOverlayMutation(CursorActionTarget.MutationTarget, ConnectedOverlayType, cellCoords);
-        }
-
-        protected override Mutation CreateLinePlacementMutation(Direction direction, int length)
-        {
-            return new PlaceConnectedOverlayLineMutation(MutationTarget, ConnectedOverlayType, LineSourceCell.Value, direction, length);
-        }
-
-        protected override void ApplyLine(Point2D cellCoords)
-        {
-            (Direction direction, int length) = GetLineInformation(cellCoords);
-            var mutation = CreateLinePlacementMutation(direction, length);
-            PerformMutation(mutation);
-        }
+    protected override void ApplyLine(Point2D cellCoords)
+    {
+        (Direction direction, int length) = GetLineInformation(cellCoords);
+        var mutation = CreateLinePlacementMutation(direction, length);
+        PerformMutation(mutation);
     }
 }

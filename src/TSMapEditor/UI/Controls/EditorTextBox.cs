@@ -1,42 +1,42 @@
-﻿using Rampastring.Tools;
+﻿using MapEditorLibrary;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 
-namespace TSMapEditor.UI.Controls
+namespace TSMapEditor.UI.Controls;
+
+public class EditorTextBox : XNATextBox
 {
-    public class EditorTextBox : XNATextBox
+    public EditorTextBox(WindowManager windowManager) : base(windowManager)
     {
-        public EditorTextBox(WindowManager windowManager) : base(windowManager)
+        Height = Constants.UITextBoxHeight;
+    }
+
+    public bool AllowComma { get; set; } = true;
+    public bool AllowSemicolon { get; set; } = false;
+
+    protected override bool AllowCharacterInput(char character)
+    {
+        if (character == ',')
+            return AllowComma;
+
+        if (character == ';')
+            return AllowSemicolon;
+
+        return base.AllowCharacterInput(character);
+    }
+
+    protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
+    {
+        if (key == nameof(AllowComma))
         {
-            Height = Constants.UITextBoxHeight;
+            AllowComma = Conversions.BooleanFromString(value, AllowComma);
+        }
+        else if (key == nameof(AllowSemicolon))
+        {
+            AllowSemicolon = Conversions.BooleanFromString(value, AllowSemicolon);
         }
 
-        public bool AllowComma { get; set; } = true;
-        public bool AllowSemicolon { get; set; } = false;
-
-        protected override bool AllowCharacterInput(char character)
-        {
-            if (character == ',')
-                return AllowComma;
-
-            if (character == ';')
-                return AllowSemicolon;
-
-            return base.AllowCharacterInput(character);
-        }
-
-        protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
-        {
-            if (key == nameof(AllowComma))
-            {
-                AllowComma = Conversions.BooleanFromString(value, AllowComma);
-            }
-            else if (key == nameof(AllowSemicolon))
-            {
-                AllowSemicolon = Conversions.BooleanFromString(value, AllowSemicolon);
-            }
-
-            base.ParseControlINIAttribute(iniFile, key, value);
-        }
+        base.ParseControlINIAttribute(iniFile, key, value);
     }
 }

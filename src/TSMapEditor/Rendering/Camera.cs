@@ -1,147 +1,147 @@
-﻿using Microsoft.Xna.Framework;
+﻿using MapEditorLibrary;
+using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Models;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.Input;
 using System;
-using TSMapEditor.GameMath;
-using TSMapEditor.Models;
 
-namespace TSMapEditor.Rendering
+namespace TSMapEditor.Rendering;
+
+public class Camera
 {
-    public class Camera
+    private const double ZoomMax = 3.0;
+    private const double ZoomMin = 0.2;
+
+    public Camera(WindowManager windowManager, Map map)
     {
-        private const double ZoomMax = 3.0;
-        private const double ZoomMin = 0.2;
+        this.windowManager = windowManager;
+        this.map = map;
+    }
 
-        public Camera(WindowManager windowManager, Map map)
+    public event EventHandler CameraUpdated;
+
+    private readonly WindowManager windowManager;
+    private readonly Map map;
+
+    private Point2D _topLeftPoint;
+    public Point2D TopLeftPoint
+    {
+        get => _topLeftPoint;
+        set
         {
-            this.windowManager = windowManager;
-            this.map = map;
+            _topLeftPoint = value;
+            _floatTopLeftPoint = new Vector2(_topLeftPoint.X, _topLeftPoint.Y);
+            ConstrainCamera();
+            CameraUpdated?.Invoke(this, EventArgs.Empty);
         }
+    }
 
-        public event EventHandler CameraUpdated;
-
-        private readonly WindowManager windowManager;
-        private readonly Map map;
-
-        private Point2D _topLeftPoint;
-        public Point2D TopLeftPoint
+    private Vector2 _floatTopLeftPoint;
+    public Vector2 FloatTopLeftPoint 
+    {
+        get => _floatTopLeftPoint;
+        set
         {
-            get => _topLeftPoint;
-            set
+            _floatTopLeftPoint = value;
+            _topLeftPoint = new Point2D((int)_floatTopLeftPoint.X, (int)_floatTopLeftPoint.Y);
+            ConstrainCamera();
+            CameraUpdated?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private double _zoomLevel = 1.0;
+    public double ZoomLevel
+    {
+        get => _zoomLevel;
+        set
+        {
+            double oldZoom = _zoomLevel;
+
+            if (value > ZoomMax)
+                _zoomLevel = ZoomMax;
+            else if (value < ZoomMin)
+                _zoomLevel = ZoomMin;
+            else
+                _zoomLevel = value;
+
+            // Adjust camera position so it doesn't change due to the zoom level changing
+            if (_zoomLevel != oldZoom)
             {
-                _topLeftPoint = value;
-                _floatTopLeftPoint = new Vector2(_topLeftPoint.X, _topLeftPoint.Y);
-                ConstrainCamera();
-                CameraUpdated?.Invoke(this, EventArgs.Empty);
+                double oldWidth = windowManager.RenderResolutionX / oldZoom;
+                double newWidth = windowManager.RenderResolutionX / _zoomLevel;
+                double differenceX = oldWidth - newWidth;
+
+                double oldHeight = windowManager.RenderResolutionY / oldZoom;
+                double newHeight = windowManager.RenderResolutionY / _zoomLevel;
+                double differenceY = oldHeight - newHeight;
+
+                FloatTopLeftPoint += new Vector2((float)(differenceX / 2.0), (float)(differenceY / 2.0));
             }
+
+            CameraUpdated?.Invoke(this, EventArgs.Empty);
         }
+    }
 
-        private Vector2 _floatTopLeftPoint;
-        public Vector2 FloatTopLeftPoint 
-        {
-            get => _floatTopLeftPoint;
-            set
-            {
-                _floatTopLeftPoint = value;
-                _topLeftPoint = new Point2D((int)_floatTopLeftPoint.X, (int)_floatTopLeftPoint.Y);
-                ConstrainCamera();
-                CameraUpdated?.Invoke(this, EventArgs.Empty);
-            }
-        }
+    public int ScaleIntWithZoom(int value) => (int)(value * ZoomLevel);
 
-        private double _zoomLevel = 1.0;
-        public double ZoomLevel
-        {
-            get => _zoomLevel;
-            set
-            {
-                double oldZoom = _zoomLevel;
+    public Point2D ScalePointWithZoom(Point2D value) => value.ScaleBy(ZoomLevel);
 
-                if (value > ZoomMax)
-                    _zoomLevel = ZoomMax;
-                else if (value < ZoomMin)
-                    _zoomLevel = ZoomMin;
-                else
-                    _zoomLevel = value;
+    public void CenterOnCell(Point2D cellCoords)
+    {
+        Point2D cellPixelCoords = CellMath.CellCenterPointFromCellCoords_3D(cellCoords, map);
 
-                // Adjust camera position so it doesn't change due to the zoom level changing
-                if (_zoomLevel != oldZoom)
-                {
-                    double oldWidth = windowManager.RenderResolutionX / oldZoom;
-                    double newWidth = windowManager.RenderResolutionX / _zoomLevel;
-                    double differenceX = oldWidth - newWidth;
+        int width = (int)(windowManager.RenderResolutionX / ZoomLevel);
+        int height = (int)(windowManager.RenderResolutionY / ZoomLevel);
 
-                    double oldHeight = windowManager.RenderResolutionY / oldZoom;
-                    double newHeight = windowManager.RenderResolutionY / _zoomLevel;
-                    double differenceY = oldHeight - newHeight;
+        TopLeftPoint = new Point2D(cellPixelCoords.X - (width / 2), cellPixelCoords.Y - (height / 2));
+    }
 
-                    FloatTopLeftPoint += new Vector2((float)(differenceX / 2.0), (float)(differenceY / 2.0));
-                }
+    public void CenterOnMapCenterCell() => CenterOnCell(new Point2D((map.Size.X + map.Size.Y) / 2, (map.Size.X + map.Size.Y) / 2));
 
-                CameraUpdated?.Invoke(this, EventArgs.Empty);
-            }
-        }
+    public void KeyboardUpdate(RKeyboard keyboard, float scrollRate)
+    {
+        scrollRate = (float)(scrollRate / ZoomLevel);
 
-        public int ScaleIntWithZoom(int value) => (int)(value * ZoomLevel);
+        if (keyboard.IsKeyHeldDown(Microsoft.Xna.Framework.Input.Keys.Left))
+            FloatTopLeftPoint += new Vector2(-scrollRate, 0);
+        else if (keyboard.IsKeyHeldDown(Microsoft.Xna.Framework.Input.Keys.Right))
+            FloatTopLeftPoint += new Vector2(scrollRate, 0);
 
-        public Point2D ScalePointWithZoom(Point2D value) => value.ScaleBy(ZoomLevel);
+        if (keyboard.IsKeyHeldDown(Microsoft.Xna.Framework.Input.Keys.Up))
+            FloatTopLeftPoint += new Vector2(0, -scrollRate);
+        else if (keyboard.IsKeyHeldDown(Microsoft.Xna.Framework.Input.Keys.Down))
+            FloatTopLeftPoint += new Vector2(0, scrollRate);
+    }
 
-        public void CenterOnCell(Point2D cellCoords)
-        {
-            Point2D cellPixelCoords = CellMath.CellCenterPointFromCellCoords_3D(cellCoords, map);
+    private void ConstrainCamera()
+    {
+        int minX = (int)((windowManager.RenderResolutionX / -2) / ZoomLevel);
+        if (_topLeftPoint.X < minX)
+            _topLeftPoint = new Point2D(minX, _topLeftPoint.Y);
 
-            int width = (int)(windowManager.RenderResolutionX / ZoomLevel);
-            int height = (int)(windowManager.RenderResolutionY / ZoomLevel);
+        if (_floatTopLeftPoint.X < minX)
+            _floatTopLeftPoint = new Vector2(minX, _floatTopLeftPoint.Y);
 
-            TopLeftPoint = new Point2D(cellPixelCoords.X - (width / 2), cellPixelCoords.Y - (height / 2));
-        }
+        int minY = (int)((windowManager.RenderResolutionY / -2) / ZoomLevel);
+        if (_topLeftPoint.Y < minY)
+            _topLeftPoint = new Point2D(_topLeftPoint.X, minY);
 
-        public void CenterOnMapCenterCell() => CenterOnCell(new Point2D((map.Size.X + map.Size.Y) / 2, (map.Size.X + map.Size.Y) / 2));
+        if (_floatTopLeftPoint.Y < minY)
+            _floatTopLeftPoint = new Vector2(_floatTopLeftPoint.X, minY);
 
-        public void KeyboardUpdate(RKeyboard keyboard, float scrollRate)
-        {
-            scrollRate = (float)(scrollRate / ZoomLevel);
+        int maxX = map.Size.X * Constants.CellSizeX - (int)((windowManager.RenderResolutionX / 2) / ZoomLevel);
+        if (_topLeftPoint.X > maxX)
+            _topLeftPoint = new Point2D(maxX, _topLeftPoint.Y);
 
-            if (keyboard.IsKeyHeldDown(Microsoft.Xna.Framework.Input.Keys.Left))
-                FloatTopLeftPoint += new Vector2(-scrollRate, 0);
-            else if (keyboard.IsKeyHeldDown(Microsoft.Xna.Framework.Input.Keys.Right))
-                FloatTopLeftPoint += new Vector2(scrollRate, 0);
+        if (_floatTopLeftPoint.X > maxX)
+            _floatTopLeftPoint = new Vector2(maxX, _floatTopLeftPoint.Y);
 
-            if (keyboard.IsKeyHeldDown(Microsoft.Xna.Framework.Input.Keys.Up))
-                FloatTopLeftPoint += new Vector2(0, -scrollRate);
-            else if (keyboard.IsKeyHeldDown(Microsoft.Xna.Framework.Input.Keys.Down))
-                FloatTopLeftPoint += new Vector2(0, scrollRate);
-        }
+        int maxY = map.Size.Y * Constants.CellSizeY - (int)((windowManager.RenderResolutionY / 2) / ZoomLevel);
+        if (_topLeftPoint.Y > maxY)
+            _topLeftPoint = new Point2D(_topLeftPoint.X, maxY);
 
-        private void ConstrainCamera()
-        {
-            int minX = (int)((windowManager.RenderResolutionX / -2) / ZoomLevel);
-            if (_topLeftPoint.X < minX)
-                _topLeftPoint = new Point2D(minX, _topLeftPoint.Y);
-
-            if (_floatTopLeftPoint.X < minX)
-                _floatTopLeftPoint = new Vector2(minX, _floatTopLeftPoint.Y);
-
-            int minY = (int)((windowManager.RenderResolutionY / -2) / ZoomLevel);
-            if (_topLeftPoint.Y < minY)
-                _topLeftPoint = new Point2D(_topLeftPoint.X, minY);
-
-            if (_floatTopLeftPoint.Y < minY)
-                _floatTopLeftPoint = new Vector2(_floatTopLeftPoint.X, minY);
-
-            int maxX = map.Size.X * Constants.CellSizeX - (int)((windowManager.RenderResolutionX / 2) / ZoomLevel);
-            if (_topLeftPoint.X > maxX)
-                _topLeftPoint = new Point2D(maxX, _topLeftPoint.Y);
-
-            if (_floatTopLeftPoint.X > maxX)
-                _floatTopLeftPoint = new Vector2(maxX, _floatTopLeftPoint.Y);
-
-            int maxY = map.Size.Y * Constants.CellSizeY - (int)((windowManager.RenderResolutionY / 2) / ZoomLevel);
-            if (_topLeftPoint.Y > maxY)
-                _topLeftPoint = new Point2D(_topLeftPoint.X, maxY);
-
-            if (_floatTopLeftPoint.Y > maxY)
-                _floatTopLeftPoint = new Vector2(_floatTopLeftPoint.X, maxY);
-        }
+        if (_floatTopLeftPoint.Y > maxY)
+            _floatTopLeftPoint = new Vector2(_floatTopLeftPoint.X, maxY);
     }
 }

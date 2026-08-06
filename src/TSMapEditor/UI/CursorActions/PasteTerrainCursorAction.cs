@@ -2,335 +2,335 @@
 using System;
 using System.Collections.Generic;
 using Rampastring.XNAUI.Input;
-using TSMapEditor.GameMath;
-using TSMapEditor.Models;
-using TSMapEditor.Mutations.Classes;
 using Rampastring.XNAUI;
 using Microsoft.Xna.Framework;
 using System.Linq;
 using System.IO;
 using TSMapEditor.UI.Windows;
+using MapEditorLibrary;
+using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations.Classes;
 
-namespace TSMapEditor.UI.CursorActions
+namespace TSMapEditor.UI.CursorActions;
+
+/// <summary>
+/// A cursor action that allows pasting previously copied terrain.
+/// </summary>
+public class PasteTerrainCursorAction : CursorAction
 {
-    /// <summary>
-    /// A cursor action that allows pasting previously copied terrain.
-    /// </summary>
-    public class PasteTerrainCursorAction : CursorAction
+    public PasteTerrainCursorAction(ICursorActionTarget cursorActionTarget, RKeyboard keyboard) : base(cursorActionTarget)
     {
-        public PasteTerrainCursorAction(ICursorActionTarget cursorActionTarget, RKeyboard keyboard) : base(cursorActionTarget)
+        this.keyboard = keyboard;
+    }
+
+    public override string GetName() => Translate("Name", "Paste Copied Terrain");
+
+    public override bool HandlesKeyboardInput => true;
+
+    struct OriginalOverlayInfo
+    {
+        public Point2D CellCoords;
+        public OverlayType OverlayType;
+        public int FrameIndex;
+
+        public OriginalOverlayInfo(Point2D cellCoords, OverlayType overlayType, int frameIndex)
         {
-            this.keyboard = keyboard;
+            CellCoords = cellCoords;
+            OverlayType = overlayType;
+            FrameIndex = frameIndex;
+        }
+    }
+
+
+    private CopiedMapData copiedMapData;
+
+    private List<OriginalOverlayInfo> originalOverlay = new List<OriginalOverlayInfo>();
+
+    private RKeyboard keyboard;
+
+    private int originLevelOffset;
+
+    private bool wasDrawnAbove;
+
+
+    private Point2D[][] edges { get; set; } = new Point2D[][] { Array.Empty<Point2D>() };
+
+    public override void OnKeyPressed(KeyPressEventArgs e, Point2D cellCoords)
+    {
+        if (Constants.IsFlatWorld)
+            return;
+
+        if (KeyboardCommands.Instance.AdjustTileHeightDown.Key.Key == e.PressedKey)
+        {
+            if (originLevelOffset > -Constants.MaxMapHeight)
+                originLevelOffset--;
+
+            e.Handled = true;
+        }
+        else if (KeyboardCommands.Instance.AdjustTileHeightUp.Key.Key == e.PressedKey)
+        {
+            if (originLevelOffset < Constants.MaxMapHeight)
+                originLevelOffset++;
+
+            e.Handled = true;
+        }
+    }
+
+    public override void OnActionEnter()
+    {
+        base.OnActionEnter();
+
+        originLevelOffset = 0;
+
+        if (!System.Windows.Forms.Clipboard.ContainsData(Constants.ClipboardMapDataFormatValue))
+        {
+            Logger.Log(nameof(PasteTerrainCursorAction) + ": invalid clipboard data format, exiting action");
+            ExitAction();
+            return;
         }
 
-        public override string GetName() => Translate("Name", "Paste Copied Terrain");
+        byte[] data;
 
-        public override bool HandlesKeyboardInput => true;
-
-        struct OriginalOverlayInfo
+        object clipboardContents = System.Windows.Forms.Clipboard.GetData(Constants.ClipboardMapDataFormatValue);
+        if (clipboardContents == null)
         {
-            public Point2D CellCoords;
-            public OverlayType OverlayType;
-            public int FrameIndex;
-
-            public OriginalOverlayInfo(Point2D cellCoords, OverlayType overlayType, int frameIndex)
-            {
-                CellCoords = cellCoords;
-                OverlayType = overlayType;
-                FrameIndex = frameIndex;
-            }
+            Logger.Log($"WARNING: {nameof(PasteTerrainCursorAction)}: Clipboard data is null");
+            ExitAction();
+            return;
         }
 
-
-        private CopiedMapData copiedMapData;
-
-        private List<OriginalOverlayInfo> originalOverlay = new List<OriginalOverlayInfo>();
-
-        private RKeyboard keyboard;
-
-        private int originLevelOffset;
-
-        private bool wasDrawnAbove;
-
-
-        private Point2D[][] edges { get; set; } = new Point2D[][] { Array.Empty<Point2D>() };
-
-        public override void OnKeyPressed(KeyPressEventArgs e, Point2D cellCoords)
+        if (clipboardContents is byte[] cpBytes)
         {
-            if (Constants.IsFlatWorld)
-                return;
-
-            if (KeyboardCommands.Instance.AdjustTileHeightDown.Key.Key == e.PressedKey)
-            {
-                if (originLevelOffset > -Constants.MaxMapHeight)
-                    originLevelOffset--;
-
-                e.Handled = true;
-            }
-            else if (KeyboardCommands.Instance.AdjustTileHeightUp.Key.Key == e.PressedKey)
-            {
-                if (originLevelOffset < Constants.MaxMapHeight)
-                    originLevelOffset++;
-
-                e.Handled = true;
-            }
+            data = cpBytes;
+        }
+        else if (clipboardContents is MemoryStream ms)
+        {
+            // We write clipboard contents as a byte array, but for some reason, reading from the clipboard
+            // can sometimes give us a MemoryStream in some cases, based on error logs received from users.
+            Logger.Log($"WARNING: {nameof(PasteTerrainCursorAction)}: Reading clipboard contents as MemoryStream");
+            data = ms.ToArray();
+        }
+        else
+        {
+            string typeName = clipboardContents.GetType().Name;
+            Logger.Log($"WARNING: {nameof(PasteTerrainCursorAction)}: Unknown clipboard object type {typeName}");
+            EditorMessageBox.Show(CursorActionTarget.WindowManager, "Paste Error", $"Failed to read data from clipboard: unknown clipboard object type {typeName}", MessageBoxButtons.OK);
+            ExitAction();
+            return;
         }
 
-        public override void OnActionEnter()
+        try
         {
-            base.OnActionEnter();
+            copiedMapData = new CopiedMapData();
+            copiedMapData.Deserialize(data);
+            GenerateGraphicalEdges();
+        }
+        catch (CopiedMapDataSerializationException ex)
+        {
+            Logger.Log(nameof(PasteTerrainCursorAction) + ": exception when decoding data from clipboard, exiting action. Message: " + ex.Message);
+            ExitAction();
+        }
+    }
 
-            originLevelOffset = 0;
+    private void GenerateGraphicalEdges()
+    {
+        var foundationHashSet = new HashSet<Point2D>();
 
-            if (!System.Windows.Forms.Clipboard.ContainsData(Constants.ClipboardMapDataFormatValue))
-            {
-                Logger.Log(nameof(PasteTerrainCursorAction) + ": invalid clipboard data format, exiting action");
-                ExitAction();
-                return;
-            }
+        copiedMapData.CopiedMapEntries.ForEach(entry =>
+        {
+            foundationHashSet.Add(entry.Offset);
+        });
 
-            byte[] data;
+        edges = Helpers.CreateEdges(copiedMapData.Width + 1, copiedMapData.Height + 1, foundationHashSet.ToList());
+    }
 
-            object clipboardContents = System.Windows.Forms.Clipboard.GetData(Constants.ClipboardMapDataFormatValue);
-            if (clipboardContents == null)
-            {
-                Logger.Log($"WARNING: {nameof(PasteTerrainCursorAction)}: Clipboard data is null");
-                ExitAction();
-                return;
-            }
+    public override void PreMapDraw(Point2D cellCoords)
+    {
+        originalOverlay.Clear();
 
-            if (clipboardContents is byte[] cpBytes)
-            {
-                data = cpBytes;
-            }
-            else if (clipboardContents is MemoryStream ms)
-            {
-                // We write clipboard contents as a byte array, but for some reason, reading from the clipboard
-                // can sometimes give us a MemoryStream in some cases, based on error logs received from users.
-                Logger.Log($"WARNING: {nameof(PasteTerrainCursorAction)}: Reading clipboard contents as MemoryStream");
-                data = ms.ToArray();
-            }
-            else
-            {
-                string typeName = clipboardContents.GetType().Name;
-                Logger.Log($"WARNING: {nameof(PasteTerrainCursorAction)}: Unknown clipboard object type {typeName}");
-                EditorMessageBox.Show(CursorActionTarget.WindowManager, "Paste Error", $"Failed to read data from clipboard: unknown clipboard object type {typeName}", MessageBoxButtons.OK);
-                ExitAction();
-                return;
-            }
-
-            try
-            {
-                copiedMapData = new CopiedMapData();
-                copiedMapData.Deserialize(data);
-                GenerateGraphicalEdges();
-            }
-            catch (CopiedMapDataSerializationException ex)
-            {
-                Logger.Log(nameof(PasteTerrainCursorAction) + ": exception when decoding data from clipboard, exiting action. Message: " + ex.Message);
-                ExitAction();
-            }
+        if (KeyboardCommands.Instance.PlaceTerrainBelow.AreKeysOrModifiersDown(Keyboard))
+        {
+            wasDrawnAbove = true;
+            cellCoords -= new Point2D(copiedMapData.Width, copiedMapData.Height);
+        }
+        else
+        {
+            wasDrawnAbove = false;
         }
 
-        private void GenerateGraphicalEdges()
+        int maxOffset = 0;
+        MapTile originCell = MutationTarget.Map.GetTile(cellCoords);
+        int originLevel = originCell?.Level ?? -1;
+
+        foreach (var entry in copiedMapData.CopiedMapEntries)
         {
-            var foundationHashSet = new HashSet<Point2D>();
+            maxOffset = Math.Max(maxOffset, Math.Max(Math.Abs(entry.Offset.X), Math.Abs(entry.Offset.Y)));
 
-            copiedMapData.CopiedMapEntries.ForEach(entry =>
+            MapTile cell = CursorActionTarget.Map.GetTile(cellCoords + entry.Offset);
+            if (cell == null)
+                continue;
+
+            if (entry.EntryType == CopiedEntryType.Terrain)
             {
-                foundationHashSet.Add(entry.Offset);
-            });
+                var terrainEntry = entry as CopiedTerrainEntry;
 
-            edges = Helpers.CreateEdges(copiedMapData.Width + 1, copiedMapData.Height + 1, foundationHashSet.ToList());
-        }
+                var previewTileImage = CursorActionTarget.TheaterGraphics.GetTileGraphics(terrainEntry.TileIndex, 0);
+                int previewSubTileIndex = terrainEntry.SubTileIndex;
+                int previewLevel = Math.Max(0, Math.Min(Constants.MaxMapHeightLevel, originLevel + terrainEntry.HeightOffset + originLevelOffset));
 
-        public override void PreMapDraw(Point2D cellCoords)
-        {
-            originalOverlay.Clear();
-
-            if (KeyboardCommands.Instance.PlaceTerrainBelow.AreKeysOrModifiersDown(Keyboard))
-            {
-                wasDrawnAbove = true;
-                cellCoords -= new Point2D(copiedMapData.Width, copiedMapData.Height);
+                cell.ApplyPreview(previewTileImage, previewSubTileIndex, previewLevel, Map.Lighting, CursorActionTarget.LightingPreviewState, MutationTarget.LightDisabledLightSources);
             }
-            else
+            else if (entry.EntryType == CopiedEntryType.Overlay)
             {
-                wasDrawnAbove = false;
-            }
+                var overlayEntry = entry as CopiedOverlayEntry;
 
-            int maxOffset = 0;
-            MapTile originCell = MutationTarget.Map.GetTile(cellCoords);
-            int originLevel = originCell?.Level ?? -1;
+                // Store original overlay info
+                if (cell.Overlay != null)
+                    originalOverlay.Add(new OriginalOverlayInfo(cell.CoordsToPoint(), cell.Overlay.OverlayType, cell.Overlay.FrameIndex));
+                else
+                    originalOverlay.Add(new OriginalOverlayInfo(cell.CoordsToPoint(), null, Constants.NO_OVERLAY));
 
-            foreach (var entry in copiedMapData.CopiedMapEntries)
-            {
-                maxOffset = Math.Max(maxOffset, Math.Max(Math.Abs(entry.Offset.X), Math.Abs(entry.Offset.Y)));
-
-                MapTile cell = CursorActionTarget.Map.GetTile(cellCoords + entry.Offset);
-                if (cell == null)
-                    continue;
-
-                if (entry.EntryType == CopiedEntryType.Terrain)
+                var overlayType = Map.Rules.OverlayTypes.Find(ot => ot.ININame == overlayEntry.OverlayTypeName);
+                if (overlayType == null) 
                 {
-                    var terrainEntry = entry as CopiedTerrainEntry;
-
-                    var previewTileImage = CursorActionTarget.TheaterGraphics.GetTileGraphics(terrainEntry.TileIndex, 0);
-                    int previewSubTileIndex = terrainEntry.SubTileIndex;
-                    int previewLevel = Math.Max(0, Math.Min(Constants.MaxMapHeightLevel, originLevel + terrainEntry.HeightOffset + originLevelOffset));
-
-                    cell.ApplyPreview(previewTileImage, previewSubTileIndex, previewLevel, Map.Lighting, CursorActionTarget.LightingPreviewState, MutationTarget.LightDisabledLightSources);
+                    continue;
                 }
-                else if (entry.EntryType == CopiedEntryType.Overlay)
+
+                // Apply new overlay info
+                if (cell.Overlay == null)
                 {
-                    var overlayEntry = entry as CopiedOverlayEntry;
-
-                    // Store original overlay info
-                    if (cell.Overlay != null)
-                        originalOverlay.Add(new OriginalOverlayInfo(cell.CoordsToPoint(), cell.Overlay.OverlayType, cell.Overlay.FrameIndex));
-                    else
-                        originalOverlay.Add(new OriginalOverlayInfo(cell.CoordsToPoint(), null, Constants.NO_OVERLAY));
-
-                    var overlayType = Map.Rules.OverlayTypes.Find(ot => ot.ININame == overlayEntry.OverlayTypeName);
-                    if (overlayType == null) 
+                    // Creating new object instances each frame is not very performance-friendly, we might want to revise this later...
+                    cell.Overlay = new Overlay()
                     {
-                        continue;
-                    }
-
-                    // Apply new overlay info
-                    if (cell.Overlay == null)
-                    {
-                        // Creating new object instances each frame is not very performance-friendly, we might want to revise this later...
-                        cell.Overlay = new Overlay()
-                        {
-                            Position = cell.CoordsToPoint(),
-                            OverlayType = overlayType,
-                            FrameIndex = overlayEntry.FrameIndex
-                        };
-                    }
-                    else
-                    {
-                        cell.Overlay.OverlayType = overlayType;
-                        cell.Overlay.FrameIndex = overlayEntry.FrameIndex;
-                    }
-                }
-            }
-
-            CursorActionTarget.AddRefreshPoint(cellCoords, maxOffset);
-        }
-
-        public override void PostMapDraw(Point2D cellCoords)
-        {
-            if (wasDrawnAbove)
-            {
-                cellCoords -= new Point2D(copiedMapData.Width, copiedMapData.Height);
-            }
-
-            int maxOffset = 0;
-
-            foreach (var copiedTerrain in copiedMapData.CopiedMapEntries)
-            {
-                if (copiedTerrain.EntryType != CopiedEntryType.Terrain)
-                    continue;
-
-                maxOffset = Math.Max(maxOffset, Math.Max(Math.Abs(copiedTerrain.Offset.X), Math.Abs(copiedTerrain.Offset.Y)));
-
-                MapTile cell = CursorActionTarget.Map.GetTile(cellCoords + copiedTerrain.Offset);
-                if (cell == null)
-                    continue;
-
-                cell.ClearPreview(Map.Lighting, CursorActionTarget.LightingPreviewState, MutationTarget.LightDisabledLightSources);
-            }
-
-            foreach (var originalOverlayEntry in originalOverlay)
-            {
-                MapTile cell = Map.GetTile(originalOverlayEntry.CellCoords);
-
-                if (originalOverlayEntry.OverlayType == null)
-                {
-                    cell.Overlay = null;
+                        Position = cell.CoordsToPoint(),
+                        OverlayType = overlayType,
+                        FrameIndex = overlayEntry.FrameIndex
+                    };
                 }
                 else
                 {
-                    cell.Overlay.OverlayType = originalOverlayEntry.OverlayType;
-                    cell.Overlay.FrameIndex = originalOverlayEntry.FrameIndex;
+                    cell.Overlay.OverlayType = overlayType;
+                    cell.Overlay.FrameIndex = overlayEntry.FrameIndex;
                 }
             }
-
-            CursorActionTarget.AddRefreshPoint(cellCoords, maxOffset);
         }
 
-        private Point2D GetEdgeCoordsCompensated(Point2D originalEdgeCoords)
+        CursorActionTarget.AddRefreshPoint(cellCoords, maxOffset);
+    }
+
+    public override void PostMapDraw(Point2D cellCoords)
+    {
+        if (wasDrawnAbove)
         {
-            // Edges partially run outside of the foundation of the copied cell. For example, a 1x1 copied area has a 2x2 edge foundation.
-            // Compensate for that here.
-
-            int x = originalEdgeCoords.X;
-            int y = originalEdgeCoords.Y;
-
-            if (x >= copiedMapData.Width)
-                x--;
-
-            if (y >= copiedMapData.Height)
-                y--;
-
-            return new Point2D(x, y);
+            cellCoords -= new Point2D(copiedMapData.Width, copiedMapData.Height);
         }
 
-        public override void DrawPreview(Point2D cellCoords, Point2D cameraTopLeftPoint)
+        int maxOffset = 0;
+
+        foreach (var copiedTerrain in copiedMapData.CopiedMapEntries)
         {
-            if (KeyboardCommands.Instance.PlaceTerrainBelow.AreKeysOrModifiersDown(Keyboard))
+            if (copiedTerrain.EntryType != CopiedEntryType.Terrain)
+                continue;
+
+            maxOffset = Math.Max(maxOffset, Math.Max(Math.Abs(copiedTerrain.Offset.X), Math.Abs(copiedTerrain.Offset.Y)));
+
+            MapTile cell = CursorActionTarget.Map.GetTile(cellCoords + copiedTerrain.Offset);
+            if (cell == null)
+                continue;
+
+            cell.ClearPreview(Map.Lighting, CursorActionTarget.LightingPreviewState, MutationTarget.LightDisabledLightSources);
+        }
+
+        foreach (var originalOverlayEntry in originalOverlay)
+        {
+            MapTile cell = Map.GetTile(originalOverlayEntry.CellCoords);
+
+            if (originalOverlayEntry.OverlayType == null)
             {
-                cellCoords -= new Point2D(copiedMapData.Width, copiedMapData.Height);
+                cell.Overlay = null;
             }
-
-            foreach (var edge in edges)
+            else
             {
-                Point2D edgeCell0 = cellCoords + edge[0];
-                Point2D edgeCell1 = cellCoords + edge[1];
-                int heightOffset0 = 0;
-                int heightOffset1 = 0;
-
-                if (!CursorActionTarget.Is2DMode)
-                {
-                    var cell = Map.GetTile(cellCoords + GetEdgeCoordsCompensated(edge[0]));
-                    if (cell != null)
-                        heightOffset0 = Constants.CellHeight * cell.GetLevelOrPreviewLevel();
-
-                    cell = Map.GetTile(cellCoords + GetEdgeCoordsCompensated(edge[1]));
-                    if (cell != null)
-                        heightOffset1 = Constants.CellHeight * cell.GetLevelOrPreviewLevel();
-                }
-
-                // Translate edge vertices from cell coordinate space to world coordinate space.
-                var start = CellMath.CellTopLeftPointFromCellCoords(edgeCell0, Map) - cameraTopLeftPoint;
-                var end = CellMath.CellTopLeftPointFromCellCoords(edgeCell1, Map) - cameraTopLeftPoint;
-                // Height is an illusion, just move everything up or down.
-                // Also offset X to match the top corner of an iso tile.
-                start += new Point2D(Constants.CellSizeX / 2, -heightOffset0);
-                end += new Point2D(Constants.CellSizeX / 2, -heightOffset1);
-
-                start = start.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
-                end = end.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
-
-                // Draw edge.
-                Renderer.DrawLine(start.ToXNAVector(), end.ToXNAVector(), Color.Orange, 2);
+                cell.Overlay.OverlayType = originalOverlayEntry.OverlayType;
+                cell.Overlay.FrameIndex = originalOverlayEntry.FrameIndex;
             }
         }
 
-        public override void LeftClick(Point2D cellCoords)
+        CursorActionTarget.AddRefreshPoint(cellCoords, maxOffset);
+    }
+
+    private Point2D GetEdgeCoordsCompensated(Point2D originalEdgeCoords)
+    {
+        // Edges partially run outside of the foundation of the copied cell. For example, a 1x1 copied area has a 2x2 edge foundation.
+        // Compensate for that here.
+
+        int x = originalEdgeCoords.X;
+        int y = originalEdgeCoords.Y;
+
+        if (x >= copiedMapData.Width)
+            x--;
+
+        if (y >= copiedMapData.Height)
+            y--;
+
+        return new Point2D(x, y);
+    }
+
+    public override void DrawPreview(Point2D cellCoords, Point2D cameraTopLeftPoint)
+    {
+        if (KeyboardCommands.Instance.PlaceTerrainBelow.AreKeysOrModifiersDown(Keyboard))
         {
-            if (CursorActionTarget.Map.GetTile(cellCoords) == null)
-                return;
+            cellCoords -= new Point2D(copiedMapData.Width, copiedMapData.Height);
+        }
 
-            bool allowOverlap = KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(keyboard);
+        foreach (var edge in edges)
+        {
+            Point2D edgeCell0 = cellCoords + edge[0];
+            Point2D edgeCell1 = cellCoords + edge[1];
+            int heightOffset0 = 0;
+            int heightOffset1 = 0;
 
-            if (KeyboardCommands.Instance.PlaceTerrainBelow.AreKeysOrModifiersDown(Keyboard))
+            if (!CursorActionTarget.Is2DMode)
             {
-                cellCoords -= new Point2D(copiedMapData.Width, copiedMapData.Height);
+                var cell = Map.GetTile(cellCoords + GetEdgeCoordsCompensated(edge[0]));
+                if (cell != null)
+                    heightOffset0 = Constants.CellHeight * cell.GetLevelOrPreviewLevel();
+
+                cell = Map.GetTile(cellCoords + GetEdgeCoordsCompensated(edge[1]));
+                if (cell != null)
+                    heightOffset1 = Constants.CellHeight * cell.GetLevelOrPreviewLevel();
             }
 
-            var mutation = new PasteTerrainMutation(CursorActionTarget.MutationTarget, copiedMapData, cellCoords, allowOverlap, originLevelOffset);
-            CursorActionTarget.MutationManager.PerformMutation(mutation);
+            // Translate edge vertices from cell coordinate space to world coordinate space.
+            var start = CellMath.CellTopLeftPointFromCellCoords(edgeCell0, Map) - cameraTopLeftPoint;
+            var end = CellMath.CellTopLeftPointFromCellCoords(edgeCell1, Map) - cameraTopLeftPoint;
+            // Height is an illusion, just move everything up or down.
+            // Also offset X to match the top corner of an iso tile.
+            start += new Point2D(Constants.CellSizeX / 2, -heightOffset0);
+            end += new Point2D(Constants.CellSizeX / 2, -heightOffset1);
+
+            start = start.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
+            end = end.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
+
+            // Draw edge.
+            Renderer.DrawLine(start.ToXNAVector(), end.ToXNAVector(), Color.Orange, 2);
         }
+    }
+
+    public override void LeftClick(Point2D cellCoords)
+    {
+        if (CursorActionTarget.Map.GetTile(cellCoords) == null)
+            return;
+
+        bool allowOverlap = KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(keyboard);
+
+        if (KeyboardCommands.Instance.PlaceTerrainBelow.AreKeysOrModifiersDown(Keyboard))
+        {
+            cellCoords -= new Point2D(copiedMapData.Width, copiedMapData.Height);
+        }
+
+        var mutation = new PasteTerrainMutation(CursorActionTarget.MutationTarget, copiedMapData, cellCoords, allowOverlap, originLevelOffset);
+        CursorActionTarget.MutationManager.PerformMutation(mutation);
     }
 }

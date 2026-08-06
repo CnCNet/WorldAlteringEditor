@@ -41,6 +41,9 @@
     <Compile Remove="Config\Scripts\Set Map Difficulty Settings.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\MapEditorLibrary\Version.cs" Link="Version.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <None Update="Config\DefaultSettings.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -489,7 +492,6 @@
   <ItemGroup>
     <PackageReference Include="ImeSharp" Version="1.4.1" />
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.0.0" />
     <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.3" />
     <PackageReference Include="Rampastring.Tools" Version="2.0.7" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.3" />
@@ -543,6 +545,10 @@
     <None Include="Config\Scripts\Set Map Difficulty Settings.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MapEditorLibrary\MapEditorLibrary.csproj" />
+    <ProjectReference Include="..\MapEditorMCP\MapEditorMCP.csproj" />
   </ItemGroup>
   <Target Name="RestoreDotnetTools" BeforeTargets="Restore">
     <Message Text="Restoring dotnet tools" Importance="High" />

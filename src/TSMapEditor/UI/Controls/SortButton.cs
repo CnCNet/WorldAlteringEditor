@@ -1,18 +1,18 @@
-﻿using Rampastring.XNAUI;
+﻿using MapEditorLibrary;
+using Rampastring.XNAUI;
 
-namespace TSMapEditor.UI.Controls
+namespace TSMapEditor.UI.Controls;
+
+public class SortButton : EditorButton
 {
-    public class SortButton : EditorButton
+    public SortButton(WindowManager windowManager) : base(windowManager)
     {
-        public SortButton(WindowManager windowManager) : base(windowManager)
-        {
-            Width = Constants.UIButtonHeight;
-        }
+        Width = Constants.UIButtonHeight;
+    }
 
-        public override void Initialize()
-        {
-            ExtraTexture = AssetLoader.LoadTexture("sortbutton.png");
-            base.Initialize();
-        }
+    public override void Initialize()
+    {
+        ExtraTexture = AssetLoader.LoadTexture("sortbutton.png");
+        base.Initialize();
     }
 }

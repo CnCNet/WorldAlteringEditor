@@ -1,63 +1,63 @@
-﻿using Microsoft.Xna.Framework;
+﻿using MapEditorLibrary;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System.Collections.Generic;
 
-namespace TSMapEditor.UI.Notifications
+namespace TSMapEditor.UI.Notifications;
+
+public interface INotificationManager
 {
-    public interface INotificationManager
+    void AddNotification(string text);
+}
+
+internal class NotificationManager : XNAControl, INotificationManager
+{
+    public NotificationManager(WindowManager windowManager) : base(windowManager)
     {
-        void AddNotification(string text);
+        InputEnabled = false;
+        Height = WindowManager.WindowHeight;
     }
 
-    internal class NotificationManager : XNAControl, INotificationManager
+    private List<Notification> notifications = new List<Notification>();
+
+    public void AddNotification(string text)
     {
-        public NotificationManager(WindowManager windowManager) : base(windowManager)
+        Notification notification = new Notification(WindowManager);
+        notification.Text = text;
+        notifications.Add(notification);
+        AddChild(notification);
+    }
+
+    private void RearrangeNotifications()
+    {
+        int yPos = 0;
+
+        foreach (Notification notification in notifications)
         {
-            InputEnabled = false;
-            Height = WindowManager.WindowHeight;
+            notification.Y = yPos;
+            yPos += notification.Height + Constants.UIVerticalSpacing * 2;
+            notification.X = (Width - notification.Width) / 2;
         }
+    }
 
-        private List<Notification> notifications = new List<Notification>();
+    public override void Update(GameTime gameTime)
+    {
+        base.Update(gameTime);
 
-        public void AddNotification(string text)
+        int i = 0;
+        while (i < notifications.Count)
         {
-            Notification notification = new Notification(WindowManager);
-            notification.Text = text;
-            notifications.Add(notification);
-            AddChild(notification);
-        }
-
-        private void RearrangeNotifications()
-        {
-            int yPos = 0;
-
-            foreach (Notification notification in notifications)
+            if (notifications[i].Alpha <= 0)
             {
-                notification.Y = yPos;
-                yPos += notification.Height + Constants.UIVerticalSpacing * 2;
-                notification.X = (Width - notification.Width) / 2;
-            }
-        }
-
-        public override void Update(GameTime gameTime)
-        {
-            base.Update(gameTime);
-
-            int i = 0;
-            while (i < notifications.Count)
-            {
-                if (notifications[i].Alpha <= 0)
-                {
-                    RemoveChild(notifications[i]);
-                    notifications.RemoveAt(i);
-                    continue;
-                }
-
-                i++;
+                RemoveChild(notifications[i]);
+                notifications.RemoveAt(i);
+                continue;
             }
 
-            RearrangeNotifications();
+            i++;
         }
+
+        RearrangeNotifications();
     }
 }

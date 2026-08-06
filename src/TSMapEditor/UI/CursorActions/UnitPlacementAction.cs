@@ -1,107 +1,106 @@
 ﻿using System;
+using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations.Classes;
 using Rampastring.XNAUI.Input;
-using TSMapEditor.GameMath;
-using TSMapEditor.Models;
-using TSMapEditor.Mutations.Classes;
 
-namespace TSMapEditor.UI.CursorActions
+namespace TSMapEditor.UI.CursorActions;
+
+/// <summary>
+/// A cursor action that allows placing units on the map.
+/// </summary>
+class UnitPlacementAction : CursorAction
 {
-    /// <summary>
-    /// A cursor action that allows placing units on the map.
-    /// </summary>
-    class UnitPlacementAction : CursorAction
+    public UnitPlacementAction(ICursorActionTarget cursorActionTarget, RKeyboard keyboard) : base(cursorActionTarget)
     {
-        public UnitPlacementAction(ICursorActionTarget cursorActionTarget, RKeyboard keyboard) : base(cursorActionTarget)
+        this.keyboard = keyboard;
+    }
+
+    public override string GetName() => Translate("Name", "Place Vehicle");
+
+    private Unit unit;
+
+    private UnitType _unitType;
+
+    private readonly RKeyboard keyboard;
+
+    public UnitType UnitType
+    {
+        get => _unitType;
+        set
         {
-            this.keyboard = keyboard;
-        }
-
-        public override string GetName() => Translate("Name", "Place Vehicle");
-
-        private Unit unit;
-
-        private UnitType _unitType;
-
-        private readonly RKeyboard keyboard;
-
-        public UnitType UnitType
-        {
-            get => _unitType;
-            set
+            if (_unitType != value)
             {
-                if (_unitType != value)
-                {
-                    _unitType = value;
+                _unitType = value;
 
-                    if (_unitType == null)
-                    {
-                        unit = null;
-                    }
-                    else
-                    {
-                        unit = new Unit(_unitType) { Owner = CursorActionTarget.MutationTarget.ObjectOwner };
-                    }
+                if (_unitType == null)
+                {
+                    unit = null;
+                }
+                else
+                {
+                    unit = new Unit(_unitType) { Owner = CursorActionTarget.MutationTarget.ObjectOwner };
                 }
             }
         }
+    }
 
-        public override void OnActionEnter()
+    public override void OnActionEnter()
+    {
+        if (unit != null)
+            unit.Owner = CursorActionTarget.MutationTarget.ObjectOwner;
+    }
+
+    public override void PreMapDraw(Point2D cellCoords)
+    {
+        // Assign preview data
+        unit.Position = cellCoords;
+
+        bool overlapObjects = KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(keyboard);
+
+        bool canPlace = Map.CanPlaceObjectAt(unit, cellCoords, false,
+            overlapObjects);
+
+        if (!canPlace)
+            return;
+
+        var tile = CursorActionTarget.Map.GetTile(cellCoords);
+        tile.Vehicles.Add(unit);
+        CursorActionTarget.TechnoUnderCursor = unit;
+        CursorActionTarget.AddRefreshPoint(cellCoords);
+    }
+
+    public override void PostMapDraw(Point2D cellCoords)
+    {
+        // Clear preview data
+        var tile = CursorActionTarget.Map.GetTile(cellCoords);
+        if (tile.Vehicles.Contains(unit))
         {
-            if (unit != null)
-                unit.Owner = CursorActionTarget.MutationTarget.ObjectOwner;
-        }
-
-        public override void PreMapDraw(Point2D cellCoords)
-        {
-            // Assign preview data
-            unit.Position = cellCoords;
-
-            bool overlapObjects = KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(keyboard);
-
-            bool canPlace = Map.CanPlaceObjectAt(unit, cellCoords, false,
-                overlapObjects);
-
-            if (!canPlace)
-                return;
-
-            var tile = CursorActionTarget.Map.GetTile(cellCoords);
-            tile.Vehicles.Add(unit);
-            CursorActionTarget.TechnoUnderCursor = unit;
+            tile.Vehicles.Remove(unit);
+            CursorActionTarget.TechnoUnderCursor = null;
             CursorActionTarget.AddRefreshPoint(cellCoords);
         }
+    }
 
-        public override void PostMapDraw(Point2D cellCoords)
-        {
-            // Clear preview data
-            var tile = CursorActionTarget.Map.GetTile(cellCoords);
-            if (tile.Vehicles.Contains(unit))
-            {
-                tile.Vehicles.Remove(unit);
-                CursorActionTarget.TechnoUnderCursor = null;
-                CursorActionTarget.AddRefreshPoint(cellCoords);
-            }
-        }
+    public override void LeftDown(Point2D cellCoords)
+    {
+        if (UnitType == null)
+            throw new InvalidOperationException(nameof(UnitType) + " cannot be null");
 
-        public override void LeftDown(Point2D cellCoords)
-        {
-            if (UnitType == null)
-                throw new InvalidOperationException(nameof(UnitType) + " cannot be null");
+        bool overlapObjects = KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(keyboard);
 
-            bool overlapObjects = KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(keyboard);
+        bool canPlace = Map.CanPlaceObjectAt(unit, cellCoords, false,
+            overlapObjects);
 
-            bool canPlace = Map.CanPlaceObjectAt(unit, cellCoords, false,
-                overlapObjects);
+        if (!canPlace)
+            return;
 
-            if (!canPlace)
-                return;
+        var mutation = new PlaceVehicleMutation(CursorActionTarget.MutationTarget, UnitType, cellCoords);
+        CursorActionTarget.MutationManager.PerformMutation(mutation);
+    }
 
-            var mutation = new PlaceVehicleMutation(CursorActionTarget.MutationTarget, UnitType, cellCoords);
-            CursorActionTarget.MutationManager.PerformMutation(mutation);
-        }
-
-        public override void LeftClick(Point2D cellCoords)
-        {
-            LeftDown(cellCoords);
-        }
+    public override void LeftClick(Point2D cellCoords)
+    {
+        LeftDown(cellCoords);
     }
 }

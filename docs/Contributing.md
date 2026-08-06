@@ -36,6 +36,12 @@ WAE supports all target games through a single executable. All submitted code _m
 
 There are 3 branches: `master` is for Dawn of the Tiberium Age, `tsclient` is for Tiberian Sun (CnCNet Client version), and `yr` is for Yuri's Revenge. Code-wise these branches are identical, but `tsclient` and `yr` have one additional commit that gives them different INI configurations compared to `master`.
 
+### Fail-Fast Design
+
+Do not write defensive code. Incorrect mod configurations or unexpected/potentially corrupted state should raise an exception with a clear message instead of being tolerated. This allows us to catch possible bugs and issues early. The only exception to this is config mistakes that are present in original Tiberian Sun or Red Alert 2 or their expansion packs - we have to tolerate those due to the nature of the application.
+
+This naturally does not apply to MCP server message parsing or other data received from an outside application. Such data should always be validated before it is acted upon. Potential validation failures should be logged and related operations skipped.
+
 ### Translations
 
 If your code introduces new strings that are displayed in the user interface, the strings _must_ go through the fitting `Translate` function to enable multi-language support. The codebase has a lot of examples on how to do this. Also, you need to add the new strings in a fitting location in the `Translation_en.ini` reference translation file.
@@ -81,6 +87,11 @@ if (SomeReallyLongCondition() ||
 {
     DoSomething();
 }
+
+// Not OK
+if (SomeReallyLongCondition() ||
+    ThatSplitsIntoMultipleLines())
+        DoSomething();
 
 // OK
 if (SomeCondition())
@@ -142,6 +153,21 @@ if (SomeCondition())
     return;
 }
 ```
+
+- Do not separate function call parameters on their own lines unless the code for the call would become prohibitely wide (over 160 characters). If the line becomes too wide, prefer splitting it at the parameter where it would become too wide, instead of at each parameter.
+
+```
+// OK
+mcpServer = new MCPServer(WindowManager, new MapFacade(map, mutationManager, mapUI.MutationTarget), new ScriptingFacade(map), mapUI);
+
+// Not OK
+mcpServer = new MCPServer(
+    WindowManager,
+    new MapFacade(map, mutationManager, mapUI.MutationTarget),
+    new ScriptingFacade(map),
+    mapUI);
+```
+
 - Use `var` with local variables when the type of the variable is obvious from the code or the type is not relevant. Never use `var` with primitive types.
 ```cs
 // OK

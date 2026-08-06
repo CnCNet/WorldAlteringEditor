@@ -5,48 +5,47 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 
-namespace TSMapEditor.UI.Controls
+namespace TSMapEditor.UI.Controls;
+
+public class EditorLinkLabel : XNALinkLabel
 {
-    public class EditorLinkLabel : XNALinkLabel
+    public EditorLinkLabel(WindowManager windowManager) : base(windowManager)
     {
-        public EditorLinkLabel(WindowManager windowManager) : base(windowManager)
+    }
+
+    public string URL { get; set; }
+
+    protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
+    {
+        if (key == "URL")
         {
+            URL = value;
+            return;
         }
 
-        public string URL { get; set; }
+        base.ParseControlINIAttribute(iniFile, key, value);
+    }
 
-        protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
+    public override void OnLeftClick(InputEventArgs inputEventArgs)
+    {
+        inputEventArgs.Handled = true;
+
+        if (!string.IsNullOrWhiteSpace(URL))
         {
-            if (key == "URL")
+            try
             {
-                URL = value;
-                return;
+                Process.Start(new ProcessStartInfo(URL) { UseShellExecute = true });
             }
-
-            base.ParseControlINIAttribute(iniFile, key, value);
-        }
-
-        public override void OnLeftClick(InputEventArgs inputEventArgs)
-        {
-            inputEventArgs.Handled = true;
-
-            if (!string.IsNullOrWhiteSpace(URL))
+            catch (Win32Exception ex)
             {
-                try
-                {
-                    Process.Start(new ProcessStartInfo(URL) { UseShellExecute = true });
-                }
-                catch (Win32Exception ex)
-                {
-                    Logger.Log($"Win32Exception when calling Process.Start from link label (URL: {URL}), exception message: {ex.Message}");
-                }
-                catch (FileNotFoundException ex)
-                {
-                    Logger.Log($"FileNotFoundException when calling Process.Start from link label (URL: {URL}), exception message: {ex.Message}");
-                }
+                Logger.Log($"Win32Exception when calling Process.Start from link label (URL: {URL}), exception message: {ex.Message}");
             }
-
-            base.OnLeftClick(inputEventArgs);
+            catch (FileNotFoundException ex)
+            {
+                Logger.Log($"FileNotFoundException when calling Process.Start from link label (URL: {URL}), exception message: {ex.Message}");
+            }
         }
+
+        base.OnLeftClick(inputEventArgs);
     }
 }

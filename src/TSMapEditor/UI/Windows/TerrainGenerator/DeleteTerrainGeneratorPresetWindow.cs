@@ -1,49 +1,48 @@
 ﻿using Rampastring.XNAUI.XNAControls;
 using Rampastring.XNAUI;
 using System;
-using TSMapEditor.Mutations.Classes;
-using TSMapEditor.Settings;
+using MapEditorLibrary.Mutations.Classes;
+using MapEditorLibrary.Configuration;
 
-namespace TSMapEditor.UI.Windows.TerrainGenerator
+namespace TSMapEditor.UI.Windows.TerrainGenerator;
+
+internal class DeleteTerrainGeneratorPresetWindow : SelectObjectWindow<TerrainGeneratorConfiguration>
 {
-    internal class DeleteTerrainGeneratorPresetWindow : SelectObjectWindow<TerrainGeneratorConfiguration>
+    public DeleteTerrainGeneratorPresetWindow(WindowManager windowManager, TerrainGeneratorUserPresets userPresets) : base(windowManager)
     {
-        public DeleteTerrainGeneratorPresetWindow(WindowManager windowManager, TerrainGeneratorUserPresets userPresets) : base(windowManager)
+        this.userPresets = userPresets;
+    }
+
+    private readonly TerrainGeneratorUserPresets userPresets;
+
+    public override void Initialize()
+    {
+        Name = nameof(DeleteTerrainGeneratorPresetWindow);
+        base.Initialize();
+    }
+
+    protected override void LbObjectList_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (lbObjectList.SelectedItem == null)
         {
-            this.userPresets = userPresets;
+            SelectedObject = null;
+            return;
         }
 
-        private readonly TerrainGeneratorUserPresets userPresets;
+        SelectedObject = (TerrainGeneratorConfiguration)lbObjectList.SelectedItem.Tag;
+    }
 
-        public override void Initialize()
+    protected override void ListObjects()
+    {
+        lbObjectList.Clear();
+
+        var configs = userPresets.GetConfigurationsForCurrentTheater();
+
+        for (int i = 0; i < configs.Count; i++)
         {
-            Name = nameof(DeleteTerrainGeneratorPresetWindow);
-            base.Initialize();
-        }
+            TerrainGeneratorConfiguration config = configs[i];
 
-        protected override void LbObjectList_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (lbObjectList.SelectedItem == null)
-            {
-                SelectedObject = null;
-                return;
-            }
-
-            SelectedObject = (TerrainGeneratorConfiguration)lbObjectList.SelectedItem.Tag;
-        }
-
-        protected override void ListObjects()
-        {
-            lbObjectList.Clear();
-
-            var configs = userPresets.GetConfigurationsForCurrentTheater();
-
-            for (int i = 0; i < configs.Count; i++)
-            {
-                TerrainGeneratorConfiguration config = configs[i];
-
-                lbObjectList.AddItem(new XNAListBoxItem() { Text = $"{config.Name}", Tag = config });
-            }
+            lbObjectList.AddItem(new XNAListBoxItem() { Text = $"{config.Name}", Tag = config });
         }
     }
 }

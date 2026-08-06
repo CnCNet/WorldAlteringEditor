@@ -1,339 +1,340 @@
+using MapEditorLibrary;
+using MapEditorLibrary.CCEngine;
+using MapEditorLibrary.CCEngine.TileData;
+using MapEditorLibrary.Graphics;
+using MapEditorLibrary.Models;
+using MapEditorLibrary.Models.Enums;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using TSMapEditor.CCEngine;
-using TSMapEditor.CCEngine.TileData;
-using TSMapEditor.Models;
-using TSMapEditor.Models.Enums;
 using TSMapEditor.Rendering;
 
-namespace TSMapEditor.UI
+namespace TSMapEditor.UI;
+
+/// <summary>
+/// A panel that displays information about a single tile.
+/// </summary>
+public class TileInfoDisplay : EditorPanel
 {
-    /// <summary>
-    /// A panel that displays information about a single tile.
-    /// </summary>
-    public class TileInfoDisplay : EditorPanel
+    public TileInfoDisplay(WindowManager windowManager, Map map, TheaterGraphics theaterGraphics, EditorState editorState) : base(windowManager)
     {
-        public TileInfoDisplay(WindowManager windowManager, Map map, TheaterGraphics theaterGraphics, EditorState editorState) : base(windowManager)
+        this.map = map;
+        this.theaterGraphics = theaterGraphics;
+        this.editorState = editorState;
+        InputEnabled = false;
+    }
+
+    private readonly Map map;
+    private readonly TheaterGraphics theaterGraphics;
+    private readonly EditorState editorState;
+
+    private MapTile _mapTile;
+    public MapTile MapTile
+    {
+        get => _mapTile;
+        set { _mapTile = value; RefreshInfo(); }
+    }
+
+    private XNATextRenderer textRenderer;
+
+    public override void Initialize()
+    {
+        Name = nameof(TileInfoDisplay);
+
+        Width = 300;
+
+        textRenderer = new XNATextRenderer(WindowManager);
+        textRenderer.Name = nameof(textRenderer);
+        textRenderer.X = Constants.UIEmptySideSpace;
+        textRenderer.Y = Constants.UIEmptyTopSpace;
+        textRenderer.Padding = 0;
+        textRenderer.SpaceBetweenLines = 2;
+        textRenderer.Width = Width - Constants.UIEmptySideSpace * 2;
+        AddChild(textRenderer);
+
+        WindowManager.RenderResolutionChanged += WindowManager_RenderResolutionChanged;
+
+        base.Initialize();
+    }
+
+    private void WindowManager_RenderResolutionChanged(object sender, EventArgs e)
+    {
+        X = WindowManager.RenderResolutionX - Width;
+    }
+
+    private void RefreshInfo()
+    {
+        textRenderer.ClearTextParts();
+
+        if (MapTile == null)
         {
-            this.map = map;
-            this.theaterGraphics = theaterGraphics;
-            this.editorState = editorState;
-            InputEnabled = false;
+            Visible = false;
+            return;
         }
 
-        private readonly Map map;
-        private readonly TheaterGraphics theaterGraphics;
-        private readonly EditorState editorState;
+        Color subtleTextColor = Color.Gray;
+        Color baseTextColor = Color.White;
 
-        private MapTile _mapTile;
-        public MapTile MapTile
+        Visible = true;
+
+        if (editorState.CursorAction != null)
         {
-            get => _mapTile;
-            set { _mapTile = value; RefreshInfo(); }
+            textRenderer.AddTextPart(new XNATextPart(Translate(this, "SelectedTool", "Selected tool: "), Constants.UIDefaultFont, subtleTextColor));
+            textRenderer.AddTextPart(new XNATextPart(editorState.CursorAction.GetName() + Environment.NewLine, Constants.UIDefaultFont, baseTextColor));
+        }
+        else
+        {
+            textRenderer.AddTextPart(new XNATextPart(Translate(this, "NoToolSelected", "No tool selected") + Environment.NewLine, Constants.UIDefaultFont, subtleTextColor));
         }
 
-        private XNATextRenderer textRenderer;
+        textRenderer.AddTextPart(new XNATextPart(MapTile.X + ", " + MapTile.Y + Environment.NewLine, Constants.UIDefaultFont, baseTextColor));
 
-        public override void Initialize()
+        MGTileImage tileGraphics = theaterGraphics.GetTileGraphics(MapTile.TileIndex);
+        TileSet tileSet = theaterGraphics.Theater.TileSets[tileGraphics.TileSetId];
+        textRenderer.AddTextPart(new XNATextPart(Translate(this, "TileSet", "TileSet: "), Constants.UIDefaultFont, subtleTextColor));
+        textRenderer.AddTextPart(new XNATextPart(tileSet.TranslatedName + " (" + tileGraphics.TileSetId + ")", Constants.UIDefaultFont, baseTextColor));
+        textRenderer.AddTextPart(new XNATextPart(Translate(this, "TileNumber", "Tile #: "), Constants.UIDefaultFont, subtleTextColor));
+        textRenderer.AddTextPart(new XNATextPart((MapTile.TileIndex - tileSet.StartTileIndex).ToString(CultureInfo.InvariantCulture), Constants.UIDefaultFont, baseTextColor));
+
+        ISubTileImage subCellImage = MapTile.SubTileIndex < tileGraphics.SubTileCount ? tileGraphics.GetSubTile(MapTile.SubTileIndex) : null;
+        string terrainType = subCellImage != null && subCellImage.TmpImage != null ? Helpers.LandTypeToString(subCellImage.TmpImage.TerrainType) : Translate(this, "Unknown", "Unknown");
+
+        textRenderer.AddTextLine(new XNATextPart(Translate(this, "TerrainType", "Terrain Type: "), Constants.UIDefaultFont, subtleTextColor));
+        textRenderer.AddTextPart(new XNATextPart(terrainType, Constants.UIDefaultFont, baseTextColor));
+
+        if (!Constants.IsFlatWorld)
         {
-            Name = nameof(TileInfoDisplay);
-
-            Width = 300;
-
-            textRenderer = new XNATextRenderer(WindowManager);
-            textRenderer.Name = nameof(textRenderer);
-            textRenderer.X = Constants.UIEmptySideSpace;
-            textRenderer.Y = Constants.UIEmptyTopSpace;
-            textRenderer.Padding = 0;
-            textRenderer.SpaceBetweenLines = 2;
-            textRenderer.Width = Width - Constants.UIEmptySideSpace * 2;
-            AddChild(textRenderer);
-
-            WindowManager.RenderResolutionChanged += WindowManager_RenderResolutionChanged;
-
-            base.Initialize();
+            textRenderer.AddTextLine(new XNATextPart(Translate(this, "Height", "Height: "), Constants.UIDefaultFont, subtleTextColor));
+            textRenderer.AddTextPart(new XNATextPart(MapTile.Level.ToString(), Constants.UIDefaultFont, baseTextColor));
         }
 
-        private void WindowManager_RenderResolutionChanged(object sender, EventArgs e)
+        CellTag cellTag = MapTile.CellTag;
+        if (cellTag != null)
         {
-            X = WindowManager.RenderResolutionX - Width;
+            textRenderer.AddTextLine(new XNATextPart(Translate(this, "CellTag", "CellTag: "),
+                Constants.UIDefaultFont, subtleTextColor));
+            textRenderer.AddTextPart(new XNATextPart(cellTag.Tag.Name + " (" + cellTag.Tag.ID + ")",
+                Constants.UIDefaultFont, cellTag.Tag.Trigger.EditorColor == null ? baseTextColor : cellTag.Tag.Trigger.XNAColor));
         }
 
-        private void RefreshInfo()
+        Overlay overlay = MapTile.Overlay;
+        if (overlay != null)
         {
-            textRenderer.ClearTextParts();
+            textRenderer.AddTextLine(new XNATextPart(
+                Translate(this, "Overlay", "Overlay: "),
+                Constants.UIDefaultFont, subtleTextColor));
 
-            if (MapTile == null)
-            {
-                Visible = false;
-                return;
-            }
-
-            Color subtleTextColor = Color.Gray;
-            Color baseTextColor = Color.White;
-
-            Visible = true;
-
-            if (editorState.CursorAction != null)
-            {
-                textRenderer.AddTextPart(new XNATextPart(Translate(this, "SelectedTool", "Selected tool: "), Constants.UIDefaultFont, subtleTextColor));
-                textRenderer.AddTextPart(new XNATextPart(editorState.CursorAction.GetName() + Environment.NewLine, Constants.UIDefaultFont, baseTextColor));
-            }
-            else
-            {
-                textRenderer.AddTextPart(new XNATextPart(Translate(this, "NoToolSelected", "No tool selected") + Environment.NewLine, Constants.UIDefaultFont, subtleTextColor));
-            }
-
-            textRenderer.AddTextPart(new XNATextPart(MapTile.X + ", " + MapTile.Y + Environment.NewLine, Constants.UIDefaultFont, baseTextColor));
-
-            MGTileImage tileGraphics = theaterGraphics.GetTileGraphics(MapTile.TileIndex);
-            TileSet tileSet = theaterGraphics.Theater.TileSets[tileGraphics.TileSetId];
-            textRenderer.AddTextPart(new XNATextPart(Translate(this, "TileSet", "TileSet: "), Constants.UIDefaultFont, subtleTextColor));
-            textRenderer.AddTextPart(new XNATextPart(tileSet.TranslatedName + " (" + tileGraphics.TileSetId + ")", Constants.UIDefaultFont, baseTextColor));
-            textRenderer.AddTextPart(new XNATextPart(Translate(this, "TileNumber", "Tile #: "), Constants.UIDefaultFont, subtleTextColor));
-            textRenderer.AddTextPart(new XNATextPart((MapTile.TileIndex - tileSet.StartTileIndex).ToString(CultureInfo.InvariantCulture), Constants.UIDefaultFont, baseTextColor));
-
-            ISubTileImage subCellImage = MapTile.SubTileIndex < tileGraphics.SubTileCount ? tileGraphics.GetSubTile(MapTile.SubTileIndex) : null;
-            string terrainType = subCellImage != null && subCellImage.TmpImage != null ? Helpers.LandTypeToString(subCellImage.TmpImage.TerrainType) : Translate(this, "Unknown", "Unknown");
-
-            textRenderer.AddTextLine(new XNATextPart(Translate(this, "TerrainType", "Terrain Type: "), Constants.UIDefaultFont, subtleTextColor));
-            textRenderer.AddTextPart(new XNATextPart(terrainType, Constants.UIDefaultFont, baseTextColor));
-
-            if (!Constants.IsFlatWorld)
-            {
-                textRenderer.AddTextLine(new XNATextPart(Translate(this, "Height", "Height: "), Constants.UIDefaultFont, subtleTextColor));
-                textRenderer.AddTextPart(new XNATextPart(MapTile.Level.ToString(), Constants.UIDefaultFont, baseTextColor));
-            }
-
-            CellTag cellTag = MapTile.CellTag;
-            if (cellTag != null)
-            {
-                textRenderer.AddTextLine(new XNATextPart(Translate(this, "CellTag", "CellTag: "),
-                    Constants.UIDefaultFont, subtleTextColor));
-                textRenderer.AddTextPart(new XNATextPart(cellTag.Tag.Name + " (" + cellTag.Tag.ID + ")",
-                    Constants.UIDefaultFont, cellTag.Tag.Trigger.EditorColor == null ? baseTextColor : cellTag.Tag.Trigger.XNAColor));
-            }
-
-            Overlay overlay = MapTile.Overlay;
-            if (overlay != null)
-            {
-                textRenderer.AddTextLine(new XNATextPart(
-                    Translate(this, "Overlay", "Overlay: "),
-                    Constants.UIDefaultFont, subtleTextColor));
-
-                textRenderer.AddTextPart(new XNATextPart(
-                    string.Format(Translate(this, "OverlayDetails",
-                    "{0} ({1} {2}), Frame: {3}, Terrain Type: {4}"),
-                    overlay.OverlayType.Name, overlay.OverlayType.Index, overlay.OverlayType.ININame, overlay.FrameIndex, overlay.OverlayType.Land),
-                    Constants.UIDefaultFont, baseTextColor));
-            }
-
-            MapTile.DoForAllAircraft(aircraft => AddObjectInformation(Translate(this, "Aircraft", "Aircraft: "), aircraft));
-            MapTile.DoForAllVehicles(unit => AddObjectInformation(Translate(this, "Vehicle", "Vehicle: "), unit));
-            MapTile.DoForAllBuildings(structure => AddObjectInformation(Translate(this, "Structure", "Structure: "), structure));
-            MapTile.DoForAllInfantry(inf => AddObjectInformation(Translate(this, "Infantry", "Infantry: "), inf));
-            MapTile.DoForAllWaypoints(waypoint => AddWaypointInfo(waypoint));
-            AddBaseNodeInformation(map.GetBaseNodes(MapTile.CoordsToPoint()));
-            AddTerrainObjectInformation(MapTile.TerrainObject);
-
-            textRenderer.PrepareTextParts();
-
-            Height = textRenderer.Bottom + Constants.UIEmptyBottomSpace;
+            textRenderer.AddTextPart(new XNATextPart(
+                string.Format(Translate(this, "OverlayDetails",
+                "{0} ({1} {2}), Frame: {3}, Terrain Type: {4}"),
+                overlay.OverlayType.Name, overlay.OverlayType.Index, overlay.OverlayType.ININame, overlay.FrameIndex, overlay.OverlayType.Land),
+                Constants.UIDefaultFont, baseTextColor));
         }
 
-        private void AddWaypointInfo(Waypoint waypoint)
+        MapTile.DoForAllAircraft(aircraft => AddObjectInformation(Translate(this, "Aircraft", "Aircraft: "), aircraft));
+        MapTile.DoForAllVehicles(unit => AddObjectInformation(Translate(this, "Vehicle", "Vehicle: "), unit));
+        MapTile.DoForAllBuildings(structure => AddObjectInformation(Translate(this, "Structure", "Structure: "), structure));
+        MapTile.DoForAllInfantry(inf => AddObjectInformation(Translate(this, "Infantry", "Infantry: "), inf));
+        MapTile.DoForAllWaypoints(waypoint => AddWaypointInfo(waypoint));
+        AddBaseNodeInformation(map.GetBaseNodes(MapTile.CoordsToPoint()));
+        AddTerrainObjectInformation(MapTile.TerrainObject);
+
+        textRenderer.PrepareTextParts();
+
+        Height = textRenderer.Bottom + Constants.UIEmptyBottomSpace;
+    }
+
+    private void AddWaypointInfo(Waypoint waypoint)
+    {
+        // Find all usages for this waypoint
+        List<string> usages = new List<string>(0);
+
+        foreach (Trigger trigger in map.Triggers)
         {
-            // Find all usages for this waypoint
-            List<string> usages = new List<string>(0);
+            bool usageFound = false;
 
-            foreach (Trigger trigger in map.Triggers)
+            foreach (var action in trigger.Actions)
             {
-                bool usageFound = false;
-
-                foreach (var action in trigger.Actions)
-                {
-                    if (usageFound)
-                        break;
-
-                    var triggerActionType = map.EditorConfig.TriggerActionTypes.GetValueOrDefault(action.ActionIndex);
-
-                    if (triggerActionType == null)
-                        continue;
-
-                    for (int i = 0; i < triggerActionType.Parameters.Length; i++)
-                    {
-                        if (triggerActionType.Parameters[i] == null)
-                            continue;
-
-                        var param = triggerActionType.Parameters[i];
-
-                        if (param.TriggerParamType == TriggerParamType.Waypoint && action.Parameters[i] == waypoint.Identifier.ToString())
-                        {
-                            usageFound = true;
-                        }
-                        else if (param.TriggerParamType == TriggerParamType.WaypointZZ && action.Parameters[i] == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
-                        {
-                            usageFound = true;
-                        }
-                    }
-                }
-
-                foreach (var condition in trigger.Conditions)
-                {
-                    if (usageFound)
-                        break;
-
-                    var triggerEventType = map.EditorConfig.TriggerEventTypes.GetValueOrDefault(condition.ConditionIndex);
-
-                    if (triggerEventType == null)
-                        continue;
-
-                    for (int i = 0; i < triggerEventType.Parameters.Length; i++)
-                    {
-                        if (triggerEventType.Parameters[i] == null)
-                            continue;
-
-                        var param = triggerEventType.Parameters[i];
-
-                        if (param.TriggerParamType == TriggerParamType.Waypoint && condition.Parameters[i] == waypoint.Identifier.ToString())
-                        {
-                            usageFound = true;
-                        }
-                        else if (param.TriggerParamType == TriggerParamType.WaypointZZ && condition.Parameters[i] == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
-                        {
-                            usageFound = true;
-                        }
-                    }
-                }
-
                 if (usageFound)
-                    usages.Add(string.Format(Translate(this, "TriggerInWaypoint", "trigger '{0}', "), trigger.Name));
-            }
+                    break;
 
-            foreach (Script script in map.Scripts)
-            {
-                foreach (var actionEntry in script.Actions)
+                var triggerActionType = map.EditorConfig.TriggerActionTypes.GetValueOrDefault(action.ActionIndex);
+
+                if (triggerActionType == null)
+                    continue;
+
+                for (int i = 0; i < triggerActionType.Parameters.Length; i++)
                 {
-                    var scriptAction = map.EditorConfig.ScriptActions.GetValueOrDefault(actionEntry.Action);
-
-                    if (scriptAction == null)
-                    {
+                    if (triggerActionType.Parameters[i] == null)
                         continue;
-                    }
 
-                    if (scriptAction.ParamType == TriggerParamType.Waypoint && actionEntry.Argument == waypoint.Identifier)
+                    var param = triggerActionType.Parameters[i];
+
+                    if (param.TriggerParamType == TriggerParamType.Waypoint && action.Parameters[i] == waypoint.Identifier.ToString())
                     {
-                        usages.Add(string.Format(Translate(this, "ScriptInWaypoint", 
-                            "script '{0}', "), script.Name));
+                        usageFound = true;
+                    }
+                    else if (param.TriggerParamType == TriggerParamType.WaypointZZ && action.Parameters[i] == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
+                    {
+                        usageFound = true;
                     }
                 }
             }
 
-            foreach (TeamType team in map.TeamTypes)
+            foreach (var condition in trigger.Conditions)
             {
-                if (team.Waypoint == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
+                if (usageFound)
+                    break;
+
+                var triggerEventType = map.EditorConfig.TriggerEventTypes.GetValueOrDefault(condition.ConditionIndex);
+
+                if (triggerEventType == null)
+                    continue;
+
+                for (int i = 0; i < triggerEventType.Parameters.Length; i++)
                 {
-                    usages.Add(string.Format(Translate(this, "TeamTypeInwaypoint", 
-                        "team '{0}', "), team.Name));
+                    if (triggerEventType.Parameters[i] == null)
+                        continue;
+
+                    var param = triggerEventType.Parameters[i];
+
+                    if (param.TriggerParamType == TriggerParamType.Waypoint && condition.Parameters[i] == waypoint.Identifier.ToString())
+                    {
+                        usageFound = true;
+                    }
+                    else if (param.TriggerParamType == TriggerParamType.WaypointZZ && condition.Parameters[i] == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
+                    {
+                        usageFound = true;
+                    }
                 }
             }
 
-            if (usages.Count > 0)
+            if (usageFound)
+                usages.Add(string.Format(Translate(this, "TriggerInWaypoint", "trigger '{0}', "), trigger.Name));
+        }
+
+        foreach (Script script in map.Scripts)
+        {
+            foreach (var actionEntry in script.Actions)
             {
-                string lastUsage = usages[usages.Count - 1];
-                usages[usages.Count - 1] = lastUsage.Substring(0, lastUsage.Length - 2);
+                var scriptAction = map.EditorConfig.ScriptActions.GetValueOrDefault(actionEntry.Action);
 
-                textRenderer.AddTextLine(new XNATextPart(string.Format(Translate(this, "UsagesOfWaypoint", 
-                    "Usages of waypoint {0}:"), waypoint.Identifier), 
-                    Constants.UIDefaultFont, 
-                    Color.Gray));
-
-                foreach (var usage in usages)
+                if (scriptAction == null)
                 {
-                    textRenderer.AddTextPart(new XNATextPart(usage, Constants.UIDefaultFont, Color.White));
+                    continue;
+                }
+
+                if (scriptAction.ParamType == TriggerParamType.Waypoint && actionEntry.Argument == waypoint.Identifier)
+                {
+                    usages.Add(string.Format(Translate(this, "ScriptInWaypoint", 
+                        "script '{0}', "), script.Name));
                 }
             }
         }
 
-        private void AddObjectInformation<T>(string objectTypeLabel, Techno<T> techno) where T : TechnoType
+        foreach (TeamType team in map.TeamTypes)
         {
-            textRenderer.AddTextLine(new XNATextPart(objectTypeLabel,
-                Constants.UIDefaultFont, Color.Gray));
-            textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "TechnoInformation", 
-                "{0} ({1}), Owner:"),
-                techno.ObjectType.GetEditorDisplayName(), techno.ObjectType.ININame),
+            if (team.Waypoint == Helpers.WaypointNumberToAlphabeticalString(waypoint.Identifier))
+            {
+                usages.Add(string.Format(Translate(this, "TeamTypeInwaypoint", 
+                    "team '{0}', "), team.Name));
+            }
+        }
+
+        if (usages.Count > 0)
+        {
+            string lastUsage = usages[usages.Count - 1];
+            usages[usages.Count - 1] = lastUsage.Substring(0, lastUsage.Length - 2);
+
+            textRenderer.AddTextLine(new XNATextPart(string.Format(Translate(this, "UsagesOfWaypoint", 
+                "Usages of waypoint {0}:"), waypoint.Identifier), 
+                Constants.UIDefaultFont, 
+                Color.Gray));
+
+            foreach (var usage in usages)
+            {
+                textRenderer.AddTextPart(new XNATextPart(usage, Constants.UIDefaultFont, Color.White));
+            }
+        }
+    }
+
+    private void AddObjectInformation<T>(string objectTypeLabel, Techno<T> techno) where T : TechnoType
+    {
+        textRenderer.AddTextLine(new XNATextPart(objectTypeLabel,
+            Constants.UIDefaultFont, Color.Gray));
+        textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "TechnoInformation", 
+            "{0} ({1}), Owner:"),
+            techno.ObjectType.GetEditorDisplayName(), techno.ObjectType.ININame),
+            Constants.UIDefaultFont, Color.White));
+        textRenderer.AddTextPart(new XNATextPart(techno.Owner.ININame, Constants.UIBoldFont, techno.Owner.XNAColor));
+
+        if (techno.IsFoot())
+        {
+            var technoAsFoot = techno as Foot<T>;
+            textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "TechnoMission", 
+                "Mission: {0}"), technoAsFoot.Mission),
                 Constants.UIDefaultFont, Color.White));
-            textRenderer.AddTextPart(new XNATextPart(techno.Owner.ININame, Constants.UIBoldFont, techno.Owner.XNAColor));
+        }
 
-            if (techno.IsFoot())
+        if (techno.WhatAmI() == RTTIType.Unit)
+        {
+            var unit = techno as Unit;
+            int id = map.Units.IndexOf(unit);
+            textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "TechnoFacing",
+                "Facing: {0}"), techno.Facing),
+                Constants.UIDefaultFont, Color.White));
+
+            if (unit.FollowerUnit != null)
             {
-                var technoAsFoot = techno as Foot<T>;
-                textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "TechnoMission", 
-                    "Mission: {0}"), technoAsFoot.Mission),
-                    Constants.UIDefaultFont, Color.White));
-            }
-
-            if (techno.WhatAmI() == RTTIType.Unit)
-            {
-                var unit = techno as Unit;
-                int id = map.Units.IndexOf(unit);
-                textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "TechnoFacing",
-                    "Facing: {0}"), techno.Facing),
-                    Constants.UIDefaultFont, Color.White));
-
-                if (unit.FollowerUnit != null)
+                int followerId = map.Units.IndexOf(unit.FollowerUnit);
+                if (followerId > -1)
                 {
-                    int followerId = map.Units.IndexOf(unit.FollowerUnit);
-                    if (followerId > -1)
-                    {
-                        string followerName = unit.FollowerUnit.UnitType.GetEditorDisplayName();
-                        textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "UnitFollower",
-                            "Follower: {0} at {1}"), followerName, unit.FollowerUnit.Position),
-                            Constants.UIDefaultFont, Color.White));
-                    }
+                    string followerName = unit.FollowerUnit.UnitType.GetEditorDisplayName();
+                    textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "UnitFollower",
+                        "Follower: {0} at {1}"), followerName, unit.FollowerUnit.Position),
+                        Constants.UIDefaultFont, Color.White));
                 }
             }
-            
-            if (techno.AttachedTag != null)
-            {
-                textRenderer.AddTextPart(new XNATextPart(",", Constants.UIDefaultFont, Color.White));
-                textRenderer.AddTextPart(new XNATextPart(Translate(this, "TechnoTag", "Tag:"), Constants.UIDefaultFont, Color.White));
-                textRenderer.AddTextPart(new XNATextPart(techno.AttachedTag.Name + " (" + techno.AttachedTag.ID + ")", Constants.UIBoldFont, Color.White));
-            }
         }
-
-        private void AddBaseNodeInformation(List<BaseNode> baseNodes)
+        
+        if (techno.AttachedTag != null)
         {
-            foreach (var baseNode in baseNodes)
-            {
-                var nodeBuildingType = map.Rules.BuildingTypes.Find(bt => bt.ININame == baseNode.StructureTypeName);
-                var house = map.Houses.Find(house => house.BaseNodes.Contains(baseNode));
-
-                if (nodeBuildingType == null || house == null)
-                    return;
-
-                textRenderer.AddTextLine(new XNATextPart(Translate(this, "HouseBaseNodesHeader", "Base Node: "), Constants.UIDefaultFont, Color.Gray));
-                textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "HouseBaseNodesInfo",
-                    "{0} ({1}), Owner:"), TranslateObject(nodeBuildingType.ININame, nodeBuildingType.Name), nodeBuildingType.ININame),
-                    Constants.UIDefaultFont, Color.White));
-                textRenderer.AddTextPart(new XNATextPart(house.ININame, Constants.UIBoldFont, house.XNAColor));
-            }
+            textRenderer.AddTextPart(new XNATextPart(",", Constants.UIDefaultFont, Color.White));
+            textRenderer.AddTextPart(new XNATextPart(Translate(this, "TechnoTag", "Tag:"), Constants.UIDefaultFont, Color.White));
+            textRenderer.AddTextPart(new XNATextPart(techno.AttachedTag.Name + " (" + techno.AttachedTag.ID + ")", Constants.UIBoldFont, Color.White));
         }
+    }
 
-        private void AddTerrainObjectInformation(TerrainObject terrainObject)
+    private void AddBaseNodeInformation(List<BaseNode> baseNodes)
+    {
+        foreach (var baseNode in baseNodes)
         {
-            if (terrainObject == null)
+            var nodeBuildingType = map.Rules.BuildingTypes.Find(bt => bt.ININame == baseNode.StructureTypeName);
+            var house = map.Houses.Find(house => house.BaseNodes.Contains(baseNode));
+
+            if (nodeBuildingType == null || house == null)
                 return;
 
-            textRenderer.AddTextLine(new XNATextPart(Translate(this, "TerrainObjectHeader", "Terrain Object: "), Constants.UIDefaultFont, Color.Gray));
-            textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "TerrainObjectInfo", 
-                "{0} ({1})"),
-                terrainObject.TerrainType.Name, terrainObject.TerrainType.ININame),
+            textRenderer.AddTextLine(new XNATextPart(Translate(this, "HouseBaseNodesHeader", "Base Node: "), Constants.UIDefaultFont, Color.Gray));
+            textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "HouseBaseNodesInfo",
+                "{0} ({1}), Owner:"), TranslateObject(nodeBuildingType.ININame, nodeBuildingType.Name), nodeBuildingType.ININame),
                 Constants.UIDefaultFont, Color.White));
+            textRenderer.AddTextPart(new XNATextPart(house.ININame, Constants.UIBoldFont, house.XNAColor));
         }
+    }
+
+    private void AddTerrainObjectInformation(TerrainObject terrainObject)
+    {
+        if (terrainObject == null)
+            return;
+
+        textRenderer.AddTextLine(new XNATextPart(Translate(this, "TerrainObjectHeader", "Terrain Object: "), Constants.UIDefaultFont, Color.Gray));
+        textRenderer.AddTextPart(new XNATextPart(string.Format(Translate(this, "TerrainObjectInfo", 
+            "{0} ({1})"),
+            terrainObject.TerrainType.Name, terrainObject.TerrainType.ININame),
+            Constants.UIDefaultFont, Color.White));
     }
 }

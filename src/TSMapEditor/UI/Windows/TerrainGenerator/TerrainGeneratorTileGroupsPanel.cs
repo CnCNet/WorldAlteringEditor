@@ -1,207 +1,207 @@
-﻿using Rampastring.Tools;
+﻿using MapEditorLibrary;
+using MapEditorLibrary.CCEngine;
+using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations.Classes;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using TSMapEditor.CCEngine;
-using TSMapEditor.Models;
-using TSMapEditor.Mutations.Classes;
 using TSMapEditor.UI.Controls;
 
-namespace TSMapEditor.UI.Windows.TerrainGenerator
+namespace TSMapEditor.UI.Windows.TerrainGenerator;
+
+/// <summary>
+/// A panel that allows the user to customize how the terrain 
+/// generator places terrain tiles on the map.
+/// </summary>
+public class TerrainGeneratorTileGroupsPanel : EditorPanel
 {
-    /// <summary>
-    /// A panel that allows the user to customize how the terrain 
-    /// generator places terrain tiles on the map.
-    /// </summary>
-    public class TerrainGeneratorTileGroupsPanel : EditorPanel
+    private const int MaxTileGroupCount = 8;
+
+    public TerrainGeneratorTileGroupsPanel(WindowManager windowManager, Map map) : base(windowManager)
     {
-        private const int MaxTileGroupCount = 8;
+        this.map = map;
+    }
 
-        public TerrainGeneratorTileGroupsPanel(WindowManager windowManager, Map map) : base(windowManager)
+    private readonly Map map;
+
+    private EditorPopUpSelector[] tileSetSelectors;
+    private EditorTextBox[] tileIndices;
+    private EditorNumberTextBox[] tileGroupOpenChances;
+    private EditorNumberTextBox[] tileGroupOccupiedChances;
+
+    private SelectTileSetWindow selectTileSetWindow;
+
+    private EditorPopUpSelector openedTileSetSelector;
+
+    public override void Initialize()
+    {
+        tileSetSelectors = new EditorPopUpSelector[MaxTileGroupCount];
+        tileIndices = new EditorTextBox[MaxTileGroupCount];
+        tileGroupOpenChances = new EditorNumberTextBox[MaxTileGroupCount];
+        tileGroupOccupiedChances = new EditorNumberTextBox[MaxTileGroupCount];
+
+        selectTileSetWindow = new SelectTileSetWindow(WindowManager, map);
+        var tileSetDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent.Parent, selectTileSetWindow);
+        tileSetDarkeningPanel.Hidden += TileSetDarkeningPanel_Hidden;
+
+        int y = Constants.UIEmptyTopSpace;
+
+        for (int i = 0; i < MaxTileGroupCount; i++)
         {
-            this.map = map;
+            var lblTileSet = new XNALabel(WindowManager);
+            lblTileSet.Name = nameof(lblTileSet) + i;
+            lblTileSet.X = Constants.UIEmptySideSpace;
+            lblTileSet.Y = y;
+            lblTileSet.FontIndex = Constants.UIBoldFont;
+            lblTileSet.Text = string.Format(Translate(this, "TileSetGroups", "Tile Set (Group #{0})"), i + 1);
+            AddChild(lblTileSet);
+
+            var selTileSet = new EditorPopUpSelector(WindowManager);
+            selTileSet.Name = nameof(selTileSet) + i;
+            selTileSet.X = lblTileSet.X;
+            selTileSet.Y = lblTileSet.Bottom + Constants.UIVerticalSpacing;
+            selTileSet.Width = 200;
+            AddChild(selTileSet);
+            tileSetSelectors[i] = selTileSet;
+            selTileSet.LeftClick += SelTileSet_LeftClick;
+
+            var lblTileIndices = new XNALabel(WindowManager);
+            lblTileIndices.Name = nameof(lblTileIndices) + i;
+            lblTileIndices.X = selTileSet.Right + Constants.UIHorizontalSpacing;
+            lblTileIndices.Y = lblTileSet.Y;
+            lblTileIndices.Text = Translate(this, "TileSetIndices", "Indexes of tiles to place (leave blank for all)");
+            AddChild(lblTileIndices);
+
+            var tbTileIndices = new EditorTextBox(WindowManager);
+            tbTileIndices.Name = nameof(selTileSet) + i;
+            tbTileIndices.X = lblTileIndices.X;
+            tbTileIndices.Y = lblTileIndices.Bottom + Constants.UIVerticalSpacing;
+            tbTileIndices.Width = 280;
+            AddChild(tbTileIndices);
+            tileIndices[i] = tbTileIndices;
+
+            var lblOpenChance = new XNALabel(WindowManager);
+            lblOpenChance.Name = nameof(lblOpenChance) + i;
+            lblOpenChance.X = tbTileIndices.Right + Constants.UIHorizontalSpacing;
+            lblOpenChance.Y = lblTileSet.Y;
+            lblOpenChance.Text = Translate(this, "OpenCellChance", "Open cell chance:");
+            AddChild(lblOpenChance);
+
+            var tbOpenChance = new EditorNumberTextBox(WindowManager);
+            tbOpenChance.Name = nameof(tbOpenChance) + i;
+            tbOpenChance.X = lblOpenChance.X;
+            tbOpenChance.Y = selTileSet.Y;
+            tbOpenChance.AllowDecimals = true;
+            tbOpenChance.Width = 120;
+            AddChild(tbOpenChance);
+            tileGroupOpenChances[i] = tbOpenChance;
+
+            var lblOccupiedChance = new XNALabel(WindowManager);
+            lblOccupiedChance.Name = nameof(lblOccupiedChance) + i;
+            lblOccupiedChance.X = tbOpenChance.Right + Constants.UIHorizontalSpacing;
+            lblOccupiedChance.Y = lblOpenChance.Y;
+            lblOccupiedChance.Text = Translate(this, "OccupiedCellChance", "Occupied cell chance:");
+            AddChild(lblOccupiedChance);
+
+            var tbOccupiedChance = new EditorNumberTextBox(WindowManager);
+            tbOccupiedChance.Name = nameof(tbOpenChance) + i;
+            tbOccupiedChance.X = lblOccupiedChance.X;
+            tbOccupiedChance.Y = selTileSet.Y;
+            tbOccupiedChance.AllowDecimals = true;
+            tbOccupiedChance.Width = Width - tbOccupiedChance.X - Constants.UIEmptySideSpace;
+            AddChild(tbOccupiedChance);
+            tileGroupOccupiedChances[i] = tbOccupiedChance;
+
+            y = tbOccupiedChance.Bottom + Constants.UIEmptyTopSpace;
         }
 
-        private readonly Map map;
+        base.Initialize();
+    }
 
-        private EditorPopUpSelector[] tileSetSelectors;
-        private EditorTextBox[] tileIndices;
-        private EditorNumberTextBox[] tileGroupOpenChances;
-        private EditorNumberTextBox[] tileGroupOccupiedChances;
+    private void TileSetDarkeningPanel_Hidden(object sender, EventArgs e)
+    {
+        openedTileSetSelector.Tag = selectTileSetWindow.SelectedObject;
 
-        private SelectTileSetWindow selectTileSetWindow;
+        if (selectTileSetWindow.SelectedObject == null)
+            openedTileSetSelector.Text = string.Empty;
+        else
+            openedTileSetSelector.Text = selectTileSetWindow.SelectedObject.TranslatedName;
+    }
 
-        private EditorPopUpSelector openedTileSetSelector;
+    private void SelTileSet_LeftClick(object sender, System.EventArgs e)
+    {
+        openedTileSetSelector = (EditorPopUpSelector)sender;
+        selectTileSetWindow.Open((TileSet)openedTileSetSelector.Tag);
+    }
 
-        public override void Initialize()
+    public List<TerrainGeneratorTileGroup> GetTileGroups()
+    {
+        var tileGroups = new List<TerrainGeneratorTileGroup>();
+
+        for (int i = 0; i < tileSetSelectors.Length; i++)
         {
-            tileSetSelectors = new EditorPopUpSelector[MaxTileGroupCount];
-            tileIndices = new EditorTextBox[MaxTileGroupCount];
-            tileGroupOpenChances = new EditorNumberTextBox[MaxTileGroupCount];
-            tileGroupOccupiedChances = new EditorNumberTextBox[MaxTileGroupCount];
+            var tileSet = (TileSet)tileSetSelectors[i].Tag;
+            if (tileSet == null)
+                continue;
 
-            selectTileSetWindow = new SelectTileSetWindow(WindowManager, map);
-            var tileSetDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent.Parent, selectTileSetWindow);
-            tileSetDarkeningPanel.Hidden += TileSetDarkeningPanel_Hidden;
-
-            int y = Constants.UIEmptyTopSpace;
-
-            for (int i = 0; i < MaxTileGroupCount; i++)
+            List<int> tileIndexesInSet = null;
+            string tileIndicesText = tileIndices[i].Text.Trim();
+            if (!string.IsNullOrEmpty(tileIndicesText))
             {
-                var lblTileSet = new XNALabel(WindowManager);
-                lblTileSet.Name = nameof(lblTileSet) + i;
-                lblTileSet.X = Constants.UIEmptySideSpace;
-                lblTileSet.Y = y;
-                lblTileSet.FontIndex = Constants.UIBoldFont;
-                lblTileSet.Text = string.Format(Translate(this, "TileSetGroups", "Tile Set (Group #{0})"), i + 1);
-                AddChild(lblTileSet);
+                string[] parts = tileIndicesText.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                tileIndexesInSet = parts.Select(str => Conversions.IntFromString(str, -1)).ToList();
+                int invalidElement = tileIndexesInSet.Find(index => index <= -1 || index >= tileSet.LoadedTileCount);
 
-                var selTileSet = new EditorPopUpSelector(WindowManager);
-                selTileSet.Name = nameof(selTileSet) + i;
-                selTileSet.X = lblTileSet.X;
-                selTileSet.Y = lblTileSet.Bottom + Constants.UIVerticalSpacing;
-                selTileSet.Width = 200;
-                AddChild(selTileSet);
-                tileSetSelectors[i] = selTileSet;
-                selTileSet.LeftClick += SelTileSet_LeftClick;
-
-                var lblTileIndices = new XNALabel(WindowManager);
-                lblTileIndices.Name = nameof(lblTileIndices) + i;
-                lblTileIndices.X = selTileSet.Right + Constants.UIHorizontalSpacing;
-                lblTileIndices.Y = lblTileSet.Y;
-                lblTileIndices.Text = Translate(this, "TileSetIndices", "Indexes of tiles to place (leave blank for all)");
-                AddChild(lblTileIndices);
-
-                var tbTileIndices = new EditorTextBox(WindowManager);
-                tbTileIndices.Name = nameof(selTileSet) + i;
-                tbTileIndices.X = lblTileIndices.X;
-                tbTileIndices.Y = lblTileIndices.Bottom + Constants.UIVerticalSpacing;
-                tbTileIndices.Width = 280;
-                AddChild(tbTileIndices);
-                tileIndices[i] = tbTileIndices;
-
-                var lblOpenChance = new XNALabel(WindowManager);
-                lblOpenChance.Name = nameof(lblOpenChance) + i;
-                lblOpenChance.X = tbTileIndices.Right + Constants.UIHorizontalSpacing;
-                lblOpenChance.Y = lblTileSet.Y;
-                lblOpenChance.Text = Translate(this, "OpenCellChance", "Open cell chance:");
-                AddChild(lblOpenChance);
-
-                var tbOpenChance = new EditorNumberTextBox(WindowManager);
-                tbOpenChance.Name = nameof(tbOpenChance) + i;
-                tbOpenChance.X = lblOpenChance.X;
-                tbOpenChance.Y = selTileSet.Y;
-                tbOpenChance.AllowDecimals = true;
-                tbOpenChance.Width = 120;
-                AddChild(tbOpenChance);
-                tileGroupOpenChances[i] = tbOpenChance;
-
-                var lblOccupiedChance = new XNALabel(WindowManager);
-                lblOccupiedChance.Name = nameof(lblOccupiedChance) + i;
-                lblOccupiedChance.X = tbOpenChance.Right + Constants.UIHorizontalSpacing;
-                lblOccupiedChance.Y = lblOpenChance.Y;
-                lblOccupiedChance.Text = Translate(this, "OccupiedCellChance", "Occupied cell chance:");
-                AddChild(lblOccupiedChance);
-
-                var tbOccupiedChance = new EditorNumberTextBox(WindowManager);
-                tbOccupiedChance.Name = nameof(tbOpenChance) + i;
-                tbOccupiedChance.X = lblOccupiedChance.X;
-                tbOccupiedChance.Y = selTileSet.Y;
-                tbOccupiedChance.AllowDecimals = true;
-                tbOccupiedChance.Width = Width - tbOccupiedChance.X - Constants.UIEmptySideSpace;
-                AddChild(tbOccupiedChance);
-                tileGroupOccupiedChances[i] = tbOccupiedChance;
-
-                y = tbOccupiedChance.Bottom + Constants.UIEmptyTopSpace;
-            }
-
-            base.Initialize();
-        }
-
-        private void TileSetDarkeningPanel_Hidden(object sender, EventArgs e)
-        {
-            openedTileSetSelector.Tag = selectTileSetWindow.SelectedObject;
-
-            if (selectTileSetWindow.SelectedObject == null)
-                openedTileSetSelector.Text = string.Empty;
-            else
-                openedTileSetSelector.Text = selectTileSetWindow.SelectedObject.TranslatedName;
-        }
-
-        private void SelTileSet_LeftClick(object sender, System.EventArgs e)
-        {
-            openedTileSetSelector = (EditorPopUpSelector)sender;
-            selectTileSetWindow.Open((TileSet)openedTileSetSelector.Tag);
-        }
-
-        public List<TerrainGeneratorTileGroup> GetTileGroups()
-        {
-            var tileGroups = new List<TerrainGeneratorTileGroup>();
-
-            for (int i = 0; i < tileSetSelectors.Length; i++)
-            {
-                var tileSet = (TileSet)tileSetSelectors[i].Tag;
-                if (tileSet == null)
-                    continue;
-
-                List<int> tileIndexesInSet = null;
-                string tileIndicesText = tileIndices[i].Text.Trim();
-                if (!string.IsNullOrEmpty(tileIndicesText))
+                if (invalidElement != 0) // this can never be 0 if an invalid element exists, because each valid tileset has at least 1 tile
                 {
-                    string[] parts = tileIndicesText.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                    tileIndexesInSet = parts.Select(str => Conversions.IntFromString(str, -1)).ToList();
-                    int invalidElement = tileIndexesInSet.Find(index => index <= -1 || index >= tileSet.LoadedTileCount);
-
-                    if (invalidElement != 0) // this can never be 0 if an invalid element exists, because each valid tileset has at least 1 tile
-                    {
-                        EditorMessageBox.Show(WindowManager, 
-                            Translate(this, "GeneratorConfigError.TileSetNotFound.Title", "Generator Config Error"),
-                            string.Format(Translate(this, "GeneratorConfigError.TileSetNotFound.Description",
-                                "Tile with index '{0}' does not exist in tile set '{1}'!"), invalidElement, tileSet.TranslatedName),
-                            MessageBoxButtons.OK);
-                        return null;
-                    }
+                    EditorMessageBox.Show(WindowManager, 
+                        Translate(this, "GeneratorConfigError.TileSetNotFound.Title", "Generator Config Error"),
+                        string.Format(Translate(this, "GeneratorConfigError.TileSetNotFound.Description",
+                            "Tile with index '{0}' does not exist in tile set '{1}'!"), invalidElement, tileSet.TranslatedName),
+                        MessageBoxButtons.OK);
+                    return null;
                 }
-
-                var tileGroup = new TerrainGeneratorTileGroup(tileSet, tileIndexesInSet,
-                    tileGroupOpenChances[i].DoubleValue,
-                    tileGroupOccupiedChances[i].DoubleValue);
-
-                tileGroups.Add(tileGroup);
             }
 
-            return tileGroups;
+            var tileGroup = new TerrainGeneratorTileGroup(tileSet, tileIndexesInSet,
+                tileGroupOpenChances[i].DoubleValue,
+                tileGroupOccupiedChances[i].DoubleValue);
+
+            tileGroups.Add(tileGroup);
         }
 
-        public void LoadConfig(TerrainGeneratorConfiguration configuration)
+        return tileGroups;
+    }
+
+    public void LoadConfig(TerrainGeneratorConfiguration configuration)
+    {
+        for (int i = 0; i < configuration.TileGroups.Count && i < MaxTileGroupCount; i++)
         {
-            for (int i = 0; i < configuration.TileGroups.Count && i < MaxTileGroupCount; i++)
-            {
-                var tileGroup = configuration.TileGroups[i];
+            var tileGroup = configuration.TileGroups[i];
 
-                tileSetSelectors[i].Text = tileGroup.TileSet.TranslatedName;
-                tileSetSelectors[i].Tag = tileGroup.TileSet;
+            tileSetSelectors[i].Text = tileGroup.TileSet.TranslatedName;
+            tileSetSelectors[i].Tag = tileGroup.TileSet;
 
-                if (tileGroup.TileIndicesInSet == null)
-                    tileIndices[i].Text = string.Empty;
-                else
-                    tileIndices[i].Text = string.Join(",", tileGroup.TileIndicesInSet.Select(index => index.ToString(CultureInfo.InvariantCulture)));
-
-                tileGroupOpenChances[i].DoubleValue = tileGroup.OpenChance;
-                tileGroupOccupiedChances[i].DoubleValue = tileGroup.OverlapChance;
-            }
-
-            for (int i = configuration.TileGroups.Count; i < tileSetSelectors.Length; i++)
-            {
-                tileSetSelectors[i].Text = string.Empty;
-                tileSetSelectors[i].Tag = null;
+            if (tileGroup.TileIndicesInSet == null)
                 tileIndices[i].Text = string.Empty;
-                tileGroupOpenChances[i].DoubleValue = 0.0;
-                tileGroupOccupiedChances[i].DoubleValue = 0.0;
-            }
+            else
+                tileIndices[i].Text = string.Join(",", tileGroup.TileIndicesInSet.Select(index => index.ToString(CultureInfo.InvariantCulture)));
+
+            tileGroupOpenChances[i].DoubleValue = tileGroup.OpenChance;
+            tileGroupOccupiedChances[i].DoubleValue = tileGroup.OverlapChance;
+        }
+
+        for (int i = configuration.TileGroups.Count; i < tileSetSelectors.Length; i++)
+        {
+            tileSetSelectors[i].Text = string.Empty;
+            tileSetSelectors[i].Tag = null;
+            tileIndices[i].Text = string.Empty;
+            tileGroupOpenChances[i].DoubleValue = 0.0;
+            tileGroupOccupiedChances[i].DoubleValue = 0.0;
         }
     }
 }

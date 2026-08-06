@@ -80,7 +80,7 @@ Before accepting the result, inspect the mask visually. If its rectangular brush
 
 Aside from LATs, try to also use various other pieces when detailing large areas. Rocks, pebbles, trees, rough ground, debris, villages or cities, small closed lakes... there's usually a lot you can detail a map with. Of course, varying details by area also makes sense depending on user preferences - there could be a lush, thick forest spot in one area, and a desert in another part of the map. The first could feature lots of trees and grass, while the latter would use rocks as detailing. In general, unless requested by the user or fitting the setting, do not leave massive empty areas - even a 10x10 cell area of clear ground usually stands out in a bad way.
 
-Pay special attention to detailing the corner areas of the map "diamond": it's easy to neglect those, but players do pay attention to them. 
+Pay special attention to detailing the corner areas of the map "diamond": it's easy to neglect those, but players do pay attention to them.
 
 ## Layouting
 
@@ -110,7 +110,7 @@ For lakes and other closed shorelines:
 
 ## Placement Order
 
-Prefer to design a layout first, then details. When detailing, place objects like buildings and trees first, then terrain. This is because if you are, for example, creating a city, it is easier to place dirt or pavement LAT under buildings and grass LAT under trees after they have been placed down, than it is to first place dirt/grass and then fit objects on top of them. 
+Prefer to design a layout first, then details. When detailing, place objects like buildings and trees first, then terrain. This is because if you are, for example, creating a city, it is easier to place dirt or pavement LAT under buildings and grass LAT under trees after they have been placed down, than it is to first place dirt/grass and then fit objects on top of them.
 
 ## Asymmetry
 

@@ -1,4 +1,10 @@
-﻿using Microsoft.Xna.Framework;
+﻿using MapEditorLibrary;
+using MapEditorLibrary.CCEngine;
+using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Misc;
+using MapEditorLibrary.Models;
+using MapEditorLibrary.Models.Enums;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
@@ -6,1176 +12,1194 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using TSMapEditor.CCEngine;
-using TSMapEditor.Misc;
-using TSMapEditor.Models;
-using TSMapEditor.Models.Enums;
 using TSMapEditor.Rendering;
 using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
 using TSMapEditor.UI.CursorActions;
 using TSMapEditor.UI.Notifications;
 
-namespace TSMapEditor.UI.Windows
+namespace TSMapEditor.UI.Windows;
+
+public class ScriptListBoxItemTag
 {
-    public class ScriptListBoxItemTag
+    public ScriptListBoxItemTag(ScriptActionEntry scriptActionEntry, string text, string description)
     {
-        public ScriptListBoxItemTag(ScriptActionEntry scriptActionEntry, string text, string description)
+        ScriptActionEntry = scriptActionEntry;
+        Text = text;
+        Description = description;
+    }
+
+    public ScriptActionEntry ScriptActionEntry { get; set; }
+
+    public string Text { get; set; }
+    public string Description { get; set; }
+
+    public void Process(int maxWidth, int fontIndex)
+    {
+        DescriptionLines.Clear();
+
+        if (Description == null)
+            return;
+
+        int textWidth = (int)Renderer.MeasureString(Text + " ", fontIndex).X;
+        int remainingWidth = maxWidth - textWidth;
+
+        int descriptionWidth = (int)Renderer.MeasureString(Description, fontIndex).X;
+        if (descriptionWidth > remainingWidth)
         {
-            ScriptActionEntry = scriptActionEntry;
-            Text = text;
-            Description = description;
+            var lines = Renderer.GetFixedTextLines(Description, fontIndex, remainingWidth);
+            DescriptionLines.Add(lines[0]);
+            lines.RemoveAt(0);
+
+            string remainingText = string.Join(" ", lines);
+            DescriptionLines.AddRange(Renderer.GetFixedTextLines(remainingText, fontIndex, maxWidth));
         }
-
-        public ScriptActionEntry ScriptActionEntry { get; set; }
-
-        public string Text { get; set; }
-        public string Description { get; set; }
-
-        public void Process(int maxWidth, int fontIndex)
+        else
         {
-            DescriptionLines.Clear();
+            DescriptionLines.Add(Description);
+        }
+    }
 
-            if (Description == null)
-                return;
+    public List<string> DescriptionLines { get; } = new List<string>();
+}
 
-            int textWidth = (int)Renderer.MeasureString(Text + " ", fontIndex).X;
-            int remainingWidth = maxWidth - textWidth;
+public class ScriptActionListBox : EditorListBox
+{
+    public ScriptActionListBox(WindowManager windowManager) : base(windowManager)
+    {
+        AllowMultiLineItems = false;
+    }
 
-            int descriptionWidth = (int)Renderer.MeasureString(Description, fontIndex).X;
-            if (descriptionWidth > remainingWidth)
+    public ScriptListBoxItemTag TagFromItem(int index) => (ScriptListBoxItemTag)Items[index].Tag;
+
+    public void AddTaggedItem(ScriptListBoxItemTag tag)
+    {
+        var item = new XNAListBoxItem() { Tag = tag };
+        tag.Process(Width - GetScrollBarWidth(), FontIndex);
+        AddItem(item);
+    }
+
+    public void UpdateItemTag(int index, string text, string description)
+    {
+        var tag = TagFromItem(index);
+        tag.Text = text;
+        tag.Description = description;
+        tag.Process(Width - GetScrollBarWidth(), FontIndex);
+    }
+
+    protected override int GetListBoxItemLineCount(XNAListBoxItem listBoxItem)
+    {
+        ScriptListBoxItemTag tag = (ScriptListBoxItemTag)listBoxItem.Tag;
+        if (tag.DescriptionLines.Count <= 1)
+            return 1;
+
+        return tag.DescriptionLines.Count;
+    }
+
+    protected override void DrawListBoxItem(int index, int y)
+    {
+        const int ITEM_TEXT_TEXTURE_MARGIN = 2;
+
+        XNAListBoxItem lbItem = Items[index];
+
+        int x = TextBorderDistance;
+
+        if (index == SelectedIndex)
+        {
+            int drawnWidth;
+
+            if (DrawSelectionUnderScrollbar || !ScrollBar.IsDrawn() || !EnableScrollbar)
             {
-                var lines = Renderer.GetFixedTextLines(Description, fontIndex, remainingWidth);
-                DescriptionLines.Add(lines[0]);
-                lines.RemoveAt(0);
-
-                string remainingText = string.Join(" ", lines);
-                DescriptionLines.AddRange(Renderer.GetFixedTextLines(remainingText, fontIndex, maxWidth));
+                drawnWidth = Width - 2;
             }
             else
             {
-                DescriptionLines.Add(Description);
-            }
-        }
-
-        public List<string> DescriptionLines { get; } = new List<string>();
-    }
-
-    public class ScriptActionListBox : EditorListBox
-    {
-        public ScriptActionListBox(WindowManager windowManager) : base(windowManager)
-        {
-            AllowMultiLineItems = false;
-        }
-
-        public ScriptListBoxItemTag TagFromItem(int index) => (ScriptListBoxItemTag)Items[index].Tag;
-
-        public void AddTaggedItem(ScriptListBoxItemTag tag)
-        {
-            var item = new XNAListBoxItem() { Tag = tag };
-            tag.Process(Width - GetScrollBarWidth(), FontIndex);
-            AddItem(item);
-        }
-
-        public void UpdateItemTag(int index, string text, string description)
-        {
-            var tag = TagFromItem(index);
-            tag.Text = text;
-            tag.Description = description;
-            tag.Process(Width - GetScrollBarWidth(), FontIndex);
-        }
-
-        protected override int GetListBoxItemLineCount(XNAListBoxItem listBoxItem)
-        {
-            ScriptListBoxItemTag tag = (ScriptListBoxItemTag)listBoxItem.Tag;
-            if (tag.DescriptionLines.Count <= 1)
-                return 1;
-
-            return tag.DescriptionLines.Count;
-        }
-
-        protected override void DrawListBoxItem(int index, int y)
-        {
-            const int ITEM_TEXT_TEXTURE_MARGIN = 2;
-
-            XNAListBoxItem lbItem = Items[index];
-
-            int x = TextBorderDistance;
-
-            if (index == SelectedIndex)
-            {
-                int drawnWidth;
-
-                if (DrawSelectionUnderScrollbar || !ScrollBar.IsDrawn() || !EnableScrollbar)
-                {
-                    drawnWidth = Width - 2;
-                }
-                else
-                {
-                    drawnWidth = Width - 2 - ScrollBar.Width;
-                }
-
-                FillRectangle(new Rectangle(1, y, drawnWidth,
-                    GetListBoxItemLineCount(lbItem) * LineHeight),
-                    FocusColor);
+                drawnWidth = Width - 2 - ScrollBar.Width;
             }
 
-            if (lbItem.Texture != null)
+            FillRectangle(new Rectangle(1, y, drawnWidth,
+                GetListBoxItemLineCount(lbItem) * LineHeight),
+                FocusColor);
+        }
+
+        if (lbItem.Texture != null)
+        {
+            int textureHeight = lbItem.Texture.Height;
+            int textureWidth = lbItem.Texture.Width;
+            int textureYPosition = 0;
+
+            if (lbItem.Texture.Height > LineHeight)
             {
-                int textureHeight = lbItem.Texture.Height;
-                int textureWidth = lbItem.Texture.Width;
-                int textureYPosition = 0;
-
-                if (lbItem.Texture.Height > LineHeight)
-                {
-                    double scaleRatio = textureHeight / (double)LineHeight;
-                    textureHeight = LineHeight;
-                    textureWidth = (int)(textureWidth / scaleRatio);
-                }
-                else
-                {
-                    textureYPosition = (LineHeight - textureHeight) / 2;
-                }
-
-                DrawTexture(lbItem.Texture,
-                    new Rectangle(x, y + textureYPosition,
-                    textureWidth, textureHeight), Color.White);
-
-                x += textureWidth + ITEM_TEXT_TEXTURE_MARGIN;
-            }
-
-            x += lbItem.TextXPadding;
-
-            var tag = TagFromItem(index);
-            if (tag.Description == null)
-            {
-                DrawStringWithShadow(tag.Text, FontIndex, new Vector2(x, y), UISettings.ActiveSettings.AltColor);
+                double scaleRatio = textureHeight / (double)LineHeight;
+                textureHeight = LineHeight;
+                textureWidth = (int)(textureWidth / scaleRatio);
             }
             else
             {
-                string text = tag.Text + " ";
-                int width = (int)Renderer.MeasureString(text, FontIndex).X;
-                DrawStringWithShadow(text, FontIndex, new Vector2(x, y), UISettings.ActiveSettings.AltColor);
-                DrawStringWithShadow(tag.DescriptionLines[0], FontIndex, new Vector2(x + width, y), UISettings.ActiveSettings.SubtleTextColor);
-                for (int i = 1; i < tag.DescriptionLines.Count; i++)
-                {
-                    DrawStringWithShadow(tag.DescriptionLines[i], FontIndex, new Vector2(x, y + (i * LineHeight)), UISettings.ActiveSettings.SubtleTextColor);
-                }
+                textureYPosition = (LineHeight - textureHeight) / 2;
+            }
+
+            DrawTexture(lbItem.Texture,
+                new Rectangle(x, y + textureYPosition,
+                textureWidth, textureHeight), Color.White);
+
+            x += textureWidth + ITEM_TEXT_TEXTURE_MARGIN;
+        }
+
+        x += lbItem.TextXPadding;
+
+        var tag = TagFromItem(index);
+        if (tag.Description == null)
+        {
+            DrawStringWithShadow(tag.Text, FontIndex, new Vector2(x, y), UISettings.ActiveSettings.AltColor);
+        }
+        else
+        {
+            string text = tag.Text + " ";
+            int width = (int)Renderer.MeasureString(text, FontIndex).X;
+            DrawStringWithShadow(text, FontIndex, new Vector2(x, y), UISettings.ActiveSettings.AltColor);
+            DrawStringWithShadow(tag.DescriptionLines[0], FontIndex, new Vector2(x + width, y), UISettings.ActiveSettings.SubtleTextColor);
+            for (int i = 1; i < tag.DescriptionLines.Count; i++)
+            {
+                DrawStringWithShadow(tag.DescriptionLines[i], FontIndex, new Vector2(x, y + (i * LineHeight)), UISettings.ActiveSettings.SubtleTextColor);
             }
         }
     }
+}
 
-    public enum ScriptSortMode
+public enum ScriptSortMode
+{
+    ID,
+    Name,
+    Color,
+    ColorThenName,
+}
+
+/// <summary>
+/// A window that allows the user to edit map scripts.
+/// </summary>
+public class ScriptsWindow : INItializableWindow
+{
+    public ScriptsWindow(WindowManager windowManager, Map map, EditorState editorState,
+        INotificationManager notificationManager, ICursorActionTarget cursorActionTarget) : base(windowManager)
     {
-        ID,
-        Name,
-        Color,
-        ColorThenName,
+        this.map = map;
+        this.editorState = editorState ?? throw new ArgumentNullException(nameof(editorState));
+        this.notificationManager = notificationManager ?? throw new ArgumentNullException(nameof(notificationManager));
+        selectCellCursorAction = new SelectCellCursorAction(cursorActionTarget);
     }
 
-    /// <summary>
-    /// A window that allows the user to edit map scripts.
-    /// </summary>
-    public class ScriptsWindow : INItializableWindow
+    private readonly Map map;
+    private readonly EditorState editorState;
+    private readonly INotificationManager notificationManager;
+    private SelectCellCursorAction selectCellCursorAction;
+
+    private EditorListBox lbScriptTypes;
+    private EditorSuggestionTextBox tbFilter;
+    private EditorTextBox tbName;
+    private ScriptActionListBox lbActions;
+    private EditorPopUpSelector selTypeOfAction;
+    private XNALabel lblParameterDescription;
+    private EditorNumberTextBox tbParameterValue;
+    private MenuButton btnEditorPresetValues;
+    private EditorButton btnEditorPresetValuesWindow;
+    private XNALabel lblActionDescriptionValue;
+    private XNADropDown ddScriptColor;
+
+    private SelectScriptActionWindow selectScriptActionWindow;
+    private SelectScriptActionPresetOptionWindow selectScriptActionPresetOptionWindow;
+    private EditorContextMenu actionListContextMenu;
+
+    private SelectBuildingTargetWindow selectBuildingTargetWindow;
+    private SelectAnimationWindow selectAnimationWindow;
+
+    private Script editedScript;
+
+    private bool isAddingAction = false;
+    private int insertIndex = -1;
+
+    private ScriptSortMode _scriptSortMode;
+    private ScriptSortMode ScriptSortMode
     {
-        public ScriptsWindow(WindowManager windowManager, Map map, EditorState editorState,
-            INotificationManager notificationManager, ICursorActionTarget cursorActionTarget) : base(windowManager)
+        get => _scriptSortMode;
+        set
         {
-            this.map = map;
-            this.editorState = editorState ?? throw new ArgumentNullException(nameof(editorState));
-            this.notificationManager = notificationManager ?? throw new ArgumentNullException(nameof(notificationManager));
-            selectCellCursorAction = new SelectCellCursorAction(cursorActionTarget);
-        }
-
-        private readonly Map map;
-        private readonly EditorState editorState;
-        private readonly INotificationManager notificationManager;
-        private SelectCellCursorAction selectCellCursorAction;
-
-        private EditorListBox lbScriptTypes;
-        private EditorSuggestionTextBox tbFilter;
-        private EditorTextBox tbName;
-        private ScriptActionListBox lbActions;
-        private EditorPopUpSelector selTypeOfAction;
-        private XNALabel lblParameterDescription;
-        private EditorNumberTextBox tbParameterValue;
-        private MenuButton btnEditorPresetValues;
-        private EditorButton btnEditorPresetValuesWindow;
-        private XNALabel lblActionDescriptionValue;
-        private XNADropDown ddScriptColor;
-
-        private SelectScriptActionWindow selectScriptActionWindow;
-        private SelectScriptActionPresetOptionWindow selectScriptActionPresetOptionWindow;
-        private EditorContextMenu actionListContextMenu;
-
-        private SelectBuildingTargetWindow selectBuildingTargetWindow;
-        private SelectAnimationWindow selectAnimationWindow;
-
-        private Script editedScript;
-
-        private bool isAddingAction = false;
-        private int insertIndex = -1;
-
-        private ScriptSortMode _scriptSortMode;
-        private ScriptSortMode ScriptSortMode
-        {
-            get => _scriptSortMode;
-            set
+            if (value != _scriptSortMode)
             {
-                if (value != _scriptSortMode)
+                _scriptSortMode = value;                    
+            }
+            ListScripts();
+        }
+    }
+
+    public override void Initialize()
+    {
+        Name = nameof(ScriptsWindow);
+        base.Initialize();
+
+        lbScriptTypes = FindChild<EditorListBox>(nameof(lbScriptTypes));
+        tbFilter = FindChild<EditorSuggestionTextBox>(nameof(tbFilter));            
+        tbName = FindChild<EditorTextBox>(nameof(tbName));
+        lbActions = FindChild<ScriptActionListBox>(nameof(lbActions));
+        selTypeOfAction = FindChild<EditorPopUpSelector>(nameof(selTypeOfAction));
+        lblParameterDescription = FindChild<XNALabel>(nameof(lblParameterDescription));
+        tbParameterValue = FindChild<EditorNumberTextBox>(nameof(tbParameterValue));
+        btnEditorPresetValues = FindChild<MenuButton>(nameof(btnEditorPresetValues));
+        btnEditorPresetValuesWindow = FindChild<EditorButton>(nameof(btnEditorPresetValuesWindow));
+        lblActionDescriptionValue = FindChild<XNALabel>(nameof(lblActionDescriptionValue));
+        ddScriptColor = FindChild<XNADropDown>(nameof(ddScriptColor));
+
+        ddScriptColor.AddItem(Translate(this, "None", "None"));
+        UIHelpers.AddColorOptionsToDropDown(Script.SupportedColors, ddScriptColor);
+
+        tbFilter.TextChanged += TbFilter_TextChanged;
+
+        var presetValuesContextMenu = new EditorContextMenu(WindowManager);
+        presetValuesContextMenu.Width = 250;
+        btnEditorPresetValues.ContextMenu = presetValuesContextMenu;
+        btnEditorPresetValues.ContextMenu.OptionSelected += ContextMenu_OptionSelected;
+        btnEditorPresetValues.LeftClick += BtnEditorPresetValues_LeftClick;
+
+        btnEditorPresetValuesWindow.LeftClick += BtnEditorPresetValuesWindow_LeftClick;
+        btnEditorPresetValuesWindow.Disable();
+
+        tbName.TextChanged += TbName_TextChanged;
+        tbParameterValue.TextChanged += TbParameterValue_TextChanged;
+        tbParameterValue.MouseScrolled += TbParameterValue_MouseScrolled;
+        lbScriptTypes.SelectedIndexChanged += LbScriptTypes_SelectedIndexChanged;
+        lbActions.SelectedIndexChanged += LbActions_SelectedIndexChanged;
+
+        var sortContextMenu = new EditorContextMenu(WindowManager);
+        sortContextMenu.Name = nameof(sortContextMenu);
+        sortContextMenu.Width = lbScriptTypes.Width;
+        sortContextMenu.AddItem(Translate(this, "SortByID", "Sort by ID"), () => ScriptSortMode = ScriptSortMode.ID);
+        sortContextMenu.AddItem(Translate(this, "SortByName", "Sort by Name"), () => ScriptSortMode = ScriptSortMode.Name);
+        sortContextMenu.AddItem(Translate(this, "SortByColor", "Sort by Color"), () => ScriptSortMode = ScriptSortMode.Color);
+        sortContextMenu.AddItem(Translate(this, "SortByColorName", "Sort by Color, then by Name"), () => ScriptSortMode = ScriptSortMode.ColorThenName);
+        AddChild(sortContextMenu);
+
+        FindChild<EditorButton>("btnSortOptions").LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
+
+        var scriptContextMenu = new EditorContextMenu(WindowManager);
+        scriptContextMenu.Name = nameof(scriptContextMenu);
+        scriptContextMenu.Width = lbScriptTypes.Width;
+        scriptContextMenu.AddItem(Translate(this, "ViewReferences", "View References"), ShowScriptReferences);
+        AddChild(scriptContextMenu);
+
+        lbScriptTypes.AllowRightClickUnselect = false;
+        lbScriptTypes.RightClick += (s, e) =>
+        {
+            lbScriptTypes.SelectedIndex = lbScriptTypes.HoveredIndex;
+            if (editedScript != null)
+                scriptContextMenu.Open(GetCursorPoint());
+        };
+
+        selectScriptActionWindow = new SelectScriptActionWindow(WindowManager, map.EditorConfig);
+        var selectScriptActionDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectScriptActionWindow);
+        selectScriptActionDarkeningPanel.Hidden += SelectScriptActionDarkeningPanel_Hidden;
+
+        selectScriptActionPresetOptionWindow = new SelectScriptActionPresetOptionWindow(WindowManager, map);
+        var selectScriptActionPresetDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectScriptActionPresetOptionWindow);
+        selectScriptActionPresetDarkeningPanel.Hidden += SelectScriptActionPresetDarkeningPanel_Hidden;
+
+        selectBuildingTargetWindow = new SelectBuildingTargetWindow(WindowManager, map);
+        var buildingTargetWindowDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectBuildingTargetWindow);
+        buildingTargetWindowDarkeningPanel.Hidden += BuildingTargetWindowDarkeningPanel_Hidden;
+
+        selectAnimationWindow = new SelectAnimationWindow(WindowManager, map);
+        selectAnimationWindow.IncludeNone = false;
+        var animationWindowDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectAnimationWindow);
+        animationWindowDarkeningPanel.Hidden += AnimationWindowDarkeningPanel_Hidden;
+
+        selTypeOfAction.MouseLeftDown += SelTypeOfAction_MouseLeftDown;
+
+        FindChild<EditorButton>("btnAddScript").LeftClick += BtnAddScript_LeftClick;
+        FindChild<EditorButton>("btnDeleteScript").LeftClick += BtnDeleteScript_LeftClick;
+        FindChild<EditorButton>("btnCloneScript").LeftClick += BtnCloneScript_LeftClick;
+        FindChild<EditorButton>("btnAddAction").LeftClick += BtnAddAction_LeftClick;
+        FindChild<EditorButton>("btnDeleteAction").LeftClick += BtnDeleteAction_LeftClick;
+        FindChild<EditorButton>("btnInsertAction").LeftClick += (_, _) => InsertAction();
+        FindChild<EditorButton>("btnCloneAction").LeftClick += (_, _) => CloneAction();
+        FindChild<EditorButton>("btnMoveUp").LeftClick += (_, _) => MoveActionUp();
+        FindChild<EditorButton>("btnMoveDown").LeftClick += (_, _) => MoveActionDown();
+
+        selectCellCursorAction.CellSelected += SelectCellCursorAction_CellSelected;
+
+        actionListContextMenu = new EditorContextMenu(WindowManager);
+        actionListContextMenu.Name = nameof(actionListContextMenu);
+        actionListContextMenu.Width = 180;
+        actionListContextMenu.AddItem(Translate(this, "MoveUp", "Move Up"), MoveActionUp, () => editedScript != null && lbActions.SelectedItem != null && lbActions.SelectedIndex > 0);
+        actionListContextMenu.AddItem(Translate(this, "MoveDown", "Move Down"), MoveActionDown, () => editedScript != null && lbActions.SelectedItem != null && lbActions.SelectedIndex < lbActions.Items.Count - 1);
+        actionListContextMenu.AddItem(Translate(this, "CloneAction", "Clone Action"), CloneAction, () => editedScript != null && lbActions.SelectedItem != null);
+        actionListContextMenu.AddItem(Translate(this, "InsertNewAction", "Insert New Action Here"), InsertAction, () => editedScript != null && lbActions.SelectedItem != null);
+        actionListContextMenu.AddItem(Translate(this, "DeleteAction", "Delete Action"), ActionListContextMenu_Delete, () => editedScript != null && lbActions.SelectedItem != null);
+        AddChild(actionListContextMenu);
+
+        lbActions.AllowRightClickUnselect = false;
+        lbActions.RightClick += (s, e) => { if (editedScript != null) { lbActions.SelectedIndex = lbActions.HoveredIndex; actionListContextMenu.Open(GetCursorPoint()); } };
+
+        map.ScriptingChanged += Map_ScriptingChanged;
+    }
+
+    private void AnimationWindowDarkeningPanel_Hidden(object sender, EventArgs e)
+    {
+        if (editedScript == null || lbActions.SelectedItem == null)
+            return;
+
+        if (selectAnimationWindow.SelectedObject != null)
+        {
+            editedScript.Actions[lbActions.SelectedIndex].Argument = selectAnimationWindow.SelectedObject.Index;
+            RefreshParameterEntryText();
+        }
+    }
+
+    private void BuildingTargetWindowDarkeningPanel_Hidden(object sender, EventArgs e)
+    {
+        if (editedScript == null || lbActions.SelectedItem == null)
+            return;
+
+        if (selectBuildingTargetWindow.SelectedObject > -1)
+        {
+            tbParameterValue.Text = GetBuildingWithPropertyText(selectBuildingTargetWindow.SelectedObject, selectBuildingTargetWindow.Property);
+        }
+    }
+
+    private void MoveActionUp()
+    {
+        if (editedScript == null || lbActions.SelectedItem == null || lbActions.SelectedIndex <= 0)
+            return;
+
+        int viewTop = lbActions.ViewTop;
+        editedScript.Actions.Swap(lbActions.SelectedIndex - 1, lbActions.SelectedIndex);
+        EditScript(editedScript);
+        lbActions.SelectedIndex--;
+        lbActions.ViewTop = viewTop;
+    }
+
+    private void MoveActionDown()
+    {
+        if (editedScript == null || lbActions.SelectedItem == null || lbActions.SelectedIndex >= editedScript.Actions.Count - 1)
+            return;
+
+        int viewTop = lbActions.ViewTop;
+        editedScript.Actions.Swap(lbActions.SelectedIndex, lbActions.SelectedIndex + 1);
+        EditScript(editedScript);
+        lbActions.SelectedIndex++;
+        lbActions.ViewTop = viewTop;
+    }
+
+    private void CloneAction()
+    {
+        if (editedScript == null || lbActions.SelectedItem == null)
+            return;
+
+        int viewTop = lbActions.ViewTop;
+        int index = lbActions.SelectedIndex + 1;
+
+        var clonedEntry = editedScript.Actions[lbActions.SelectedIndex].Clone();
+
+        // Smart script action cloning
+        if (UserSettings.Instance.SmartScriptActionCloning || Keyboard.IsShiftHeldDown() || Keyboard.IsAltHeldDown())
+        {
+            var scriptActionType = map.EditorConfig.ScriptActions[clonedEntry.Action];
+
+            if (scriptActionType.ParamType == TriggerParamType.Waypoint)
+            {
+                int indexOffset = Keyboard.IsAltHeldDown() ? -1 : 1;
+
+                if (map.Waypoints.Exists(wp => wp.Identifier == clonedEntry.Argument + indexOffset))
                 {
-                    _scriptSortMode = value;                    
+                    clonedEntry.Argument = clonedEntry.Argument + indexOffset;
                 }
-                ListScripts();
             }
         }
 
-        public override void Initialize()
+        editedScript.Actions.Insert(index, clonedEntry);
+        EditScript(editedScript);
+        lbActions.SelectedIndex = index;
+        lbActions.ViewTop = viewTop;
+    }
+
+    private void InsertAction()
+    {
+        if (editedScript == null || lbActions.SelectedItem == null)
+            return;
+
+        isAddingAction = true;
+        insertIndex = lbActions.SelectedIndex;
+        selectScriptActionWindow.Open(null);
+    }
+
+    private void ActionListContextMenu_Delete()
+    {
+        if (editedScript == null || lbActions.SelectedItem == null)
+            return;
+
+        int viewTop = lbActions.ViewTop;
+        editedScript.Actions.RemoveAt(lbActions.SelectedIndex);
+        EditScript(editedScript);
+        lbActions.ViewTop = viewTop;
+    }
+
+    private void SelectCellCursorAction_CellSelected(object sender, Point2D e)
+    {
+        tbParameterValue.Text = ((e.Y * 1000) + e.X).ToString(CultureInfo.InvariantCulture);
+    }
+
+    private void BtnEditorPresetValues_LeftClick(object sender, EventArgs e)
+    {
+        if (editedScript == null)
+            return;
+
+        if (lbActions.SelectedItem == null)
+            return;
+
+        ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
+        ScriptAction action = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
+
+        if (action == null)
+            return;
+
+        if (action.ParamType == TriggerParamType.Cell)
         {
-            Name = nameof(ScriptsWindow);
-            base.Initialize();
+            editorState.CursorAction = selectCellCursorAction;
+            notificationManager.AddNotification(Translate(this, "SelectCell", "Select a cell from the map."));
+        }
+        else if (action.ParamType == TriggerParamType.BuildingWithProperty)
+        {
+            var (index, property) = SplitBuildingWithProperty(entry.Argument);
+            selectBuildingTargetWindow.Open(index, property);
+        }
+        else if (action.ParamType == TriggerParamType.Animation)
+        {
+            var animType = entry.Argument > -1 && entry.Argument < map.Rules.AnimTypes.Count ? map.Rules.AnimTypes[entry.Argument] : null;
+            selectAnimationWindow.Open(animType);
+        }
+    }
 
-            lbScriptTypes = FindChild<EditorListBox>(nameof(lbScriptTypes));
-            tbFilter = FindChild<EditorSuggestionTextBox>(nameof(tbFilter));            
-            tbName = FindChild<EditorTextBox>(nameof(tbName));
-            lbActions = FindChild<ScriptActionListBox>(nameof(lbActions));
-            selTypeOfAction = FindChild<EditorPopUpSelector>(nameof(selTypeOfAction));
-            lblParameterDescription = FindChild<XNALabel>(nameof(lblParameterDescription));
-            tbParameterValue = FindChild<EditorNumberTextBox>(nameof(tbParameterValue));
-            btnEditorPresetValues = FindChild<MenuButton>(nameof(btnEditorPresetValues));
-            btnEditorPresetValuesWindow = FindChild<EditorButton>(nameof(btnEditorPresetValuesWindow));
-            lblActionDescriptionValue = FindChild<XNALabel>(nameof(lblActionDescriptionValue));
-            ddScriptColor = FindChild<XNADropDown>(nameof(ddScriptColor));
+    private void BtnEditorPresetValuesWindow_LeftClick(object sender, EventArgs e)
+    {
+        if (editedScript == null)
+            return;
 
-            ddScriptColor.AddItem(Translate(this, "None", "None"));
-            UIHelpers.AddColorOptionsToDropDown(Script.SupportedColors, ddScriptColor);
+        if (lbActions.SelectedItem == null)
+            return;
 
-            tbFilter.TextChanged += TbFilter_TextChanged;
+        var item = selectScriptActionPresetOptionWindow.GetMatchingItem(tbParameterValue.Text);
+        selectScriptActionPresetOptionWindow.Open(item);
+    }
 
-            var presetValuesContextMenu = new EditorContextMenu(WindowManager);
-            presetValuesContextMenu.Width = 250;
-            btnEditorPresetValues.ContextMenu = presetValuesContextMenu;
-            btnEditorPresetValues.ContextMenu.OptionSelected += ContextMenu_OptionSelected;
-            btnEditorPresetValues.LeftClick += BtnEditorPresetValues_LeftClick;
+    private void ShowScriptReferences()
+    {
+        if (editedScript == null)
+            return;
 
-            btnEditorPresetValuesWindow.LeftClick += BtnEditorPresetValuesWindow_LeftClick;
-            btnEditorPresetValuesWindow.Disable();
+        var referringLocalTeamTypes = map.TeamTypes.FindAll(tt => tt.Script == editedScript);
+        var referringGlobalTeamTypes = map.Rules.TeamTypes.FindAll(tt => tt.Script.ININame == editedScript.ININame);
 
-            tbName.TextChanged += TbName_TextChanged;
-            tbParameterValue.TextChanged += TbParameterValue_TextChanged;
-            tbParameterValue.MouseScrolled += TbParameterValue_MouseScrolled;
-            lbScriptTypes.SelectedIndexChanged += LbScriptTypes_SelectedIndexChanged;
-            lbActions.SelectedIndexChanged += LbActions_SelectedIndexChanged;
+        if (referringLocalTeamTypes.Count == 0 && referringGlobalTeamTypes.Count == 0)
+        {
+            EditorMessageBox.Show(WindowManager,
+                Translate(this, "NoReferencesFound.Title", "No references found"),
+                string.Format(Translate(this, "NoReferencesFound.Description", "The selected Script \"{0}\" ({1}) is not used by any TeamTypes, either local (map) or global (AI.ini)."), 
+                    editedScript.Name, editedScript.ININame),
+                MessageBoxButtons.OK);
+        }
+        else
+        {
+            var stringBuilder = new StringBuilder();
+            referringLocalTeamTypes.ForEach(tt => stringBuilder.AppendLine(
+                string.Format(Translate(this, "ReferringTeamTypes.Local", 
+                    "- Local TeamType \"{0}\" ({1})"), tt.Name, tt.ININame)));
+            referringGlobalTeamTypes.ForEach(tt => stringBuilder.AppendLine(
+                string.Format(Translate(this, "ReferringTeamTypes.Global", 
+                    "- Global TeamType \"{0}\" ({1})"), tt.Name, tt.ININame)));
 
-            var sortContextMenu = new EditorContextMenu(WindowManager);
-            sortContextMenu.Name = nameof(sortContextMenu);
-            sortContextMenu.Width = lbScriptTypes.Width;
-            sortContextMenu.AddItem(Translate(this, "SortByID", "Sort by ID"), () => ScriptSortMode = ScriptSortMode.ID);
-            sortContextMenu.AddItem(Translate(this, "SortByName", "Sort by Name"), () => ScriptSortMode = ScriptSortMode.Name);
-            sortContextMenu.AddItem(Translate(this, "SortByColor", "Sort by Color"), () => ScriptSortMode = ScriptSortMode.Color);
-            sortContextMenu.AddItem(Translate(this, "SortByColorName", "Sort by Color, then by Name"), () => ScriptSortMode = ScriptSortMode.ColorThenName);
-            AddChild(sortContextMenu);
+            EditorMessageBox.Show(WindowManager, 
+                Translate(this, "ScriptReferences.Title", "Script References"),
+                string.Format(Translate(this, "ScriptReferences.Description", "The selected Script \"{0}\" ({1}) is used by the following TeamTypes:" + Environment.NewLine + Environment.NewLine + "{2}"),
+                    editedScript.Name, editedScript.ININame, stringBuilder.ToString()),
+                MessageBoxButtons.OK);
+        }
+    }
 
-            FindChild<EditorButton>("btnSortOptions").LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
+    private void BtnAddScript_LeftClick(object sender, EventArgs e)
+    {
+        var newScript = new Script(map.GetNewUniqueInternalId()) { Name = "New script" };
+        map.Scripts.Add(newScript);
+        ListScripts();
+        SelectScript(newScript);
+        WindowManager.SelectedControl = tbName;
+        tbName.SetSelection(0, tbName.Text.Length);
+    }
 
-            var scriptContextMenu = new EditorContextMenu(WindowManager);
-            scriptContextMenu.Name = nameof(scriptContextMenu);
-            scriptContextMenu.Width = lbScriptTypes.Width;
-            scriptContextMenu.AddItem(Translate(this, "ViewReferences", "View References"), ShowScriptReferences);
-            AddChild(scriptContextMenu);
+    private void BtnDeleteScript_LeftClick(object sender, EventArgs e)
+    {
+        if (editedScript == null)
+            return;
 
-            lbScriptTypes.AllowRightClickUnselect = false;
-            lbScriptTypes.RightClick += (s, e) =>
+        if (Keyboard.IsShiftHeldDown())
+        {
+            DeleteScript();
+        }
+        else
+        {
+            var messageBox = EditorMessageBox.Show(WindowManager,
+                Translate(this, "DeleteConfirm.Title", "Confirm"),
+                string.Format(Translate(this, "DeleteConfirm.Description", "Are you sure you wish to delete '{0}'?" + Environment.NewLine + Environment.NewLine +
+                    "You'll need to manually fix any TeamTypes using the Script." + Environment.NewLine + Environment.NewLine +
+                    "(You can hold Shift to skip this confirmation dialog.)"), 
+                    editedScript.Name),
+                MessageBoxButtons.YesNo);
+            messageBox.YesClickedAction = _ => DeleteScript();
+        }
+    }
+
+    private void DeleteScript()
+    {
+        if (lbScriptTypes.SelectedItem == null)
+            return;
+
+        map.RemoveScript((Script)lbScriptTypes.SelectedItem.Tag);
+        map.TeamTypes.ForEach(tt =>
+        {
+            if (tt.Script == editedScript)
+                tt.Script = null;
+        });
+        ListScripts();
+        RefreshSelectedScript();
+    }
+
+    private void BtnCloneScript_LeftClick(object sender, EventArgs e)
+    {
+        if (editedScript == null)
+            return;
+
+        var newScript = editedScript.Clone(map.GetNewUniqueInternalId());
+        map.Scripts.Add(newScript);
+        ListScripts();
+        SelectScript(newScript);
+    }
+
+    private void BtnAddAction_LeftClick(object sender, EventArgs e)
+    {
+        if (editedScript == null)
+            return;
+
+        isAddingAction = true;
+        insertIndex = -1;
+        selectScriptActionWindow.Open(null);
+    }
+
+    private void BtnDeleteAction_LeftClick(object sender, EventArgs e)
+    {
+        if (editedScript == null || lbActions.SelectedItem == null)
+            return;
+
+        editedScript.Actions.RemoveAt(lbActions.SelectedIndex);
+        EditScript(editedScript);
+    }
+
+    private void TbName_TextChanged(object sender, EventArgs e)
+    {
+        if (editedScript == null)
+            return;
+
+        editedScript.Name = tbName.Text;
+        lbScriptTypes.SelectedItem.Text = tbName.Text;
+    }
+
+    private void TbFilter_TextChanged(object sender, EventArgs e) => ListScripts();
+
+    private void DdScriptColor_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (ddScriptColor.SelectedIndex < 1)
+        {
+            editedScript.EditorColor = null;
+            lbScriptTypes.SelectedItem.TextColor = lbScriptTypes.DefaultItemColor;
+            return;
+        }
+
+        editedScript.EditorColor = (string)ddScriptColor.SelectedItem.Tag;
+        lbScriptTypes.SelectedItem.TextColor = ddScriptColor.SelectedItem.TextColor.Value;
+    }
+
+    private void TbParameterValue_TextChanged(object sender, EventArgs e)
+    {
+        if (lbActions.SelectedItem == null || editedScript == null)
+            return;
+
+        ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
+        entry.Argument = tbParameterValue.Value;
+        (string text, string description) = GetActionEntryText(lbActions.SelectedIndex, entry);
+        lbActions.UpdateItemTag(lbActions.SelectedIndex, text, description);
+    }
+
+    private void TbParameterValue_MouseScrolled(object sender, InputEventArgs e)
+    {
+        e.Handled = true;
+
+        if (lbActions.SelectedItem == null || editedScript == null)
+            return;
+
+        ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
+        entry.Argument = Cursor.ScrollWheelValue > 0 ? entry.Argument - 1 : entry.Argument + 1;
+        (string text, string description) = GetActionEntryText(lbActions.SelectedIndex, entry);
+        lbActions.UpdateItemTag(lbActions.SelectedIndex, text, description);
+
+        tbParameterValue.TextChanged -= TbParameterValue_TextChanged;
+        ScriptAction action = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
+        SetParameterEntryText(entry, action);
+        tbParameterValue.TextChanged += TbParameterValue_TextChanged;
+    }
+
+    private void ContextMenu_OptionSelected(object sender, ContextMenuItemSelectedEventArgs e)
+    {
+        if (lbActions.SelectedItem == null || editedScript == null)
+        {
+            return;
+        }
+
+        tbParameterValue.Text = btnEditorPresetValues.ContextMenu.Items[e.ItemIndex].Text;
+    }
+
+    private void SelTypeOfAction_MouseLeftDown(object sender, EventArgs e)
+    {
+        if (lbActions.SelectedItem == null || editedScript == null)
+        {
+            return;
+        }
+
+        ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
+
+        ScriptAction scriptAction = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
+
+        isAddingAction = false;
+        selectScriptActionWindow.Open(scriptAction);
+    }
+
+    private ScriptActionEntry CreateNewScriptActionEntry(int actionId)
+    {
+        var entry = new ScriptActionEntry(actionId, 0);
+
+        if (UserSettings.Instance.SmartScriptActionDefaultValues)
+        {
+            var scriptActionType = map.EditorConfig.ScriptActions[actionId];
+
+            switch (scriptActionType.ParamType)
             {
-                lbScriptTypes.SelectedIndex = lbScriptTypes.HoveredIndex;
-                if (editedScript != null)
-                    scriptContextMenu.Open(GetCursorPoint());
-            };
-
-            selectScriptActionWindow = new SelectScriptActionWindow(WindowManager, map.EditorConfig);
-            var selectScriptActionDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectScriptActionWindow);
-            selectScriptActionDarkeningPanel.Hidden += SelectScriptActionDarkeningPanel_Hidden;
-
-            selectScriptActionPresetOptionWindow = new SelectScriptActionPresetOptionWindow(WindowManager, map);
-            var selectScriptActionPresetDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectScriptActionPresetOptionWindow);
-            selectScriptActionPresetDarkeningPanel.Hidden += SelectScriptActionPresetDarkeningPanel_Hidden;
-
-            selectBuildingTargetWindow = new SelectBuildingTargetWindow(WindowManager, map);
-            var buildingTargetWindowDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectBuildingTargetWindow);
-            buildingTargetWindowDarkeningPanel.Hidden += BuildingTargetWindowDarkeningPanel_Hidden;
-
-            selectAnimationWindow = new SelectAnimationWindow(WindowManager, map);
-            selectAnimationWindow.IncludeNone = false;
-            var animationWindowDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectAnimationWindow);
-            animationWindowDarkeningPanel.Hidden += AnimationWindowDarkeningPanel_Hidden;
-
-            selTypeOfAction.MouseLeftDown += SelTypeOfAction_MouseLeftDown;
-
-            FindChild<EditorButton>("btnAddScript").LeftClick += BtnAddScript_LeftClick;
-            FindChild<EditorButton>("btnDeleteScript").LeftClick += BtnDeleteScript_LeftClick;
-            FindChild<EditorButton>("btnCloneScript").LeftClick += BtnCloneScript_LeftClick;
-            FindChild<EditorButton>("btnAddAction").LeftClick += BtnAddAction_LeftClick;
-            FindChild<EditorButton>("btnDeleteAction").LeftClick += BtnDeleteAction_LeftClick;
-            FindChild<EditorButton>("btnInsertAction").LeftClick += (_, _) => InsertAction();
-            FindChild<EditorButton>("btnCloneAction").LeftClick += (_, _) => CloneAction();
-            FindChild<EditorButton>("btnMoveUp").LeftClick += (_, _) => MoveActionUp();
-            FindChild<EditorButton>("btnMoveDown").LeftClick += (_, _) => MoveActionDown();
-
-            selectCellCursorAction.CellSelected += SelectCellCursorAction_CellSelected;
-
-            actionListContextMenu = new EditorContextMenu(WindowManager);
-            actionListContextMenu.Name = nameof(actionListContextMenu);
-            actionListContextMenu.Width = 180;
-            actionListContextMenu.AddItem(Translate(this, "MoveUp", "Move Up"), MoveActionUp, () => editedScript != null && lbActions.SelectedItem != null && lbActions.SelectedIndex > 0);
-            actionListContextMenu.AddItem(Translate(this, "MoveDown", "Move Down"), MoveActionDown, () => editedScript != null && lbActions.SelectedItem != null && lbActions.SelectedIndex < lbActions.Items.Count - 1);
-            actionListContextMenu.AddItem(Translate(this, "CloneAction", "Clone Action"), CloneAction, () => editedScript != null && lbActions.SelectedItem != null);
-            actionListContextMenu.AddItem(Translate(this, "InsertNewAction", "Insert New Action Here"), InsertAction, () => editedScript != null && lbActions.SelectedItem != null);
-            actionListContextMenu.AddItem(Translate(this, "DeleteAction", "Delete Action"), ActionListContextMenu_Delete, () => editedScript != null && lbActions.SelectedItem != null);
-            AddChild(actionListContextMenu);
-
-            lbActions.AllowRightClickUnselect = false;
-            lbActions.RightClick += (s, e) => { if (editedScript != null) { lbActions.SelectedIndex = lbActions.HoveredIndex; actionListContextMenu.Open(GetCursorPoint()); } };
-        }
-
-        private void AnimationWindowDarkeningPanel_Hidden(object sender, EventArgs e)
-        {
-            if (editedScript == null || lbActions.SelectedItem == null)
-                return;
-
-            if (selectAnimationWindow.SelectedObject != null)
-            {
-                editedScript.Actions[lbActions.SelectedIndex].Argument = selectAnimationWindow.SelectedObject.Index;
-                RefreshParameterEntryText();
-            }
-        }
-
-        private void BuildingTargetWindowDarkeningPanel_Hidden(object sender, EventArgs e)
-        {
-            if (editedScript == null || lbActions.SelectedItem == null)
-                return;
-
-            if (selectBuildingTargetWindow.SelectedObject > -1)
-            {
-                tbParameterValue.Text = GetBuildingWithPropertyText(selectBuildingTargetWindow.SelectedObject, selectBuildingTargetWindow.Property);
-            }
-        }
-
-        private void MoveActionUp()
-        {
-            if (editedScript == null || lbActions.SelectedItem == null || lbActions.SelectedIndex <= 0)
-                return;
-
-            int viewTop = lbActions.ViewTop;
-            editedScript.Actions.Swap(lbActions.SelectedIndex - 1, lbActions.SelectedIndex);
-            EditScript(editedScript);
-            lbActions.SelectedIndex--;
-            lbActions.ViewTop = viewTop;
-        }
-
-        private void MoveActionDown()
-        {
-            if (editedScript == null || lbActions.SelectedItem == null || lbActions.SelectedIndex >= editedScript.Actions.Count - 1)
-                return;
-
-            int viewTop = lbActions.ViewTop;
-            editedScript.Actions.Swap(lbActions.SelectedIndex, lbActions.SelectedIndex + 1);
-            EditScript(editedScript);
-            lbActions.SelectedIndex++;
-            lbActions.ViewTop = viewTop;
-        }
-
-        private void CloneAction()
-        {
-            if (editedScript == null || lbActions.SelectedItem == null)
-                return;
-
-            int viewTop = lbActions.ViewTop;
-            int index = lbActions.SelectedIndex + 1;
-
-            var clonedEntry = editedScript.Actions[lbActions.SelectedIndex].Clone();
-
-            // Smart script action cloning
-            if (UserSettings.Instance.SmartScriptActionCloning || Keyboard.IsShiftHeldDown() || Keyboard.IsAltHeldDown())
-            {
-                var scriptActionType = map.EditorConfig.ScriptActions[clonedEntry.Action];
-
-                if (scriptActionType.ParamType == TriggerParamType.Waypoint)
-                {
-                    int indexOffset = Keyboard.IsAltHeldDown() ? -1 : 1;
-
-                    if (map.Waypoints.Exists(wp => wp.Identifier == clonedEntry.Argument + indexOffset))
+                case TriggerParamType.Quarry:
+                    if (editedScript != null)
                     {
-                        clonedEntry.Argument = clonedEntry.Argument + indexOffset;
-                    }
-                }
-            }
-
-            editedScript.Actions.Insert(index, clonedEntry);
-            EditScript(editedScript);
-            lbActions.SelectedIndex = index;
-            lbActions.ViewTop = viewTop;
-        }
-
-        private void InsertAction()
-        {
-            if (editedScript == null || lbActions.SelectedItem == null)
-                return;
-
-            isAddingAction = true;
-            insertIndex = lbActions.SelectedIndex;
-            selectScriptActionWindow.Open(null);
-        }
-
-        private void ActionListContextMenu_Delete()
-        {
-            if (editedScript == null || lbActions.SelectedItem == null)
-                return;
-
-            int viewTop = lbActions.ViewTop;
-            editedScript.Actions.RemoveAt(lbActions.SelectedIndex);
-            EditScript(editedScript);
-            lbActions.ViewTop = viewTop;
-        }
-
-        private void SelectCellCursorAction_CellSelected(object sender, GameMath.Point2D e)
-        {
-            tbParameterValue.Text = ((e.Y * 1000) + e.X).ToString(CultureInfo.InvariantCulture);
-        }
-
-        private void BtnEditorPresetValues_LeftClick(object sender, EventArgs e)
-        {
-            if (editedScript == null)
-                return;
-
-            if (lbActions.SelectedItem == null)
-                return;
-
-            ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
-            ScriptAction action = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
-
-            if (action == null)
-                return;
-
-            if (action.ParamType == TriggerParamType.Cell)
-            {
-                editorState.CursorAction = selectCellCursorAction;
-                notificationManager.AddNotification(Translate(this, "SelectCell", "Select a cell from the map."));
-            }
-            else if (action.ParamType == TriggerParamType.BuildingWithProperty)
-            {
-                var (index, property) = SplitBuildingWithProperty(entry.Argument);
-                selectBuildingTargetWindow.Open(index, property);
-            }
-            else if (action.ParamType == TriggerParamType.Animation)
-            {
-                var animType = entry.Argument > -1 && entry.Argument < map.Rules.AnimTypes.Count ? map.Rules.AnimTypes[entry.Argument] : null;
-                selectAnimationWindow.Open(animType);
-            }
-        }
-
-        private void BtnEditorPresetValuesWindow_LeftClick(object sender, EventArgs e)
-        {
-            if (editedScript == null)
-                return;
-
-            if (lbActions.SelectedItem == null)
-                return;
-
-            var item = selectScriptActionPresetOptionWindow.GetMatchingItem(tbParameterValue.Text);
-            selectScriptActionPresetOptionWindow.Open(item);
-        }
-
-        private void ShowScriptReferences()
-        {
-            if (editedScript == null)
-                return;
-
-            var referringLocalTeamTypes = map.TeamTypes.FindAll(tt => tt.Script == editedScript);
-            var referringGlobalTeamTypes = map.Rules.TeamTypes.FindAll(tt => tt.Script.ININame == editedScript.ININame);
-
-            if (referringLocalTeamTypes.Count == 0 && referringGlobalTeamTypes.Count == 0)
-            {
-                EditorMessageBox.Show(WindowManager,
-                    Translate(this, "NoReferencesFound.Title", "No references found"),
-                    string.Format(Translate(this, "NoReferencesFound.Description", "The selected Script \"{0}\" ({1}) is not used by any TeamTypes, either local (map) or global (AI.ini)."), 
-                        editedScript.Name, editedScript.ININame),
-                    MessageBoxButtons.OK);
-            }
-            else
-            {
-                var stringBuilder = new StringBuilder();
-                referringLocalTeamTypes.ForEach(tt => stringBuilder.AppendLine(
-                    string.Format(Translate(this, "ReferringTeamTypes.Local", 
-                        "- Local TeamType \"{0}\" ({1})"), tt.Name, tt.ININame)));
-                referringGlobalTeamTypes.ForEach(tt => stringBuilder.AppendLine(
-                    string.Format(Translate(this, "ReferringTeamTypes.Global", 
-                        "- Global TeamType \"{0}\" ({1})"), tt.Name, tt.ININame)));
-
-                EditorMessageBox.Show(WindowManager, 
-                    Translate(this, "ScriptReferences.Title", "Script References"),
-                    string.Format(Translate(this, "ScriptReferences.Description", "The selected Script \"{0}\" ({1}) is used by the following TeamTypes:" + Environment.NewLine + Environment.NewLine + "{2}"),
-                        editedScript.Name, editedScript.ININame, stringBuilder.ToString()),
-                    MessageBoxButtons.OK);
-            }
-        }
-
-        private void BtnAddScript_LeftClick(object sender, EventArgs e)
-        {
-            var newScript = new Script(map.GetNewUniqueInternalId()) { Name = "New script" };
-            map.Scripts.Add(newScript);
-            ListScripts();
-            SelectScript(newScript);
-            WindowManager.SelectedControl = tbName;
-            tbName.SetSelection(0, tbName.Text.Length);
-        }
-
-        private void BtnDeleteScript_LeftClick(object sender, EventArgs e)
-        {
-            if (editedScript == null)
-                return;
-
-            if (Keyboard.IsShiftHeldDown())
-            {
-                DeleteScript();
-            }
-            else
-            {
-                var messageBox = EditorMessageBox.Show(WindowManager,
-                    Translate(this, "DeleteConfirm.Title", "Confirm"),
-                    string.Format(Translate(this, "DeleteConfirm.Description", "Are you sure you wish to delete '{0}'?" + Environment.NewLine + Environment.NewLine +
-                        "You'll need to manually fix any TeamTypes using the Script." + Environment.NewLine + Environment.NewLine +
-                        "(You can hold Shift to skip this confirmation dialog.)"), 
-                        editedScript.Name),
-                    MessageBoxButtons.YesNo);
-                messageBox.YesClickedAction = _ => DeleteScript();
-            }
-        }
-
-        private void DeleteScript()
-        {
-            if (lbScriptTypes.SelectedItem == null)
-                return;
-
-            map.RemoveScript((Script)lbScriptTypes.SelectedItem.Tag);
-            map.TeamTypes.ForEach(tt =>
-            {
-                if (tt.Script == editedScript)
-                    tt.Script = null;
-            });
-            ListScripts();
-            RefreshSelectedScript();
-        }
-
-        private void BtnCloneScript_LeftClick(object sender, EventArgs e)
-        {
-            if (editedScript == null)
-                return;
-
-            var newScript = editedScript.Clone(map.GetNewUniqueInternalId());
-            map.Scripts.Add(newScript);
-            ListScripts();
-            SelectScript(newScript);
-        }
-
-        private void BtnAddAction_LeftClick(object sender, EventArgs e)
-        {
-            if (editedScript == null)
-                return;
-
-            isAddingAction = true;
-            insertIndex = -1;
-            selectScriptActionWindow.Open(null);
-        }
-
-        private void BtnDeleteAction_LeftClick(object sender, EventArgs e)
-        {
-            if (editedScript == null || lbActions.SelectedItem == null)
-                return;
-
-            editedScript.Actions.RemoveAt(lbActions.SelectedIndex);
-            EditScript(editedScript);
-        }
-
-        private void TbName_TextChanged(object sender, EventArgs e)
-        {
-            if (editedScript == null)
-                return;
-
-            editedScript.Name = tbName.Text;
-            lbScriptTypes.SelectedItem.Text = tbName.Text;
-        }
-
-        private void TbFilter_TextChanged(object sender, EventArgs e) => ListScripts();
-
-        private void DdScriptColor_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (ddScriptColor.SelectedIndex < 1)
-            {
-                editedScript.EditorColor = null;
-                lbScriptTypes.SelectedItem.TextColor = lbScriptTypes.DefaultItemColor;
-                return;
-            }
-
-            editedScript.EditorColor = (string)ddScriptColor.SelectedItem.Tag;
-            lbScriptTypes.SelectedItem.TextColor = ddScriptColor.SelectedItem.TextColor.Value;
-        }
-
-        private void TbParameterValue_TextChanged(object sender, EventArgs e)
-        {
-            if (lbActions.SelectedItem == null || editedScript == null)
-                return;
-
-            ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
-            entry.Argument = tbParameterValue.Value;
-            (string text, string description) = GetActionEntryText(lbActions.SelectedIndex, entry);
-            lbActions.UpdateItemTag(lbActions.SelectedIndex, text, description);
-        }
-
-        private void TbParameterValue_MouseScrolled(object sender, InputEventArgs e)
-        {
-            e.Handled = true;
-
-            if (lbActions.SelectedItem == null || editedScript == null)
-                return;
-
-            ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
-            entry.Argument = Cursor.ScrollWheelValue > 0 ? entry.Argument - 1 : entry.Argument + 1;
-            (string text, string description) = GetActionEntryText(lbActions.SelectedIndex, entry);
-            lbActions.UpdateItemTag(lbActions.SelectedIndex, text, description);
-
-            tbParameterValue.TextChanged -= TbParameterValue_TextChanged;
-            ScriptAction action = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
-            SetParameterEntryText(entry, action);
-            tbParameterValue.TextChanged += TbParameterValue_TextChanged;
-        }
-
-        private void ContextMenu_OptionSelected(object sender, ContextMenuItemSelectedEventArgs e)
-        {
-            if (lbActions.SelectedItem == null || editedScript == null)
-            {
-                return;
-            }
-
-            tbParameterValue.Text = btnEditorPresetValues.ContextMenu.Items[e.ItemIndex].Text;
-        }
-
-        private void SelTypeOfAction_MouseLeftDown(object sender, EventArgs e)
-        {
-            if (lbActions.SelectedItem == null || editedScript == null)
-            {
-                return;
-            }
-
-            ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
-
-            ScriptAction scriptAction = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
-
-            isAddingAction = false;
-            selectScriptActionWindow.Open(scriptAction);
-        }
-
-        private ScriptActionEntry CreateNewScriptActionEntry(int actionId)
-        {
-            var entry = new ScriptActionEntry(actionId, 0);
-
-            if (UserSettings.Instance.SmartScriptActionDefaultValues)
-            {
-                var scriptActionType = map.EditorConfig.ScriptActions[actionId];
-
-                switch (scriptActionType.ParamType)
-                {
-                    case TriggerParamType.Quarry:
-                        if (editedScript != null)
+                        // Check if the script action already has an attack quarry action. If yes, default to "attack anything".
+                        if (editedScript.Actions.Exists(ae =>
                         {
-                            // Check if the script action already has an attack quarry action. If yes, default to "attack anything".
-                            if (editedScript.Actions.Exists(ae =>
+                            var otherScriptActionType = map.EditorConfig.ScriptActions.GetValueOrDefault(actionId);
+                            if (otherScriptActionType != null && otherScriptActionType.ParamType == TriggerParamType.Quarry)
                             {
-                                var otherScriptActionType = map.EditorConfig.ScriptActions.GetValueOrDefault(actionId);
-                                if (otherScriptActionType != null && otherScriptActionType.ParamType == TriggerParamType.Quarry)
-                                {
-                                    return true;
-                                }
+                                return true;
+                            }
 
-                                return false;
-                            }))
+                            return false;
+                        }))
+                        {
+                            entry.Argument = 1; // QUARRY_ANY (attack anything)
+                            break;
+                        }
+
+                        // Default to a quarry type existing in the name of the action.
+                        for (int i = 0; i < scriptActionType.PresetOptions.Count; i++)
+                        {
+                            if (editedScript.Name.Contains(scriptActionType.PresetOptions[i].Text, StringComparison.OrdinalIgnoreCase))
                             {
-                                entry.Argument = 1; // QUARRY_ANY (attack anything)
+                                entry.Argument = i;
                                 break;
                             }
-
-                            // Default to a quarry type existing in the name of the action.
-                            for (int i = 0; i < scriptActionType.PresetOptions.Count; i++)
-                            {
-                                if (editedScript.Name.Contains(scriptActionType.PresetOptions[i].Text, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    entry.Argument = i;
-                                    break;
-                                }
-                            }
                         }
-                        break;
-                    case TriggerParamType.Waypoint:
-                        Waypoint wp = map.GetFirstUnusedWaypoint();
-                        if (wp != null)
-                            entry.Argument = wp.Identifier;
-                        break;
-                    default:
-                        ScriptActionPresetOption preset = scriptActionType.PresetOptions.Find(p => editedScript.Name.Contains(p.Text, StringComparison.OrdinalIgnoreCase));
-                        if (preset != null)
-                            entry.Argument = preset.Value;
-                        break;
-                }
+                    }
+                    break;
+                case TriggerParamType.Waypoint:
+                    Waypoint wp = map.GetFirstUnusedWaypoint();
+                    if (wp != null)
+                        entry.Argument = wp.Identifier;
+                    break;
+                default:
+                    ScriptActionPresetOption preset = scriptActionType.PresetOptions.Find(p => editedScript.Name.Contains(p.Text, StringComparison.OrdinalIgnoreCase));
+                    if (preset != null)
+                        entry.Argument = preset.Value;
+                    break;
             }
-
-            return entry;
         }
 
-        private void SelectScriptActionDarkeningPanel_Hidden(object sender, EventArgs e)
+        return entry;
+    }
+
+    private void SelectScriptActionDarkeningPanel_Hidden(object sender, EventArgs e)
+    {
+        if (editedScript == null)
         {
-            if (editedScript == null)
-            {
-                return;
-            }
+            return;
+        }
 
-            if (!isAddingAction && lbActions.SelectedItem == null)
-            {
-                return;
-            }
+        if (!isAddingAction && lbActions.SelectedItem == null)
+        {
+            return;
+        }
 
-            if (selectScriptActionWindow.SelectedObject != null)
+        if (selectScriptActionWindow.SelectedObject != null)
+        {
+            if (isAddingAction)
             {
-                if (isAddingAction)
+                if (insertIndex > -1 && insertIndex < editedScript.Actions.Count)
                 {
-                    if (insertIndex > -1 && insertIndex < editedScript.Actions.Count)
-                    {
-                        int viewTop = lbActions.ViewTop;
-                        int index = lbActions.SelectedIndex;
-                        editedScript.Actions.Insert(index, CreateNewScriptActionEntry(selectScriptActionWindow.SelectedObject.ID));
-                        EditScript(editedScript);
-                        lbActions.SelectedIndex = index;
-                        lbActions.ViewTop = viewTop;
-                        insertIndex = -1;
-                    }
-                    else
-                    {
-                        editedScript.Actions.Add(CreateNewScriptActionEntry(selectScriptActionWindow.SelectedObject.ID));
-                        EditScript(editedScript);
-                        lbActions.SelectedIndex = lbActions.Items.Count - 1;
-                        lbActions.ScrollToBottom();
-                    }
-
-                    isAddingAction = false;
+                    int viewTop = lbActions.ViewTop;
+                    int index = lbActions.SelectedIndex;
+                    editedScript.Actions.Insert(index, CreateNewScriptActionEntry(selectScriptActionWindow.SelectedObject.ID));
+                    EditScript(editedScript);
+                    lbActions.SelectedIndex = index;
+                    lbActions.ViewTop = viewTop;
+                    insertIndex = -1;
                 }
                 else
                 {
-                    ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
-                    entry.Action = selectScriptActionWindow.SelectedObject.ID;
-                    (string text, string description) = GetActionEntryText(lbActions.SelectedIndex, entry);
-                    lbActions.UpdateItemTag(lbActions.SelectedIndex, text, description);
+                    editedScript.Actions.Add(CreateNewScriptActionEntry(selectScriptActionWindow.SelectedObject.ID));
+                    EditScript(editedScript);
+                    lbActions.SelectedIndex = lbActions.Items.Count - 1;
+                    lbActions.ScrollToBottom();
                 }
-            }
 
-            LbActions_SelectedIndexChanged(this, EventArgs.Empty);
-
-            // Reduce chance of the user accidentally using buttons to edit scripts after the script action selection window has been hidden
-            InputIgnoreTime = TimeSpan.FromSeconds(Constants.UIAccidentalClickPreventionTime);
-        }
-
-
-        private void SelectScriptActionPresetDarkeningPanel_Hidden(object sender, EventArgs e)
-        {
-            if (lbActions.SelectedItem == null || editedScript == null)
-            {
-                return;
-            }
-
-            if (selectScriptActionPresetOptionWindow.SelectedObject != null)
-                tbParameterValue.Text = selectScriptActionPresetOptionWindow.GetSelectedItemText();
-        }
-
-        private void RefreshParameterEntryText()
-        {
-            if (lbActions.SelectedItem == null || editedScript == null)
-                return;
-
-            ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
-            ScriptAction action = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
-            tbParameterValue.TextChanged -= TbParameterValue_TextChanged;
-            SetParameterEntryText(entry, action);
-            tbParameterValue.TextChanged += TbParameterValue_TextChanged;
-        }
-
-        private void LbActions_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (lbActions.SelectedItem == null || editedScript == null)
-            {
-                selTypeOfAction.Text = string.Empty;
-                selTypeOfAction.Tag = null;
-                tbParameterValue.Text = string.Empty;
-                lblParameterDescription.Text = Translate(this, "ParameterDescriptionText", "Parameter:");
-                lblActionDescriptionValue.Text = string.Empty;
-                return;
-            }
-
-            ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
-            ScriptAction action = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
-
-            selTypeOfAction.Text = GetActionNameFromIndex(entry.Action);
-
-            tbParameterValue.TextChanged -= TbParameterValue_TextChanged;
-            SetParameterEntryText(entry, action);
-            tbParameterValue.TextChanged += TbParameterValue_TextChanged;
-
-            lblParameterDescription.Text = action == null ? 
-                Translate(this, "ParameterDescriptionText", "Parameter:") :
-                action.ParamDescription + ":";
-            lblActionDescriptionValue.Text = GetActionDescriptionFromIndex(entry.Action);
-
-            string text = null;
-
-            if (action.UseWindowSelection && action.PresetOptions.Count > 0)
-            {
-                btnEditorPresetValues.Disable();
-                btnEditorPresetValuesWindow.Enable();
-                text = selectScriptActionPresetOptionWindow.FillPresetOptions(entry, action);
+                isAddingAction = false;
             }
             else
             {
-                btnEditorPresetValues.Enable();
-                btnEditorPresetValuesWindow.Disable();
-                text = FillPresetContextMenu(entry, action);
+                ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
+                entry.Action = selectScriptActionWindow.SelectedObject.ID;
+                (string text, string description) = GetActionEntryText(lbActions.SelectedIndex, entry);
+                lbActions.UpdateItemTag(lbActions.SelectedIndex, text, description);
             }
-
-            if (text != null)
-                tbParameterValue.Text = text;
         }
 
-        private void SetParameterEntryText(ScriptActionEntry scriptActionEntry, ScriptAction action)
+        LbActions_SelectedIndexChanged(this, EventArgs.Empty);
+
+        // Reduce chance of the user accidentally using buttons to edit scripts after the script action selection window has been hidden
+        InputIgnoreTime = TimeSpan.FromSeconds(Constants.UIAccidentalClickPreventionTime);
+    }
+
+
+    private void SelectScriptActionPresetDarkeningPanel_Hidden(object sender, EventArgs e)
+    {
+        if (lbActions.SelectedItem == null || editedScript == null)
         {
-            if (action == null)
-            {
-                tbParameterValue.Value = scriptActionEntry.Argument;
-                return;
-            }
+            return;
+        }
 
-            if (action.ParamType == TriggerParamType.BuildingWithProperty)
-            {
-                tbParameterValue.Text = GetBuildingWithPropertyText(scriptActionEntry.Argument);
-                return;
-            }
-            else if (action.ParamType == TriggerParamType.Animation)
-            {
-                if (scriptActionEntry.Argument > -1 && scriptActionEntry.Argument < map.Rules.AnimTypes.Count)
-                    tbParameterValue.Text = scriptActionEntry.Argument.ToString(CultureInfo.InvariantCulture) + " - " + map.Rules.AnimTypes[scriptActionEntry.Argument].ININame;
-                else
-                    tbParameterValue.Text = scriptActionEntry.Argument.ToString(CultureInfo.InvariantCulture) + Translate(this, "UnknownAnimation", " - unknown animation");
+        if (selectScriptActionPresetOptionWindow.SelectedObject != null)
+            tbParameterValue.Text = selectScriptActionPresetOptionWindow.GetSelectedItemText();
+    }
 
-                return;
-            }
-            else if (action.ParamType == TriggerParamType.LocalVariable)
-            {
-                LocalVariable localVariable = map.LocalVariables.Find(lv => lv.Index == scriptActionEntry.Argument);
-                if (localVariable != null)
-                    tbParameterValue.Text = localVariable.Index + " - " + localVariable.Name;
+    private void RefreshParameterEntryText()
+    {
+        if (lbActions.SelectedItem == null || editedScript == null)
+            return;
 
-                return;
-            }
+        ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
+        ScriptAction action = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
+        tbParameterValue.TextChanged -= TbParameterValue_TextChanged;
+        SetParameterEntryText(entry, action);
+        tbParameterValue.TextChanged += TbParameterValue_TextChanged;
+    }
 
-            int presetIndex = action.PresetOptions.FindIndex(p => p.Value == scriptActionEntry.Argument);
+    private void LbActions_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (lbActions.SelectedItem == null || editedScript == null)
+        {
+            selTypeOfAction.Text = string.Empty;
+            selTypeOfAction.Tag = null;
+            tbParameterValue.Text = string.Empty;
+            lblParameterDescription.Text = Translate(this, "ParameterDescriptionText", "Parameter:");
+            lblActionDescriptionValue.Text = string.Empty;
+            return;
+        }
 
-            if (presetIndex > -1)
-            {
-                tbParameterValue.Text = action.PresetOptions[presetIndex].GetOptionText();
-            }
+        ScriptActionEntry entry = editedScript.Actions[lbActions.SelectedIndex];
+        ScriptAction action = map.EditorConfig.ScriptActions.GetValueOrDefault(entry.Action);
+
+        selTypeOfAction.Text = GetActionNameFromIndex(entry.Action);
+
+        tbParameterValue.TextChanged -= TbParameterValue_TextChanged;
+        SetParameterEntryText(entry, action);
+        tbParameterValue.TextChanged += TbParameterValue_TextChanged;
+
+        lblParameterDescription.Text = action == null ? 
+            Translate(this, "ParameterDescriptionText", "Parameter:") :
+            action.ParamDescription + ":";
+        lblActionDescriptionValue.Text = GetActionDescriptionFromIndex(entry.Action);
+
+        string text = null;
+
+        if (action.UseWindowSelection && action.PresetOptions.Count > 0)
+        {
+            btnEditorPresetValues.Disable();
+            btnEditorPresetValuesWindow.Enable();
+            text = selectScriptActionPresetOptionWindow.FillPresetOptions(entry, action);
+        }
+        else
+        {
+            btnEditorPresetValues.Enable();
+            btnEditorPresetValuesWindow.Disable();
+            text = FillPresetContextMenu(entry, action);
+        }
+
+        if (text != null)
+            tbParameterValue.Text = text;
+    }
+
+    private void SetParameterEntryText(ScriptActionEntry scriptActionEntry, ScriptAction action)
+    {
+        if (action == null)
+        {
+            tbParameterValue.Value = scriptActionEntry.Argument;
+            return;
+        }
+
+        if (action.ParamType == TriggerParamType.BuildingWithProperty)
+        {
+            tbParameterValue.Text = GetBuildingWithPropertyText(scriptActionEntry.Argument);
+            return;
+        }
+        else if (action.ParamType == TriggerParamType.Animation)
+        {
+            if (scriptActionEntry.Argument > -1 && scriptActionEntry.Argument < map.Rules.AnimTypes.Count)
+                tbParameterValue.Text = scriptActionEntry.Argument.ToString(CultureInfo.InvariantCulture) + " - " + map.Rules.AnimTypes[scriptActionEntry.Argument].ININame;
             else
-            {
-                tbParameterValue.Value = scriptActionEntry.Argument;
-            }
+                tbParameterValue.Text = scriptActionEntry.Argument.ToString(CultureInfo.InvariantCulture) + Translate(this, "UnknownAnimation", " - unknown animation");
+
+            return;
+        }
+        else if (action.ParamType == TriggerParamType.LocalVariable)
+        {
+            LocalVariable localVariable = map.LocalVariables.Find(lv => lv.Index == scriptActionEntry.Argument);
+            if (localVariable != null)
+                tbParameterValue.Text = localVariable.Index + " - " + localVariable.Name;
+
+            return;
         }
 
-        private static Tuple<int, BuildingWithPropertyType> SplitBuildingWithProperty(int argument)
+        int presetIndex = action.PresetOptions.FindIndex(p => p.Value == scriptActionEntry.Argument);
+
+        if (presetIndex > -1)
         {
-            var property = argument switch
-            {
-                < (int)BuildingWithPropertyType.HighestThreat => BuildingWithPropertyType.LeastThreat,
-                < (int)BuildingWithPropertyType.Nearest => BuildingWithPropertyType.HighestThreat,
-                < (int)BuildingWithPropertyType.Farthest => BuildingWithPropertyType.Nearest,
-                _ => BuildingWithPropertyType.Farthest,
-            };
-            return new(argument - (int)property, property);
+            tbParameterValue.Text = action.PresetOptions[presetIndex].GetOptionText();
         }
-
-        private string GetBuildingWithPropertyText(int buildingTypeIndex, BuildingWithPropertyType property)
+        else
         {
-            string description = property.ToDescription();
-            BuildingType buildingType = map.Rules.BuildingTypes.GetElementIfInRange(buildingTypeIndex);
-            int value = buildingTypeIndex + (int)property;
-
-            if (buildingType == null)
-                return value + Translate(this, "InvalidValue", " - invalid value");
-
-            return value + " - " + buildingType.GetEditorDisplayName() + " (" + description + ")";
+            tbParameterValue.Value = scriptActionEntry.Argument;
         }
+    }
 
-        private string GetBuildingWithPropertyText(int argument)
+    private static Tuple<int, BuildingWithPropertyType> SplitBuildingWithProperty(int argument)
+    {
+        var property = argument switch
         {
-            var (index, property) = SplitBuildingWithProperty(argument);
-            return GetBuildingWithPropertyText(index, property);
-        }
+            < (int)BuildingWithPropertyType.HighestThreat => BuildingWithPropertyType.LeastThreat,
+            < (int)BuildingWithPropertyType.Nearest => BuildingWithPropertyType.HighestThreat,
+            < (int)BuildingWithPropertyType.Farthest => BuildingWithPropertyType.Nearest,
+            _ => BuildingWithPropertyType.Farthest,
+        };
+        return new(argument - (int)property, property);
+    }
 
-        private string FillPresetContextMenu(ScriptActionEntry entry, ScriptAction action)
+    private string GetBuildingWithPropertyText(int buildingTypeIndex, BuildingWithPropertyType property)
+    {
+        string description = property.ToDescription();
+        BuildingType buildingType = map.Rules.BuildingTypes.GetElementIfInRange(buildingTypeIndex);
+        int value = buildingTypeIndex + (int)property;
+
+        if (buildingType == null)
+            return value + Translate(this, "InvalidValue", " - invalid value");
+
+        return value + " - " + buildingType.GetEditorDisplayName() + " (" + description + ")";
+    }
+
+    private string GetBuildingWithPropertyText(int argument)
+    {
+        var (index, property) = SplitBuildingWithProperty(argument);
+        return GetBuildingWithPropertyText(index, property);
+    }
+
+    private string FillPresetContextMenu(ScriptActionEntry entry, ScriptAction action)
+    {
+        btnEditorPresetValues.ContextMenu.ClearItems();
+
+        if (action == null)
         {
-            btnEditorPresetValues.ContextMenu.ClearItems();
-
-            if (action == null)
-            {
-                return null;
-            }
-
-            action.PresetOptions.ForEach(p => btnEditorPresetValues.ContextMenu.AddItem(new XNAContextMenuItem() { Text = p.GetOptionText() }));
-
-            if (action.ParamType == TriggerParamType.LocalVariable)
-            {
-                for (int i = 0; i < map.LocalVariables.Count; i++)
-                {
-                    btnEditorPresetValues.ContextMenu.AddItem(new XNAContextMenuItem() { Text = i + " - " + map.LocalVariables[i].Name });
-                }
-            }
-            else if (action.ParamType == TriggerParamType.Waypoint)
-            {
-                foreach (Waypoint waypoint in map.Waypoints)
-                {
-                    btnEditorPresetValues.ContextMenu.AddItem(new XNAContextMenuItem() { Text = waypoint.Identifier.ToString() });
-                }
-            }
-            else if (action.ParamType == TriggerParamType.HouseType)
-            {
-                foreach (var houseType in map.GetHouseTypes())
-                {
-                    btnEditorPresetValues.ContextMenu.AddItem(new XNAContextMenuItem() { Text = houseType.Index + " " + houseType.ININame, TextColor = Helpers.GetHouseTypeUITextColor(houseType) });
-                }
-            }
-            else if (action.ParamType == TriggerParamType.House)
-            {
-                foreach (var house in map.GetHouses())
-                {
-                    btnEditorPresetValues.ContextMenu.AddItem(new XNAContextMenuItem() { Text = house.ID + " " + house.ININame, TextColor = Helpers.GetHouseUITextColor(house) });
-                }
-            }
-
-            var fittingItem = btnEditorPresetValues.ContextMenu.Items.Find(item => item.Text == entry.Argument.ToString());
-            if (fittingItem == null)
-                fittingItem = btnEditorPresetValues.ContextMenu.Items.Find(item => item.Text.StartsWith(entry.Argument.ToString()));
-
-            if (fittingItem != null)
-                return fittingItem.Text;
-
             return null;
         }
 
-        private void LbScriptTypes_SelectedIndexChanged(object sender, EventArgs e) => RefreshSelectedScript();
+        action.PresetOptions.ForEach(p => btnEditorPresetValues.ContextMenu.AddItem(new XNAContextMenuItem() { Text = p.GetOptionText() }));
 
-        private void RefreshSelectedScript()
+        if (action.ParamType == TriggerParamType.LocalVariable)
         {
-            if (lbScriptTypes.SelectedItem == null)
+            for (int i = 0; i < map.LocalVariables.Count; i++)
             {
-                lbScriptTypes.SelectedIndex = -1;
-                EditScript(null);
-                return;
+                btnEditorPresetValues.ContextMenu.AddItem(new XNAContextMenuItem() { Text = i + " - " + map.LocalVariables[i].Name });
             }
-
-            EditScript((Script)lbScriptTypes.SelectedItem.Tag);
         }
-
-        public void Open()
+        else if (action.ParamType == TriggerParamType.Waypoint)
         {
-            ListScripts();
-
-            Show();
-        }
-
-        public void SelectScript(Script script)
-        {
-            int index = lbScriptTypes.Items.FindIndex(lbi => lbi.Tag == script);
-
-            if (index < 0)
-                return;
-
-            lbScriptTypes.SelectedIndex = index;
-            lbScriptTypes.ScrollToSelectedElement();
-        }
-
-        private void ListScripts()
-        {
-            lbScriptTypes.Clear();
-
-            IEnumerable<Script> sortedScripts = map.Scripts;
-
-            bool shouldViewTop = false; // when filtering the scroll bar should update so we use a flag here
-            if (tbFilter.Text != string.Empty && tbFilter.Text != tbFilter.Suggestion)
+            foreach (Waypoint waypoint in map.Waypoints)
             {
-                sortedScripts = sortedScripts.Where(script => script.Name.Contains(tbFilter.Text, StringComparison.CurrentCultureIgnoreCase));
-                shouldViewTop = true;
+                btnEditorPresetValues.ContextMenu.AddItem(new XNAContextMenuItem() { Text = waypoint.Identifier.ToString() });
             }
-
-            switch (ScriptSortMode)
+        }
+        else if (action.ParamType == TriggerParamType.HouseType)
+        {
+            foreach (var houseType in map.GetHouseTypes())
             {
-                case ScriptSortMode.Color:
-                    sortedScripts = sortedScripts.OrderBy(script => script.EditorColor).ThenBy(script => script.ININame);
+                btnEditorPresetValues.ContextMenu.AddItem(new XNAContextMenuItem() { Text = houseType.Index + " " + houseType.ININame, TextColor = Helpers.GetHouseTypeUITextColor(houseType) });
+            }
+        }
+        else if (action.ParamType == TriggerParamType.House)
+        {
+            foreach (var house in map.GetHouses())
+            {
+                btnEditorPresetValues.ContextMenu.AddItem(new XNAContextMenuItem() { Text = house.ID + " " + house.ININame, TextColor = Helpers.GetHouseUITextColor(house) });
+            }
+        }
+
+        var fittingItem = btnEditorPresetValues.ContextMenu.Items.Find(item => item.Text == entry.Argument.ToString());
+        if (fittingItem == null)
+            fittingItem = btnEditorPresetValues.ContextMenu.Items.Find(item => item.Text.StartsWith(entry.Argument.ToString()));
+
+        if (fittingItem != null)
+            return fittingItem.Text;
+
+        return null;
+    }
+
+    private void LbScriptTypes_SelectedIndexChanged(object sender, EventArgs e) => RefreshSelectedScript();
+
+    private void RefreshSelectedScript()
+    {
+        if (lbScriptTypes.SelectedItem == null)
+        {
+            lbScriptTypes.SelectedIndex = -1;
+            EditScript(null);
+            return;
+        }
+
+        EditScript((Script)lbScriptTypes.SelectedItem.Tag);
+    }
+
+    private void Map_ScriptingChanged(object sender, ScriptingChangedEventArgs e)
+    {
+        if (Visible && e.AffectsAny(typeof(Script), typeof(TeamType), typeof(LocalVariable), typeof(Trigger), typeof(Tag)))
+            AddCallback(RefreshScriptingData);
+    }
+
+    private void RefreshScriptingData()
+    {
+        var script = editedScript;
+        if (script != null && !map.Scripts.Contains(script))
+            script = null;
+
+        ListScripts();
+
+        if (script != null)
+            SelectScript(script);
+
+        if (lbScriptTypes.SelectedItem == null)
+            EditScript(null);
+    }
+
+    public void Open()
+    {
+        ListScripts();
+
+        Show();
+    }
+
+    public void SelectScript(Script script)
+    {
+        int index = lbScriptTypes.Items.FindIndex(lbi => lbi.Tag == script);
+
+        if (index < 0)
+            return;
+
+        lbScriptTypes.SelectedIndex = index;
+        lbScriptTypes.ScrollToSelectedElement();
+    }
+
+    private void ListScripts()
+    {
+        lbScriptTypes.Clear();
+
+        IEnumerable<Script> sortedScripts = map.Scripts;
+
+        bool shouldViewTop = false; // when filtering the scroll bar should update so we use a flag here
+        if (tbFilter.Text != string.Empty && tbFilter.Text != tbFilter.Suggestion)
+        {
+            sortedScripts = sortedScripts.Where(script => script.Name.Contains(tbFilter.Text, StringComparison.CurrentCultureIgnoreCase));
+            shouldViewTop = true;
+        }
+
+        switch (ScriptSortMode)
+        {
+            case ScriptSortMode.Color:
+                sortedScripts = sortedScripts.OrderBy(script => script.EditorColor).ThenBy(script => script.ININame);
+                break;
+            case ScriptSortMode.Name:
+                sortedScripts = sortedScripts.OrderBy(script => script.Name).ThenBy(script => script.ININame);
+                break;
+            case ScriptSortMode.ColorThenName:
+                sortedScripts = sortedScripts.OrderBy(script => script.EditorColor).ThenBy(script => script.Name);
+                break;
+            case ScriptSortMode.ID:
+            default:
+                sortedScripts = sortedScripts.OrderBy(script => script.ININame);
+                break;
+        }
+
+        foreach (var script in sortedScripts)
+        {
+            lbScriptTypes.AddItem(new XNAListBoxItem() { 
+                Text = script.Name,
+                Tag = script,
+                TextColor = script.EditorColor == null ? lbScriptTypes.DefaultItemColor : script.XNAColor
+            });
+        }
+
+        if (shouldViewTop)
+            lbScriptTypes.TopIndex = 0;
+    }
+
+    private void EditScript(Script script)
+    {
+        editedScript = script;
+        ddScriptColor.SelectedIndexChanged -= DdScriptColor_SelectedIndexChanged;
+
+        lbActions.Clear();
+        lbActions.ViewTop = 0;
+
+        if (editedScript == null)
+        {
+            tbName.Text = string.Empty;
+            selTypeOfAction.Text = string.Empty;
+            selTypeOfAction.Tag = null;
+            tbParameterValue.Text = string.Empty;
+            btnEditorPresetValues.ContextMenu.ClearItems();
+            lblActionDescriptionValue.Text = string.Empty;
+            lblParameterDescription.Text = Translate(this, "ParameterDescriptionText", "Parameter:");
+            ddScriptColor.SelectedIndex = -1;
+
+            return;
+        }
+
+        tbName.Text = editedScript.Name;
+        for (int i = 0; i < editedScript.Actions.Count; i++)
+        {
+            var actionEntry = editedScript.Actions[i];
+            (string text, string description) = GetActionEntryText(i, actionEntry);
+            lbActions.AddTaggedItem(new ScriptListBoxItemTag(actionEntry, text, description));
+        }
+
+        ddScriptColor.SelectedIndex = ddScriptColor.Items.FindIndex(item => (string)item.Tag == editedScript.EditorColor);
+        if (ddScriptColor.SelectedIndex < 0)
+            ddScriptColor.SelectedIndex = 0;
+
+        LbActions_SelectedIndexChanged(this, EventArgs.Empty);
+        ddScriptColor.SelectedIndexChanged += DdScriptColor_SelectedIndexChanged;
+        lbActions.ScrollToSelectedElement();
+    }
+
+    private (string text, string description) GetActionEntryText(int index, ScriptActionEntry entry)
+    {
+        string actionEntryText;
+        string textDetails = null;
+
+        ScriptAction action = GetScriptAction(entry.Action);
+        if (action == null)
+        {
+            actionEntryText = $"#{index} - Unknown";
+            textDetails = $"{entry.Argument.ToString(CultureInfo.InvariantCulture)}";
+        }
+        else
+        {
+            actionEntryText = $"#{index} - {action.Name}";
+            int presetOptionIndex = action.PresetOptions.FindIndex(presetOption => presetOption.Value == entry.Argument);
+            bool hasValidPresetOption = presetOptionIndex > -1;
+
+            switch (action.ParamType)
+            {
+                case TriggerParamType.BuildingWithProperty:
+                    var (buildingTypeIndex, property) = SplitBuildingWithProperty(entry.Argument);
+                    string propertyDescription = property.ToDescription();
+                    BuildingType buildingType = map.Rules.BuildingTypes.GetElementIfInRange(buildingTypeIndex);
+
+                    if (buildingType != null)
+                        textDetails = $"{entry.Argument} - {buildingType.GetEditorDisplayName()} - {propertyDescription}";
                     break;
-                case ScriptSortMode.Name:
-                    sortedScripts = sortedScripts.OrderBy(script => script.Name).ThenBy(script => script.ININame);
+
+                case TriggerParamType.LocalVariable:
+                    var localVar = map.LocalVariables.GetElementIfInRange(entry.Argument);
+                    if (localVar != null)
+                        textDetails = $"{localVar.Index} - {localVar.Name}";
                     break;
-                case ScriptSortMode.ColorThenName:
-                    sortedScripts = sortedScripts.OrderBy(script => script.EditorColor).ThenBy(script => script.Name);
+
+                case TriggerParamType.HouseType:
+                    var houseType = map.Houses.GetElementIfInRange(entry.Argument);
+                    if (houseType != null)
+                        textDetails = $"{houseType.ID} - {houseType.ININame}";
                     break;
-                case ScriptSortMode.ID:
+
+                case TriggerParamType.Animation:
+                    var animation = map.Rules.AnimTypes.GetElementIfInRange(entry.Argument);
+                    if (animation != null)
+                        textDetails = $"{animation.Index} - {animation.ININame}";
+                    break;
+
+                case TriggerParamType.Unknown:
+                    // special handling: script actions that have no type but still have presets should be handled by showing the preset value
+                    // otherwise we'll show no text after the name of the action
+                    if (hasValidPresetOption)
+                        goto default;
+
+                    textDetails = null;
+                    break;
+
                 default:
-                    sortedScripts = sortedScripts.OrderBy(script => script.ININame);
+                    if (hasValidPresetOption)
+                        textDetails = $"{presetOptionIndex} - {action.PresetOptions[presetOptionIndex].Text}";
+                    else
+                        textDetails = $"{entry.Argument.ToString(CultureInfo.InvariantCulture)}";
                     break;
             }
-
-            foreach (var script in sortedScripts)
-            {
-                lbScriptTypes.AddItem(new XNAListBoxItem() { 
-                    Text = script.Name,
-                    Tag = script,
-                    TextColor = script.EditorColor == null ? lbScriptTypes.DefaultItemColor : script.XNAColor
-                });
-            }
-
-            if (shouldViewTop)
-                lbScriptTypes.TopIndex = 0;
         }
 
-        private void EditScript(Script script)
-        {
-            editedScript = script;
-            ddScriptColor.SelectedIndexChanged -= DdScriptColor_SelectedIndexChanged;
+        return (actionEntryText, textDetails);
+    }
 
-            lbActions.Clear();
-            lbActions.ViewTop = 0;
+    private string GetActionNameFromIndex(int index)
+    {
+        ScriptAction action = GetScriptAction(index);
+        if (action == null)
+            return index + " Unknown";
 
-            if (editedScript == null)
-            {
-                tbName.Text = string.Empty;
-                selTypeOfAction.Text = string.Empty;
-                selTypeOfAction.Tag = null;
-                tbParameterValue.Text = string.Empty;
-                btnEditorPresetValues.ContextMenu.ClearItems();
-                lblActionDescriptionValue.Text = string.Empty;
-                lblParameterDescription.Text = Translate(this, "ParameterDescriptionText", "Parameter:");
-                ddScriptColor.SelectedIndex = -1;
+        return index + " " + action.Name;
+    }
 
-                return;
-            }
+    private string GetActionDescriptionFromIndex(int index)
+    {
+        ScriptAction action = GetScriptAction(index);
+        string description = action == null ? Translate(this, "UnknownScriptAction", "Unknown script action. It has most likely been added with another editor.") : action.Description;
 
-            tbName.Text = editedScript.Name;
-            for (int i = 0; i < editedScript.Actions.Count; i++)
-            {
-                var actionEntry = editedScript.Actions[i];
-                (string text, string description) = GetActionEntryText(i, actionEntry);
-                lbActions.AddTaggedItem(new ScriptListBoxItemTag(actionEntry, text, description));
-            }
+        return Renderer.FixText(description,
+            lblActionDescriptionValue.FontIndex,
+            lblActionDescriptionValue.Parent.Width - lblActionDescriptionValue.X * 2).Text;
+    }
 
-            ddScriptColor.SelectedIndex = ddScriptColor.Items.FindIndex(item => (string)item.Tag == editedScript.EditorColor);
-            if (ddScriptColor.SelectedIndex < 0)
-                ddScriptColor.SelectedIndex = 0;
-
-            LbActions_SelectedIndexChanged(this, EventArgs.Empty);
-            ddScriptColor.SelectedIndexChanged += DdScriptColor_SelectedIndexChanged;
-            lbActions.ScrollToSelectedElement();
-        }
-
-        private (string text, string description) GetActionEntryText(int index, ScriptActionEntry entry)
-        {
-            string actionEntryText;
-            string textDetails = null;
-
-            ScriptAction action = GetScriptAction(entry.Action);
-            if (action == null)
-            {
-                actionEntryText = $"#{index} - Unknown";
-                textDetails = $"{entry.Argument.ToString(CultureInfo.InvariantCulture)}";
-            }
-            else
-            {
-                actionEntryText = $"#{index} - {action.Name}";
-                int presetOptionIndex = action.PresetOptions.FindIndex(presetOption => presetOption.Value == entry.Argument);
-                bool hasValidPresetOption = presetOptionIndex > -1;
-
-                switch (action.ParamType)
-                {
-                    case TriggerParamType.BuildingWithProperty:
-                        var (buildingTypeIndex, property) = SplitBuildingWithProperty(entry.Argument);
-                        string propertyDescription = property.ToDescription();
-                        BuildingType buildingType = map.Rules.BuildingTypes.GetElementIfInRange(buildingTypeIndex);
-
-                        if (buildingType != null)
-                            textDetails = $"{entry.Argument} - {buildingType.GetEditorDisplayName()} - {propertyDescription}";
-                        break;
-
-                    case TriggerParamType.LocalVariable:
-                        var localVar = map.LocalVariables.GetElementIfInRange(entry.Argument);
-                        if (localVar != null)
-                            textDetails = $"{localVar.Index} - {localVar.Name}";
-                        break;
-
-                    case TriggerParamType.HouseType:
-                        var houseType = map.Houses.GetElementIfInRange(entry.Argument);
-                        if (houseType != null)
-                            textDetails = $"{houseType.ID} - {houseType.ININame}";
-                        break;
-
-                    case TriggerParamType.Animation:
-                        var animation = map.Rules.AnimTypes.GetElementIfInRange(entry.Argument);
-                        if (animation != null)
-                            textDetails = $"{animation.Index} - {animation.ININame}";
-                        break;
-
-                    case TriggerParamType.Unknown:
-                        // special handling: script actions that have no type but still have presets should be handled by showing the preset value
-                        // otherwise we'll show no text after the name of the action
-                        if (hasValidPresetOption)
-                            goto default;
-
-                        textDetails = null;
-                        break;
-
-                    default:
-                        if (hasValidPresetOption)
-                            textDetails = $"{presetOptionIndex} - {action.PresetOptions[presetOptionIndex].Text}";
-                        else
-                            textDetails = $"{entry.Argument.ToString(CultureInfo.InvariantCulture)}";
-                        break;
-                }
-            }
-
-            return (actionEntryText, textDetails);
-        }
-
-        private string GetActionNameFromIndex(int index)
-        {
-            ScriptAction action = GetScriptAction(index);
-            if (action == null)
-                return index + " Unknown";
-
-            return index + " " + action.Name;
-        }
-
-        private string GetActionDescriptionFromIndex(int index)
-        {
-            ScriptAction action = GetScriptAction(index);
-            string description = action == null ? Translate(this, "UnknownScriptAction", "Unknown script action. It has most likely been added with another editor.") : action.Description;
-
-            return Renderer.FixText(description,
-                lblActionDescriptionValue.FontIndex,
-                lblActionDescriptionValue.Parent.Width - lblActionDescriptionValue.X * 2).Text;
-        }
-
-        private ScriptAction GetScriptAction(int index)
-        {
-            return map.EditorConfig.ScriptActions.GetValueOrDefault(index);
-        }
+    private ScriptAction GetScriptAction(int index)
+    {
+        return map.EditorConfig.ScriptActions.GetValueOrDefault(index);
     }
 }

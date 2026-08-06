@@ -1,37 +1,36 @@
 ﻿using Rampastring.XNAUI;
 using TSMapEditor.UI.Windows;
 
-namespace TSMapEditor.UI.Controls
+namespace TSMapEditor.UI.Controls;
+
+public class EditorGUICreator : GUICreator
 {
-    public class EditorGUICreator : GUICreator
+    private EditorGUICreator()
     {
-        private EditorGUICreator()
-        {
-            AddControl(typeof(EditorPanel));
-            AddControl(typeof(EditorButton));
-            AddControl(typeof(MenuButton));
-            AddControl(typeof(EditorDescriptionPanel));
-            AddControl(typeof(EditorListBox));
-            AddControl(typeof(EditorTextBox));
-            AddControl(typeof(EditorNumberTextBox));
-            AddControl(typeof(EditorSuggestionTextBox));
-            AddControl(typeof(EditorListBoxSearchTextBox));
-            AddControl(typeof(EditorPopUpSelector));
-            AddControl(typeof(EditorLinkLabel));
-            AddControl(typeof(SortButton));
-            AddControl(typeof(ScriptActionListBox));
-        }
+        AddControl(typeof(EditorPanel));
+        AddControl(typeof(EditorButton));
+        AddControl(typeof(MenuButton));
+        AddControl(typeof(EditorDescriptionPanel));
+        AddControl(typeof(EditorListBox));
+        AddControl(typeof(EditorTextBox));
+        AddControl(typeof(EditorNumberTextBox));
+        AddControl(typeof(EditorSuggestionTextBox));
+        AddControl(typeof(EditorListBoxSearchTextBox));
+        AddControl(typeof(EditorPopUpSelector));
+        AddControl(typeof(EditorLinkLabel));
+        AddControl(typeof(SortButton));
+        AddControl(typeof(ScriptActionListBox));
+    }
 
-        private static EditorGUICreator _instance;
-        public static EditorGUICreator Instance
+    private static EditorGUICreator _instance;
+    public static EditorGUICreator Instance
+    {
+        get
         {
-            get
-            {
-                if (_instance == null)
-                    _instance = new EditorGUICreator();
+            if (_instance == null)
+                _instance = new EditorGUICreator();
 
-                return _instance;
-            }
+            return _instance;
         }
     }
 }

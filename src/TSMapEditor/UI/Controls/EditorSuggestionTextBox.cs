@@ -1,13 +1,13 @@
-﻿using Rampastring.XNAUI;
+﻿using MapEditorLibrary;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 
-namespace TSMapEditor.UI.Controls
+namespace TSMapEditor.UI.Controls;
+
+public class EditorSuggestionTextBox : XNASuggestionTextBox
 {
-    public class EditorSuggestionTextBox : XNASuggestionTextBox
+    public EditorSuggestionTextBox(WindowManager windowManager) : base(windowManager)
     {
-        public EditorSuggestionTextBox(WindowManager windowManager) : base(windowManager)
-        {
-            Height = Constants.UITextBoxHeight;
-        }
+        Height = Constants.UITextBoxHeight;
     }
 }

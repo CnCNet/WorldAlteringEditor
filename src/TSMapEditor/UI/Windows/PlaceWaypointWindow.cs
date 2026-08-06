@@ -1,140 +1,140 @@
 ﻿using System;
 using System.Globalization;
+using MapEditorLibrary;
+using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations;
+using MapEditorLibrary.Mutations.Classes;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using TSMapEditor.GameMath;
-using TSMapEditor.Models;
-using TSMapEditor.Mutations;
-using TSMapEditor.Mutations.Classes;
 using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
 
-namespace TSMapEditor.UI.Windows
+namespace TSMapEditor.UI.Windows;
+
+public class PlaceWaypointWindow : INItializableWindow
 {
-    public class PlaceWaypointWindow : INItializableWindow
+    public PlaceWaypointWindow(WindowManager windowManager, Map map, MutationManager mutationManager, IMutationTarget mutationTarget) : base(windowManager)
     {
-        public PlaceWaypointWindow(WindowManager windowManager, Map map, MutationManager mutationManager, IMutationTarget mutationTarget) : base(windowManager)
+        this.map = map;
+        this.mutationManager = mutationManager;
+        this.mutationTarget = mutationTarget;
+    }
+
+    private readonly Map map;
+    private readonly MutationManager mutationManager;
+    private readonly IMutationTarget mutationTarget;
+
+    private EditorNumberTextBox tbWaypointNumber;
+    private XNALabel lblDescription;
+    private XNADropDown ddWaypointColor;
+    private XNACheckBox chkDoNotSuggestMPStartingWaypoints;
+
+    private Point2D cellCoords;
+
+    public override void Initialize()
+    {
+        Name = nameof(PlaceWaypointWindow);
+        base.Initialize();
+
+        tbWaypointNumber = FindChild<EditorNumberTextBox>(nameof(tbWaypointNumber));
+        tbWaypointNumber.MaximumTextLength = (Constants.MaxWaypoint - 1).ToString(CultureInfo.InvariantCulture).Length;
+        tbWaypointNumber.EnterPressed += (s, e) => BtnPlace_LeftClick(this, EventArgs.Empty);
+
+        lblDescription = FindChild<XNALabel>(nameof(lblDescription));
+        lblDescription.Text = string.Format(Translate(this, "DescriptionText", "Input waypoint number (0-{0}):"), Constants.MaxWaypoint - 1);
+
+        chkDoNotSuggestMPStartingWaypoints = FindChild<XNACheckBox>(nameof(chkDoNotSuggestMPStartingWaypoints));
+
+        FindChild<EditorButton>("btnPlace").LeftClick += BtnPlace_LeftClick;
+
+        // Init color dropdown options
+        ddWaypointColor = FindChild<XNADropDown>(nameof(ddWaypointColor));
+        ddWaypointColor.AddItem(Translate(this, "None", "None"));
+        UIHelpers.AddColorOptionsToDropDown(Waypoint.SupportedColors, ddWaypointColor);
+
+        chkDoNotSuggestMPStartingWaypoints.Checked = UserSettings.Instance.DoNotSuggestMPStartingWaypoints;
+    }
+
+    private void BtnPlace_LeftClick(object sender, EventArgs e)
+    {
+        // Cancel dialog if the user leaves the text box empty
+        if (tbWaypointNumber.Text == string.Empty)
         {
-            this.map = map;
-            this.mutationManager = mutationManager;
-            this.mutationTarget = mutationTarget;
+            Hide();
+            return;
         }
 
-        private readonly Map map;
-        private readonly MutationManager mutationManager;
-        private readonly IMutationTarget mutationTarget;
+        int waypointNumber = tbWaypointNumber.Value;
 
-        private EditorNumberTextBox tbWaypointNumber;
-        private XNALabel lblDescription;
-        private XNADropDown ddWaypointColor;
-        private XNACheckBox chkDoNotSuggestMPStartingWaypoints;
+        if (PlaceWaypoint(waypointNumber, cellCoords))
+            Hide();
+    }
 
-        private Point2D cellCoords;
+    public bool PlaceWaypoint(int waypointNumber, Point2D cellCoords)
+    {
+        if (waypointNumber < 0 || waypointNumber >= Constants.MaxWaypoint)
+            return false;
 
-        public override void Initialize()
+        if (map.Waypoints.Exists(w => w.Identifier == waypointNumber))
         {
-            Name = nameof(PlaceWaypointWindow);
-            base.Initialize();
+            EditorMessageBox.Show(WindowManager,
+                Translate(this, "WaypointExists.Title", "Waypoint already exists"),
+                string.Format(Translate(this, "WaypointExists.Description",
+                    "A waypoint with the given number {0} already exists on the map!"), waypointNumber),
+                MessageBoxButtons.OK);
 
-            tbWaypointNumber = FindChild<EditorNumberTextBox>(nameof(tbWaypointNumber));
-            tbWaypointNumber.MaximumTextLength = (Constants.MaxWaypoint - 1).ToString(CultureInfo.InvariantCulture).Length;
-            tbWaypointNumber.EnterPressed += (s, e) => BtnPlace_LeftClick(this, EventArgs.Empty);
-
-            lblDescription = FindChild<XNALabel>(nameof(lblDescription));
-            lblDescription.Text = string.Format(Translate(this, "DescriptionText", "Input waypoint number (0-{0}):"), Constants.MaxWaypoint - 1);
-
-            chkDoNotSuggestMPStartingWaypoints = FindChild<XNACheckBox>(nameof(chkDoNotSuggestMPStartingWaypoints));
-
-            FindChild<EditorButton>("btnPlace").LeftClick += BtnPlace_LeftClick;
-
-            // Init color dropdown options
-            ddWaypointColor = FindChild<XNADropDown>(nameof(ddWaypointColor));
-            ddWaypointColor.AddItem(Translate(this, "None", "None"));
-            UIHelpers.AddColorOptionsToDropDown(Waypoint.SupportedColors, ddWaypointColor);
-
-            chkDoNotSuggestMPStartingWaypoints.Checked = UserSettings.Instance.DoNotSuggestMPStartingWaypoints;
+            return false;
         }
 
-        private void BtnPlace_LeftClick(object sender, EventArgs e)
+        if (chkDoNotSuggestMPStartingWaypoints.Checked != UserSettings.Instance.DoNotSuggestMPStartingWaypoints)
         {
-            // Cancel dialog if the user leaves the text box empty
-            if (tbWaypointNumber.Text == string.Empty)
-            {
-                Hide();
-                return;
-            }
-
-            int waypointNumber = tbWaypointNumber.Value;
-
-            if (PlaceWaypoint(waypointNumber, cellCoords))
-                Hide();
+            UserSettings.Instance.DoNotSuggestMPStartingWaypoints.UserDefinedValue = chkDoNotSuggestMPStartingWaypoints.Checked;
+            _ = UserSettings.Instance.SaveSettingsAsync();
         }
 
-        public bool PlaceWaypoint(int waypointNumber, Point2D cellCoords)
+        string waypointColor = ddWaypointColor.SelectedItem != null ? (string)ddWaypointColor.SelectedItem.Tag : null;
+
+        mutationManager.PerformMutation(new PlaceWaypointMutation(mutationTarget, cellCoords, waypointNumber, waypointColor));
+        return true;
+    }
+
+    public void Open(Point2D cellCoords)
+    {
+        this.cellCoords = cellCoords;
+
+        int availableWaypointNumber = GetAvailableWaypointNumber();
+        if (availableWaypointNumber < 0)
+            return;
+
+        tbWaypointNumber.Value = availableWaypointNumber;
+
+        Show();
+
+        WindowManager.SelectedControl = tbWaypointNumber;
+        tbWaypointNumber.SetSelection(0, tbWaypointNumber.Text.Length);
+    }
+
+    public int GetAvailableWaypointNumber()
+    {
+        if (map.Waypoints.Count == Constants.MaxWaypoint)
         {
-            if (waypointNumber < 0 || waypointNumber >= Constants.MaxWaypoint)
-                return false;
-
-            if (map.Waypoints.Exists(w => w.Identifier == waypointNumber))
-            {
-                EditorMessageBox.Show(WindowManager,
-                    Translate(this, "WaypointExists.Title", "Waypoint already exists"),
-                    string.Format(Translate(this, "WaypointExists.Description",
-                        "A waypoint with the given number {0} already exists on the map!"), waypointNumber),
-                    MessageBoxButtons.OK);
-
-                return false;
-            }
-
-            if (chkDoNotSuggestMPStartingWaypoints.Checked != UserSettings.Instance.DoNotSuggestMPStartingWaypoints)
-            {
-                UserSettings.Instance.DoNotSuggestMPStartingWaypoints.UserDefinedValue = chkDoNotSuggestMPStartingWaypoints.Checked;
-                _ = UserSettings.Instance.SaveSettingsAsync();
-            }
-
-            string waypointColor = ddWaypointColor.SelectedItem != null ? (string)ddWaypointColor.SelectedItem.Tag : null;
-
-            mutationManager.PerformMutation(new PlaceWaypointMutation(mutationTarget, cellCoords, waypointNumber, waypointColor));
-            return true;
-        }
-
-        public void Open(Point2D cellCoords)
-        {
-            this.cellCoords = cellCoords;
-
-            int availableWaypointNumber = GetAvailableWaypointNumber();
-            if (availableWaypointNumber < 0)
-                return;
-
-            tbWaypointNumber.Value = availableWaypointNumber;
-
-            Show();
-
-            WindowManager.SelectedControl = tbWaypointNumber;
-            tbWaypointNumber.SetSelection(0, tbWaypointNumber.Text.Length);
-        }
-
-        public int GetAvailableWaypointNumber()
-        {
-            if (map.Waypoints.Count == Constants.MaxWaypoint)
-            {
-                EditorMessageBox.Show(WindowManager,
-                    Translate(this, "MaxWaypoints.Title", "Maximum waypoints reached"),
-                    Translate(this, "MaxWaypoints.Description", "All valid waypoints on the map are already in use!"),
-                    MessageBoxButtons.OK);
-
-                return -1;
-            }
-
-            for (int i = chkDoNotSuggestMPStartingWaypoints.Checked ? Constants.MultiplayerMaxPlayers : 0; i < Constants.MaxWaypoint; i++)
-            {
-                if (!map.Waypoints.Exists(w => w.Identifier == i) && (Constants.IsRA2YR || i != Constants.TS_WAYPT_SPECIAL))
-                {
-                    return i;
-                }
-            }
+            EditorMessageBox.Show(WindowManager,
+                Translate(this, "MaxWaypoints.Title", "Maximum waypoints reached"),
+                Translate(this, "MaxWaypoints.Description", "All valid waypoints on the map are already in use!"),
+                MessageBoxButtons.OK);
 
             return -1;
         }
+
+        for (int i = chkDoNotSuggestMPStartingWaypoints.Checked ? Constants.MultiplayerMaxPlayers : 0; i < Constants.MaxWaypoint; i++)
+        {
+            if (!map.Waypoints.Exists(w => w.Identifier == i) && (Constants.IsRA2YR || i != Constants.TS_WAYPT_SPECIAL))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 }

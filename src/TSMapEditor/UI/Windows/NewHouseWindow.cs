@@ -1,135 +1,135 @@
-﻿using Rampastring.XNAUI;
+﻿using MapEditorLibrary;
+using MapEditorLibrary.Models;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
-using TSMapEditor.Models;
 using TSMapEditor.UI.Controls;
 
-namespace TSMapEditor.UI.Windows
+namespace TSMapEditor.UI.Windows;
+
+/// <summary>
+/// A window that prompts the user for the name and parent country of the new house.
+/// </summary>
+public class NewHouseWindow : INItializableWindow
 {
-    /// <summary>
-    /// A window that prompts the user for the name and parent country of the new house.
-    /// </summary>
-    public class NewHouseWindow : INItializableWindow
+    public NewHouseWindow(WindowManager windowManager, Map map) : base(windowManager)
     {
-        public NewHouseWindow(WindowManager windowManager, Map map) : base(windowManager)
+        this.map = map;
+    }
+
+    private EditorTextBox tbHouseName;
+    private XNADropDown ddParentCountry;
+    private EditorButton btnAdd;
+
+    public HouseType ParentCountry { get; set; }
+    public bool Success { get; set; }
+
+    private readonly Map map;
+
+    public override void Initialize()
+    {
+        Name = nameof(NewHouseWindow);
+        base.Initialize();
+
+        tbHouseName = FindChild<EditorTextBox>(nameof(tbHouseName));
+        ddParentCountry = FindChild<XNADropDown>(nameof(ddParentCountry));
+        btnAdd = FindChild<EditorButton>(nameof(btnAdd));
+
+        ddParentCountry.SelectedIndexChanged += DdParentCountry_SelectedIndexChanged;
+        btnAdd.LeftClick += BtnAdd_LeftClick;
+
+        if (!Constants.IsRA2YR)
         {
-            this.map = map;
+            ddParentCountry.Visible = false;
+            FindChild<XNALabel>("lblParentCountry").Visible = false;
+        }
+    }
+
+    private void DdParentCountry_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        ParentCountry = (HouseType)ddParentCountry.SelectedItem.Tag;
+    }
+
+    private void BtnAdd_LeftClick(object sender, EventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(tbHouseName.Text))
+        {
+            EditorMessageBox.Show(WindowManager, 
+                Translate(this, "NoHouseNameError.Title", "House Name Required"),
+                Translate(this, "NoHouseNameError.Description", "Please input a name for the house."),
+                MessageBoxButtons.OK);
+
+            return;
         }
 
-        private EditorTextBox tbHouseName;
-        private XNADropDown ddParentCountry;
-        private EditorButton btnAdd;
+        string houseName = tbHouseName.Text;
+        string houseTypeName;
+        if (houseName.EndsWith("House"))
+            houseTypeName = houseName.Replace("House", "Country");
+        else
+            houseTypeName = houseName + "Country";
 
-        public HouseType ParentCountry { get; set; }
-        public bool Success { get; set; }
-
-        private readonly Map map;
-
-        public override void Initialize()
+        var newHouseType = new HouseType(houseTypeName)
         {
-            Name = nameof(NewHouseWindow);
-            base.Initialize();
+            ParentCountry = ParentCountry.ININame,
+            Index = map.Rules.RulesHouseTypes.Count + map.HouseTypes.Count,
+            Side = ParentCountry.Side,
+            Color = ParentCountry.Color,
+            XNAColor = ParentCountry.XNAColor
+        };
 
-            tbHouseName = FindChild<EditorTextBox>(nameof(tbHouseName));
-            ddParentCountry = FindChild<XNADropDown>(nameof(ddParentCountry));
-            btnAdd = FindChild<EditorButton>(nameof(btnAdd));
+        Helpers.FindDefaultSideForNewHouseType(newHouseType, map.Rules);
+        map.AddHouseType(newHouseType);
 
-            ddParentCountry.SelectedIndexChanged += DdParentCountry_SelectedIndexChanged;
-            btnAdd.LeftClick += BtnAdd_LeftClick;
+        var newHouse = new House(houseName)
+        {                
+            Credits = 0,
+            Edge = "West",
+            IQ = 0,
+            PercentBuilt = 100,
+            PlayerControl = false,
+            TechLevel = Constants.MaxHouseTechLevel,
+            ID = map.Houses.Count
+        };
 
-            if (!Constants.IsRA2YR)
-            {
-                ddParentCountry.Visible = false;
-                FindChild<XNALabel>("lblParentCountry").Visible = false;
-            }
-        }
+        newHouse.Allies = [newHouse];
+        newHouse.Color = newHouseType.Color;
+        newHouse.XNAColor = newHouseType.XNAColor;
+        newHouse.Country = houseTypeName;
 
-        private void DdParentCountry_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            ParentCountry = (HouseType)ddParentCountry.SelectedItem.Tag;
-        }
+        newHouse.HouseType = newHouseType;
 
-        private void BtnAdd_LeftClick(object sender, EventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(tbHouseName.Text))
-            {
-                EditorMessageBox.Show(WindowManager, 
-                    Translate(this, "NoHouseNameError.Title", "House Name Required"),
-                    Translate(this, "NoHouseNameError.Description", "Please input a name for the house."),
-                    MessageBoxButtons.OK);
+        map.AddHouse(newHouse);
 
-                return;
-            }
+        Success = true;
 
-            string houseName = tbHouseName.Text;
-            string houseTypeName;
-            if (houseName.EndsWith("House"))
-                houseTypeName = houseName.Replace("House", "Country");
-            else
-                houseTypeName = houseName + "Country";
+        Hide();
+    }
 
-            var newHouseType = new HouseType(houseTypeName)
-            {
-                ParentCountry = ParentCountry.ININame,
-                Index = map.Rules.RulesHouseTypes.Count + map.HouseTypes.Count,
-                Side = ParentCountry.Side,
-                Color = ParentCountry.Color,
-                XNAColor = ParentCountry.XNAColor
-            };
+    private void ListParentCountries()
+    {
+        ddParentCountry.Items.Clear();
 
-            Helpers.FindDefaultSideForNewHouseType(newHouseType, map.Rules);
-            map.AddHouseType(newHouseType);
+        map.Rules.RulesHouseTypes.ForEach(
+            houseType => ddParentCountry.AddItem(new XNADropDownItem() 
+        { 
+            Text = houseType.ININame,
+            TextColor = Helpers.GetHouseTypeUITextColor(houseType),
+            Tag = houseType 
+        }));
+    }
 
-            var newHouse = new House(houseName)
-            {                
-                Credits = 0,
-                Edge = "West",
-                IQ = 0,
-                PercentBuilt = 100,
-                PlayerControl = false,
-                TechLevel = Constants.MaxHouseTechLevel,
-                ID = map.Houses.Count
-            };
+    public void Open()
+    {
+        if (!Constants.IsRA2YR)
+            throw new NotSupportedException(nameof(NewHouseWindow) + " should only be used with Countries.");
 
-            newHouse.Allies = [newHouse];
-            newHouse.Color = newHouseType.Color;
-            newHouse.XNAColor = newHouseType.XNAColor;
-            newHouse.Country = houseTypeName;
+        Show();
+        ListParentCountries();
 
-            newHouse.HouseType = newHouseType;
+        ddParentCountry.SelectedIndex = 0;
+        tbHouseName.Text = Translate(this, "DefaultNewHouseName", "NewHouse");
 
-            map.AddHouse(newHouse);
-
-            Success = true;
-
-            Hide();
-        }
-
-        private void ListParentCountries()
-        {
-            ddParentCountry.Items.Clear();
-
-            map.Rules.RulesHouseTypes.ForEach(
-                houseType => ddParentCountry.AddItem(new XNADropDownItem() 
-            { 
-                Text = houseType.ININame,
-                TextColor = Helpers.GetHouseTypeUITextColor(houseType),
-                Tag = houseType 
-            }));
-        }
-
-        public void Open()
-        {
-            if (!Constants.IsRA2YR)
-                throw new NotSupportedException(nameof(NewHouseWindow) + " should only be used with Countries.");
-
-            Show();
-            ListParentCountries();
-
-            ddParentCountry.SelectedIndex = 0;
-            tbHouseName.Text = Translate(this, "DefaultNewHouseName", "NewHouse");
-
-            Success = false;
-        }
+        Success = false;
     }
 }

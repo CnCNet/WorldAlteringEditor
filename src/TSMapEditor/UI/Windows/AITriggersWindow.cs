@@ -1,646 +1,668 @@
-﻿using Microsoft.Xna.Framework;
+﻿using MapEditorLibrary;
+using MapEditorLibrary.Models;
+using MapEditorLibrary.Models.Enums;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using TSMapEditor.Models;
 using TSMapEditor.UI.Controls;
 
-namespace TSMapEditor.UI.Windows
+namespace TSMapEditor.UI.Windows;
+
+public enum AITriggerSortMode
 {
-    public enum AITriggerSortMode
+    ID,
+    Name,
+    Color,
+    ColorThenName,
+}
+
+public class TeamTypeEventArgs : EventArgs
+{
+    public TeamTypeEventArgs(TeamType teamType)
     {
-        ID,
-        Name,
-        Color,
-        ColorThenName,
+        TeamType = teamType;
     }
 
-    public class TeamTypeEventArgs : EventArgs
-    {
-        public TeamTypeEventArgs(TeamType teamType)
-        {
-            TeamType = teamType;
-        }
+    public TeamType TeamType { get; }
+}
 
-        public TeamType TeamType { get; }
+public class AITriggersWindow : INItializableWindow
+{
+    public AITriggersWindow(WindowManager windowManager, Map map) : base(windowManager)
+    {
+        this.map = map;
     }
 
-    public class AITriggersWindow : INItializableWindow
+    private readonly Map map;
+
+    public event EventHandler<TeamTypeEventArgs> TeamTypeOpened;
+
+    private EditorListBox lbAITriggers;
+    private EditorSuggestionTextBox tbFilter;
+    private XNADropDown ddActions;
+    private EditorTextBox tbName;
+    private XNADropDown ddSide;
+    private XNADropDown ddHouseType;
+    private XNACheckBox chkEnabled;
+    private XNADropDown ddConditionType;
+    private XNADropDown ddComparator;
+    private EditorNumberTextBox tbQuantity;
+    private EditorPopUpSelector selComparisonObjectType;
+    private EditorPopUpSelector selPrimaryTeam;
+    private EditorPopUpSelector selSecondaryTeam;
+    private EditorNumberTextBox tbInitial;
+    private EditorNumberTextBox tbMinimum;
+    private EditorNumberTextBox tbMaximum;
+    private XNACheckBox chkEnabledOnEasy;
+    private XNACheckBox chkEnabledOnMedium;
+    private XNACheckBox chkEnabledOnHard;
+
+    private SelectTeamTypeWindow selectTeamTypeWindow;
+    private SelectTechnoTypeWindow selectTechnoTypeWindow;
+
+    private AITriggerType editedAITrigger;
+
+    private AITriggerSortMode _aiTriggerSortMode;
+    private AITriggerSortMode AiTriggerSortMode
     {
-        public AITriggersWindow(WindowManager windowManager, Map map) : base(windowManager)
+        get => _aiTriggerSortMode;
+        set
         {
-            this.map = map;
-        }
-
-        private readonly Map map;
-
-        public event EventHandler<TeamTypeEventArgs> TeamTypeOpened;
-
-        private EditorListBox lbAITriggers;
-        private EditorSuggestionTextBox tbFilter;
-        private XNADropDown ddActions;
-        private EditorTextBox tbName;
-        private XNADropDown ddSide;
-        private XNADropDown ddHouseType;
-        private XNACheckBox chkEnabled;
-        private XNADropDown ddConditionType;
-        private XNADropDown ddComparator;
-        private EditorNumberTextBox tbQuantity;
-        private EditorPopUpSelector selComparisonObjectType;
-        private EditorPopUpSelector selPrimaryTeam;
-        private EditorPopUpSelector selSecondaryTeam;
-        private EditorNumberTextBox tbInitial;
-        private EditorNumberTextBox tbMinimum;
-        private EditorNumberTextBox tbMaximum;
-        private XNACheckBox chkEnabledOnEasy;
-        private XNACheckBox chkEnabledOnMedium;
-        private XNACheckBox chkEnabledOnHard;
-
-        private SelectTeamTypeWindow selectTeamTypeWindow;
-        private SelectTechnoTypeWindow selectTechnoTypeWindow;
-
-        private AITriggerType editedAITrigger;
-
-        private AITriggerSortMode _aiTriggerSortMode;
-        private AITriggerSortMode AiTriggerSortMode
-        {
-            get => _aiTriggerSortMode;
-            set
+            if (value != _aiTriggerSortMode)
             {
-                if (value != _aiTriggerSortMode)
-                {
-                    _aiTriggerSortMode = value;                    
-                }
-                ListAITriggers();
+                _aiTriggerSortMode = value;                    
             }
-        }
-
-        public override void Initialize()
-        {
-            Name = nameof(AITriggersWindow);
-            base.Initialize();
-
-            lbAITriggers = FindChild<EditorListBox>(nameof(lbAITriggers));
-            ddActions = FindChild<XNADropDown>(nameof(ddActions));
-            tbName = FindChild<EditorTextBox>(nameof(tbName));
-            ddSide = FindChild<XNADropDown>(nameof(ddSide));
-            ddHouseType = FindChild<XNADropDown>(nameof(ddHouseType));
-            chkEnabled = FindChild<XNACheckBox>(nameof(chkEnabled));
-            ddConditionType = FindChild<XNADropDown>(nameof(ddConditionType));
-            ddComparator = FindChild<XNADropDown>(nameof(ddComparator));
-            tbQuantity = FindChild<EditorNumberTextBox>(nameof(tbQuantity));
-            selComparisonObjectType = FindChild<EditorPopUpSelector>(nameof(selComparisonObjectType));
-            selPrimaryTeam = FindChild<EditorPopUpSelector>(nameof(selPrimaryTeam));
-            selSecondaryTeam = FindChild<EditorPopUpSelector>(nameof(selSecondaryTeam));
-            tbInitial = FindChild<EditorNumberTextBox>(nameof(tbInitial));
-            tbMinimum = FindChild<EditorNumberTextBox>(nameof(tbMinimum));
-            tbMaximum = FindChild<EditorNumberTextBox>(nameof(tbMaximum));
-            chkEnabledOnEasy = FindChild<XNACheckBox>(nameof(chkEnabledOnEasy));
-            chkEnabledOnMedium = FindChild<XNACheckBox>(nameof(chkEnabledOnMedium));
-            chkEnabledOnHard = FindChild<XNACheckBox>(nameof(chkEnabledOnHard));
-
-            tbFilter = FindChild<EditorSuggestionTextBox>(nameof(tbFilter));
-            tbFilter.TextChanged += TbFilter_TextChanged;
-
-            selPrimaryTeam.MouseScrolled += SelPrimaryTeam_MouseScrolled;
-            selSecondaryTeam.MouseScrolled += SelSecondaryTeam_MouseScrolled;
-
-            FindChild<EditorButton>("btnNew").LeftClick += BtnNew_LeftClick;
-            FindChild<EditorButton>("btnDelete").LeftClick += BtnDelete_LeftClick;
-            FindChild<EditorButton>("btnClone").LeftClick += BtnClone_LeftClick;
-
-            FindChild<EditorButton>("btnOpenPrimaryTeam").LeftClick += BtnOpenPrimaryTeam_LeftClick;
-            FindChild<EditorButton>("btnOpenSecondaryTeam").LeftClick += BtnOpenSecondaryTeam_LeftClick;
-
-            selectTeamTypeWindow = new SelectTeamTypeWindow(WindowManager, map);
-            selectTeamTypeWindow.IncludeNone = true;
-            var teamTypeWindowDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectTeamTypeWindow);
-            teamTypeWindowDarkeningPanel.Hidden += TeamTypeWindowDarkeningPanel_Hidden;
-
-            selectTechnoTypeWindow = new SelectTechnoTypeWindow(WindowManager, map);
-            selectTechnoTypeWindow.IncludeNone = true;
-            var technoTypeDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectTechnoTypeWindow);
-            technoTypeDarkeningPanel.Hidden += TechnoTypeDarkeningPanel_Hidden;
-
-            ddActions.AddItem(Translate(this, "Actions.Advanced", "Advanced..."));
-            ddActions.AddItem(new XNADropDownItem() { Text = Translate(this, "Actions.CloneForEasierDiffs", "Clone for Easier Difficulties"), Tag = new Action(CloneForEasierDifficulties) });
-            ddActions.SelectedIndex = 0;
-            ddActions.SelectedIndexChanged += DdActions_SelectedIndexChanged;
-
-            var sortContextMenu = new EditorContextMenu(WindowManager);
-            sortContextMenu.Name = nameof(sortContextMenu);
-            sortContextMenu.Width = lbAITriggers.Width;
-            sortContextMenu.AddItem(Translate(this, "SortByID", "Sort by ID"), () => AiTriggerSortMode = AITriggerSortMode.ID);
-            sortContextMenu.AddItem(Translate(this, "SortByName", "Sort by Name"), () => AiTriggerSortMode = AITriggerSortMode.Name);
-            sortContextMenu.AddItem(Translate(this, "SortByColor", "Sort by Color"), () => AiTriggerSortMode = AITriggerSortMode.Color);
-            sortContextMenu.AddItem(Translate(this, "SortByColorName", "Sort by Color, then by Name"), () => AiTriggerSortMode = AITriggerSortMode.ColorThenName);
-            AddChild(sortContextMenu);
-
-            FindChild<EditorButton>("btnSortOptions").LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
-
-            lbAITriggers.SelectedIndexChanged += LbAITriggers_SelectedIndexChanged;
-        }
-
-        private void SelSecondaryTeam_MouseScrolled(object sender, InputEventArgs e)
-        {
-            e.Handled = true;
-
-            if (editedAITrigger == null)
-                return;
-
-            editedAITrigger.SecondaryTeam = UIHelpers.GetScrollItem(map.TeamTypes, editedAITrigger.SecondaryTeam, Cursor, false);
-            EditAITrigger(editedAITrigger);
-        }
-
-        private void SelPrimaryTeam_MouseScrolled(object sender, InputEventArgs e)
-        {
-            e.Handled = true;
-
-            if (editedAITrigger == null)
-                return;
-
-            editedAITrigger.PrimaryTeam = UIHelpers.GetScrollItem(map.TeamTypes, editedAITrigger.PrimaryTeam, Cursor, false);
-            EditAITrigger(editedAITrigger);
-        }
-
-        private void CloneForEasierDifficulties()
-        {
-            if (editedAITrigger == null)
-                return;
-
-            var messageBox = EditorMessageBox.Show(WindowManager,
-                Translate(this, "CloneForEasierDiffs.Title", "Are you sure?"),
-                Translate(this, "CloneForEasierDiffs.Description", "Cloning this AI trigger for easier difficulties will create duplicate instances" + Environment.NewLine +
-                "of this AI trigger for Medium and Easy difficulties, setting the difficulty" + Environment.NewLine +
-                "setting for each AI trigger to Medium and Easy, respectively." + Environment.NewLine +
-                "This will set the current AI trigger's difficulty to Hard only." + Environment.NewLine + Environment.NewLine +
-                "In case the AI trigger references a Primary or Secondary TeamTypes," + Environment.NewLine +
-                "those TeamTypes and their TaskForces will be duplicated for easier" + Environment.NewLine +
-                "difficulties. If those duplicates already exist, this action will set" + Environment.NewLine +
-                "the AI triggers to use those TeamTypes instead." + Environment.NewLine + Environment.NewLine +
-                "The script assumes that this AI Trigger has the words 'H' or 'Hard'" + Environment.NewLine +
-                "in their name and in their respective TeamTypes and TaskForces." + Environment.NewLine + Environment.NewLine +
-                "No un-do is available. Do you want to continue?"),
-				MessageBoxButtons.YesNo
-			);
-
-            messageBox.YesClickedAction = _ => DoCloneForEasierDifficulties();
-        }
-
-        private void DoCloneForEasierDifficulties()
-        {
-            editedAITrigger.Hard = true;
-            editedAITrigger.Medium = false;
-            editedAITrigger.Easy = false;
-
-            var mediumAITrigger = editedAITrigger.Clone(map.GetNewUniqueInternalId());
-            mediumAITrigger.Hard = false;
-            mediumAITrigger.Medium = true;
-            mediumAITrigger.Name = Helpers.ConvertNameToNewDifficulty(editedAITrigger.Name, Difficulty.Hard, Difficulty.Medium);
-            map.AITriggerTypes.Add(mediumAITrigger);
-
-            var easyAITrigger = editedAITrigger.Clone(map.GetNewUniqueInternalId());
-            easyAITrigger.Hard = false;
-            easyAITrigger.Easy = true;
-            easyAITrigger.Name = Helpers.ConvertNameToNewDifficulty(editedAITrigger.Name, Difficulty.Hard, Difficulty.Easy);
-            map.AITriggerTypes.Add(easyAITrigger);
-
-            CloneTeamTypesAndAttachToAITrigger(mediumAITrigger, Difficulty.Medium, true);
-            CloneTeamTypesAndAttachToAITrigger(mediumAITrigger, Difficulty.Medium, false);
-            CloneTeamTypesAndAttachToAITrigger(easyAITrigger, Difficulty.Easy, true);
-            CloneTeamTypesAndAttachToAITrigger(easyAITrigger, Difficulty.Easy, false);
-
             ListAITriggers();
         }
+    }
 
-        private void CloneTeamTypesAndAttachToAITrigger(AITriggerType newAITrigger, Difficulty difficulty, bool isPrimaryTeamType)
+    public override void Initialize()
+    {
+        Name = nameof(AITriggersWindow);
+        base.Initialize();
+
+        lbAITriggers = FindChild<EditorListBox>(nameof(lbAITriggers));
+        ddActions = FindChild<XNADropDown>(nameof(ddActions));
+        tbName = FindChild<EditorTextBox>(nameof(tbName));
+        ddSide = FindChild<XNADropDown>(nameof(ddSide));
+        ddHouseType = FindChild<XNADropDown>(nameof(ddHouseType));
+        chkEnabled = FindChild<XNACheckBox>(nameof(chkEnabled));
+        ddConditionType = FindChild<XNADropDown>(nameof(ddConditionType));
+        ddComparator = FindChild<XNADropDown>(nameof(ddComparator));
+        tbQuantity = FindChild<EditorNumberTextBox>(nameof(tbQuantity));
+        selComparisonObjectType = FindChild<EditorPopUpSelector>(nameof(selComparisonObjectType));
+        selPrimaryTeam = FindChild<EditorPopUpSelector>(nameof(selPrimaryTeam));
+        selSecondaryTeam = FindChild<EditorPopUpSelector>(nameof(selSecondaryTeam));
+        tbInitial = FindChild<EditorNumberTextBox>(nameof(tbInitial));
+        tbMinimum = FindChild<EditorNumberTextBox>(nameof(tbMinimum));
+        tbMaximum = FindChild<EditorNumberTextBox>(nameof(tbMaximum));
+        chkEnabledOnEasy = FindChild<XNACheckBox>(nameof(chkEnabledOnEasy));
+        chkEnabledOnMedium = FindChild<XNACheckBox>(nameof(chkEnabledOnMedium));
+        chkEnabledOnHard = FindChild<XNACheckBox>(nameof(chkEnabledOnHard));
+
+        tbFilter = FindChild<EditorSuggestionTextBox>(nameof(tbFilter));
+        tbFilter.TextChanged += TbFilter_TextChanged;
+
+        selPrimaryTeam.MouseScrolled += SelPrimaryTeam_MouseScrolled;
+        selSecondaryTeam.MouseScrolled += SelSecondaryTeam_MouseScrolled;
+
+        FindChild<EditorButton>("btnNew").LeftClick += BtnNew_LeftClick;
+        FindChild<EditorButton>("btnDelete").LeftClick += BtnDelete_LeftClick;
+        FindChild<EditorButton>("btnClone").LeftClick += BtnClone_LeftClick;
+
+        FindChild<EditorButton>("btnOpenPrimaryTeam").LeftClick += BtnOpenPrimaryTeam_LeftClick;
+        FindChild<EditorButton>("btnOpenSecondaryTeam").LeftClick += BtnOpenSecondaryTeam_LeftClick;
+
+        selectTeamTypeWindow = new SelectTeamTypeWindow(WindowManager, map);
+        selectTeamTypeWindow.IncludeNone = true;
+        var teamTypeWindowDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectTeamTypeWindow);
+        teamTypeWindowDarkeningPanel.Hidden += TeamTypeWindowDarkeningPanel_Hidden;
+
+        selectTechnoTypeWindow = new SelectTechnoTypeWindow(WindowManager, map);
+        selectTechnoTypeWindow.IncludeNone = true;
+        var technoTypeDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectTechnoTypeWindow);
+        technoTypeDarkeningPanel.Hidden += TechnoTypeDarkeningPanel_Hidden;
+
+        ddActions.AddItem(Translate(this, "Actions.Advanced", "Advanced..."));
+        ddActions.AddItem(new XNADropDownItem() { Text = Translate(this, "Actions.CloneForEasierDiffs", "Clone for Easier Difficulties"), Tag = new Action(CloneForEasierDifficulties) });
+        ddActions.SelectedIndex = 0;
+        ddActions.SelectedIndexChanged += DdActions_SelectedIndexChanged;
+
+        var sortContextMenu = new EditorContextMenu(WindowManager);
+        sortContextMenu.Name = nameof(sortContextMenu);
+        sortContextMenu.Width = lbAITriggers.Width;
+        sortContextMenu.AddItem(Translate(this, "SortByID", "Sort by ID"), () => AiTriggerSortMode = AITriggerSortMode.ID);
+        sortContextMenu.AddItem(Translate(this, "SortByName", "Sort by Name"), () => AiTriggerSortMode = AITriggerSortMode.Name);
+        sortContextMenu.AddItem(Translate(this, "SortByColor", "Sort by Color"), () => AiTriggerSortMode = AITriggerSortMode.Color);
+        sortContextMenu.AddItem(Translate(this, "SortByColorName", "Sort by Color, then by Name"), () => AiTriggerSortMode = AITriggerSortMode.ColorThenName);
+        AddChild(sortContextMenu);
+
+        FindChild<EditorButton>("btnSortOptions").LeftClick += (s, e) => sortContextMenu.Open(GetCursorPoint());
+
+        lbAITriggers.SelectedIndexChanged += LbAITriggers_SelectedIndexChanged;
+        map.ScriptingChanged += Map_ScriptingChanged;
+    }
+
+    private void SelSecondaryTeam_MouseScrolled(object sender, InputEventArgs e)
+    {
+        e.Handled = true;
+
+        if (editedAITrigger == null)
+            return;
+
+        editedAITrigger.SecondaryTeam = UIHelpers.GetScrollItem(map.TeamTypes, editedAITrigger.SecondaryTeam, Cursor, false);
+        EditAITrigger(editedAITrigger);
+    }
+
+    private void SelPrimaryTeam_MouseScrolled(object sender, InputEventArgs e)
+    {
+        e.Handled = true;
+
+        if (editedAITrigger == null)
+            return;
+
+        editedAITrigger.PrimaryTeam = UIHelpers.GetScrollItem(map.TeamTypes, editedAITrigger.PrimaryTeam, Cursor, false);
+        EditAITrigger(editedAITrigger);
+    }
+
+    private void CloneForEasierDifficulties()
+    {
+        if (editedAITrigger == null)
+            return;
+
+        var messageBox = EditorMessageBox.Show(WindowManager,
+            Translate(this, "CloneForEasierDiffs.Title", "Are you sure?"),
+            Translate(this, "CloneForEasierDiffs.Description", "Cloning this AI trigger for easier difficulties will create duplicate instances" + Environment.NewLine +
+            "of this AI trigger for Medium and Easy difficulties, setting the difficulty" + Environment.NewLine +
+            "setting for each AI trigger to Medium and Easy, respectively." + Environment.NewLine +
+            "This will set the current AI trigger's difficulty to Hard only." + Environment.NewLine + Environment.NewLine +
+            "In case the AI trigger references a Primary or Secondary TeamTypes," + Environment.NewLine +
+            "those TeamTypes and their TaskForces will be duplicated for easier" + Environment.NewLine +
+            "difficulties. If those duplicates already exist, this action will set" + Environment.NewLine +
+            "the AI triggers to use those TeamTypes instead." + Environment.NewLine + Environment.NewLine +
+            "The script assumes that this AI Trigger has the words 'H' or 'Hard'" + Environment.NewLine +
+            "in their name and in their respective TeamTypes and TaskForces." + Environment.NewLine + Environment.NewLine +
+            "No un-do is available. Do you want to continue?"),
+            MessageBoxButtons.YesNo);
+
+        messageBox.YesClickedAction = _ => DoCloneForEasierDifficulties();
+    }
+
+    private void DoCloneForEasierDifficulties()
+    {
+        editedAITrigger.Hard = true;
+        editedAITrigger.Medium = false;
+        editedAITrigger.Easy = false;
+
+        var mediumAITrigger = editedAITrigger.Clone(map.GetNewUniqueInternalId());
+        mediumAITrigger.Hard = false;
+        mediumAITrigger.Medium = true;
+        mediumAITrigger.Name = Helpers.ConvertNameToNewDifficulty(editedAITrigger.Name, Difficulty.Hard, Difficulty.Medium);
+        map.AITriggerTypes.Add(mediumAITrigger);
+
+        var easyAITrigger = editedAITrigger.Clone(map.GetNewUniqueInternalId());
+        easyAITrigger.Hard = false;
+        easyAITrigger.Easy = true;
+        easyAITrigger.Name = Helpers.ConvertNameToNewDifficulty(editedAITrigger.Name, Difficulty.Hard, Difficulty.Easy);
+        map.AITriggerTypes.Add(easyAITrigger);
+
+        CloneTeamTypesAndAttachToAITrigger(mediumAITrigger, Difficulty.Medium, true);
+        CloneTeamTypesAndAttachToAITrigger(mediumAITrigger, Difficulty.Medium, false);
+        CloneTeamTypesAndAttachToAITrigger(easyAITrigger, Difficulty.Easy, true);
+        CloneTeamTypesAndAttachToAITrigger(easyAITrigger, Difficulty.Easy, false);
+
+        ListAITriggers();
+    }
+
+    private void CloneTeamTypesAndAttachToAITrigger(AITriggerType newAITrigger, Difficulty difficulty, bool isPrimaryTeamType)
+    {
+        var teamTypeToClone = isPrimaryTeamType ? editedAITrigger.PrimaryTeam : editedAITrigger.SecondaryTeam;
+
+        if (teamTypeToClone == null)
+            return;
+
+        // Check if its lower difficulty counterpart already exists, if it doesn't, create it
+        string newDifficultyName = Helpers.ConvertNameToNewDifficulty(teamTypeToClone.Name, Difficulty.Hard, difficulty);            
+
+        var newDifficultyTeamType = map.TeamTypes.Find(teamType => teamType.Name == newDifficultyName);            
+
+        if (newDifficultyTeamType == null)
         {
-            var teamTypeToClone = isPrimaryTeamType ? editedAITrigger.PrimaryTeam : editedAITrigger.SecondaryTeam;
+            // clone the teams type and give it a new name
+            newDifficultyTeamType = teamTypeToClone.Clone(map.GetNewUniqueInternalId());
+            newDifficultyTeamType.Name = newDifficultyName;
 
-            if (teamTypeToClone == null)
-                return;
+            map.AddTeamType(newDifficultyTeamType);                
 
-            // Check if its lower difficulty counterpart already exists, if it doesn't, create it
-            string newDifficultyName = Helpers.ConvertNameToNewDifficulty(teamTypeToClone.Name, Difficulty.Hard, difficulty);            
-
-            var newDifficultyTeamType = map.TeamTypes.Find(teamType => teamType.Name == newDifficultyName);            
-
-            if (newDifficultyTeamType == null)
+            // If the team type has a task force, check if it has lower difficulty duplicate; if not, create it
+            if (teamTypeToClone.TaskForce != null)
             {
-                // clone the teams type and give it a new name
-                newDifficultyTeamType = teamTypeToClone.Clone(map.GetNewUniqueInternalId());
-                newDifficultyTeamType.Name = newDifficultyName;
+                var taskForceToClone = teamTypeToClone.TaskForce;
 
-                map.AddTeamType(newDifficultyTeamType);                
+                newDifficultyName = Helpers.ConvertNameToNewDifficulty(taskForceToClone.Name, Difficulty.Hard, difficulty);
 
-                // If the team type has a task force, check if it has lower difficulty duplicate; if not, create it
-                if (teamTypeToClone.TaskForce != null)
+                var newDifficultyTaskForce = map.TaskForces.Find(taskForce => taskForce.Name == newDifficultyName);                    
+
+                if (newDifficultyTaskForce == null)
                 {
-                    var taskForceToClone = teamTypeToClone.TaskForce;
+                    newDifficultyTaskForce = taskForceToClone.Clone(map.GetNewUniqueInternalId());
+                    newDifficultyTaskForce.Name = newDifficultyName;
 
-                    newDifficultyName = Helpers.ConvertNameToNewDifficulty(taskForceToClone.Name, Difficulty.Hard, difficulty);
-
-                    var newDifficultyTaskForce = map.TaskForces.Find(taskForce => taskForce.Name == newDifficultyName);                    
-
-                    if (newDifficultyTaskForce == null)
-                    {
-                        newDifficultyTaskForce = taskForceToClone.Clone(map.GetNewUniqueInternalId());
-                        newDifficultyTaskForce.Name = newDifficultyName;
-
-                        map.AddTaskForce(newDifficultyTaskForce);                        
-                    }
-
-                    newDifficultyTeamType.TaskForce = newDifficultyTaskForce;
+                    map.AddTaskForce(newDifficultyTaskForce);                        
                 }
-            }
 
-            // Regardless: assign to relevant team to the new AI trigger
-            if (isPrimaryTeamType)
-            {
-                newAITrigger.PrimaryTeam = newDifficultyTeamType;                
-            }
-            else
-            {
-                newAITrigger.SecondaryTeam = newDifficultyTeamType;                
+                newDifficultyTeamType.TaskForce = newDifficultyTaskForce;
             }
         }
 
-        private void DdActions_SelectedIndexChanged(object sender, EventArgs e)
+        // Regardless: assign to relevant team to the new AI trigger
+        if (isPrimaryTeamType)
         {
-            var item = ddActions.SelectedItem;
-            if (item == null)
-                return;
+            newAITrigger.PrimaryTeam = newDifficultyTeamType;                
+        }
+        else
+        {
+            newAITrigger.SecondaryTeam = newDifficultyTeamType;                
+        }
+    }
 
-            if (item.Tag == null)
-                return;
+    private void DdActions_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        var item = ddActions.SelectedItem;
+        if (item == null)
+            return;
 
-            if (item.Tag is Action action)
-                action();
+        if (item.Tag == null)
+            return;
 
-            ddActions.SelectedIndexChanged -= DdActions_SelectedIndexChanged;
-            ddActions.SelectedIndex = 0;
-            ddActions.SelectedIndexChanged += DdActions_SelectedIndexChanged;
+        if (item.Tag is Action action)
+            action();
+
+        ddActions.SelectedIndexChanged -= DdActions_SelectedIndexChanged;
+        ddActions.SelectedIndex = 0;
+        ddActions.SelectedIndexChanged += DdActions_SelectedIndexChanged;
+    }
+
+    private void BtnOpenPrimaryTeam_LeftClick(object sender, EventArgs e)
+    {
+        if (editedAITrigger == null || editedAITrigger.PrimaryTeam == null)
+            return;
+
+        OpenTeamType(editedAITrigger.PrimaryTeam);
+    }
+
+    private void BtnOpenSecondaryTeam_LeftClick(object sender, EventArgs e)
+    {
+        if (editedAITrigger == null || editedAITrigger.SecondaryTeam == null)
+            return;
+
+        OpenTeamType(editedAITrigger.SecondaryTeam);
+    }
+
+    private void OpenTeamType(TeamType teamType)
+    {
+        TeamTypeOpened?.Invoke(this, new TeamTypeEventArgs(teamType));
+        PutOnBackground();
+    }
+
+    private void BtnNew_LeftClick(object sender, EventArgs e)
+    {
+        var aiTrigger = new AITriggerType(map.GetNewUniqueInternalId());
+        aiTrigger.Name = "New AITrigger";
+        aiTrigger.OwnerName = "<all>";
+        map.AITriggerTypes.Add(aiTrigger);
+        ListAITriggers();
+        SelectAITrigger(aiTrigger);
+        WindowManager.SelectedControl = tbName;
+        tbName.SetSelection(0, tbName.Text.Length);
+    }
+
+    private void BtnDelete_LeftClick(object sender, EventArgs e)
+    {
+        if (editedAITrigger == null)
+            return;
+
+        map.AITriggerTypes.Remove(editedAITrigger);
+        editedAITrigger = null;
+
+        ListAITriggers();
+    }
+
+    private void BtnClone_LeftClick(object sender, EventArgs e)
+    {
+        if (editedAITrigger == null)
+            return;
+
+        var clone = editedAITrigger.Clone(map.GetNewUniqueInternalId());
+        map.AITriggerTypes.Add(clone);
+        ListAITriggers();
+        SelectAITrigger(clone);
+    }
+
+    private void SelectAITrigger(AITriggerType aiTrigger)
+    {
+        lbAITriggers.SelectedIndex = lbAITriggers.Items.FindIndex(item => item.Tag == aiTrigger);
+
+        if (lbAITriggers.LastIndex < lbAITriggers.SelectedIndex)
+            lbAITriggers.ScrollToBottom(); // TODO we don't actually have a good way to scroll the listbox into a specific place right now
+        else if (lbAITriggers.TopIndex > lbAITriggers.SelectedIndex)
+            lbAITriggers.TopIndex = lbAITriggers.SelectedIndex;
+    }
+
+    private void TeamTypeWindowDarkeningPanel_Hidden(object sender, EventArgs e)
+    {
+        if (selectTeamTypeWindow.IsForSecondaryTeam)
+        {
+            editedAITrigger.SecondaryTeam = selectTeamTypeWindow.SelectedObject;
+        }
+        else
+        {
+            editedAITrigger.PrimaryTeam = selectTeamTypeWindow.SelectedObject;
         }
 
-        private void BtnOpenPrimaryTeam_LeftClick(object sender, EventArgs e)
-        {
-            if (editedAITrigger == null || editedAITrigger.PrimaryTeam == null)
-                return;
+        EditAITrigger(editedAITrigger);
+    }
 
-            OpenTeamType(editedAITrigger.PrimaryTeam);
+    private void TechnoTypeDarkeningPanel_Hidden(object sender, EventArgs e)
+    {
+        editedAITrigger.ConditionObject = selectTechnoTypeWindow.SelectedObject;
+
+        EditAITrigger(editedAITrigger);
+    }
+
+    private void LbAITriggers_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (lbAITriggers.SelectedItem == null)
+        {
+            EditAITrigger(null);
+            return;
         }
 
-        private void BtnOpenSecondaryTeam_LeftClick(object sender, EventArgs e)
-        {
-            if (editedAITrigger == null || editedAITrigger.SecondaryTeam == null)
-                return;
+        EditAITrigger((AITriggerType)lbAITriggers.SelectedItem.Tag);
+    }
 
-            OpenTeamType(editedAITrigger.SecondaryTeam);
+    private void EditAITrigger(AITriggerType aiTriggerType)
+    {
+        tbName.TextChanged -= TbName_TextChanged;
+        ddSide.SelectedIndexChanged -= DdSide_SelectedIndexChanged;
+        ddHouseType.SelectedIndexChanged -= DdHouse_SelectedIndexChanged;
+        chkEnabled.CheckedChanged -= chkEnabled_CheckedChanged;
+        ddConditionType.SelectedIndexChanged -= DdConditionType_SelectedIndexChanged;
+        ddComparator.SelectedIndexChanged -= DdComparator_SelectedIndexChanged;
+        tbQuantity.TextChanged -= TbQuantity_TextChanged;
+        selComparisonObjectType.LeftClick -= SelComparisonObjectType_LeftClick;
+        selPrimaryTeam.LeftClick -= SelPrimaryTeam_LeftClick;
+        selSecondaryTeam.LeftClick -= SelSecondaryTeam_LeftClick;
+        tbInitial.TextChanged -= TbInitial_TextChanged;
+        tbMinimum.TextChanged -= TbMinimum_TextChanged;
+        tbMaximum.TextChanged -= TbMaximum_TextChanged;
+        chkEnabledOnEasy.CheckedChanged -= ChkEnabledOnEasy_CheckedChanged;
+        chkEnabledOnMedium.CheckedChanged -= ChkEnabledOnMedium_CheckedChanged;
+        chkEnabledOnHard.CheckedChanged -= ChkEnabledOnHard_CheckedChanged;
+
+        editedAITrigger = aiTriggerType;
+
+        if (editedAITrigger == null)
+        {
+            tbName.Text = string.Empty;
+            ddSide.SelectedIndex = -1;
+            ddHouseType.SelectedIndex = -1;
+            chkEnabled.Checked = false;
+            ddConditionType.SelectedIndex = -1;
+            ddComparator.SelectedIndex = -1;
+            tbQuantity.Text = string.Empty;
+            selComparisonObjectType.Text = string.Empty;
+            selComparisonObjectType.Tag = null;
+            selPrimaryTeam.Text = string.Empty;
+            selSecondaryTeam.Text = string.Empty;
+            selPrimaryTeam.Tag = null;
+            selSecondaryTeam.Tag = null;
+            tbInitial.Text = string.Empty;
+            tbMinimum.Text = string.Empty;
+            tbMaximum.Text = string.Empty;
+            chkEnabledOnEasy.Checked = false;
+            chkEnabledOnMedium.Checked = false;
+            chkEnabledOnHard.Checked = false;
+            return;
         }
 
-        private void OpenTeamType(TeamType teamType)
-        {
-            TeamTypeOpened?.Invoke(this, new TeamTypeEventArgs(teamType));
-            PutOnBackground();
-        }
+        tbName.Text = editedAITrigger.Name;
+        ddSide.SelectedIndex = editedAITrigger.Side < ddSide.Items.Count ? editedAITrigger.Side : 0;
+        ddHouseType.SelectedIndex = ddHouseType.Items.FindIndex(ddi => ddi.Text == editedAITrigger.OwnerName);
+        chkEnabled.Checked = editedAITrigger.Enabled;
+        ddConditionType.SelectedIndex = ((int)aiTriggerType.ConditionType + 1);
+        ddComparator.SelectedIndex = (int)aiTriggerType.Comparator.ComparatorOperator;
+        tbQuantity.Value = aiTriggerType.Comparator.Quantity;
+        selComparisonObjectType.Text = aiTriggerType.ConditionObject != null ? $"{aiTriggerType.ConditionObject.GetEditorDisplayName()} ({aiTriggerType.ConditionObject.ININame})" : string.Empty;
+        selComparisonObjectType.Tag = aiTriggerType.ConditionObject;
+        selPrimaryTeam.Text = aiTriggerType.PrimaryTeam != null ? aiTriggerType.PrimaryTeam.GetDisplayName() : string.Empty;
+        selPrimaryTeam.Tag = aiTriggerType.PrimaryTeam;
+        selSecondaryTeam.Text = aiTriggerType.SecondaryTeam != null ? aiTriggerType.SecondaryTeam.GetDisplayName() : string.Empty;
+        selSecondaryTeam.Tag = aiTriggerType.SecondaryTeam;
+        tbInitial.DoubleValue = aiTriggerType.InitialWeight;
+        tbMinimum.DoubleValue = aiTriggerType.MinimumWeight;
+        tbMaximum.DoubleValue = aiTriggerType.MaximumWeight;
+        chkEnabledOnEasy.Checked = aiTriggerType.Easy;
+        chkEnabledOnMedium.Checked = aiTriggerType.Medium;
+        chkEnabledOnHard.Checked = aiTriggerType.Hard;
 
-        private void BtnNew_LeftClick(object sender, EventArgs e)
-        {
-            var aiTrigger = new AITriggerType(map.GetNewUniqueInternalId());
-            aiTrigger.Name = "New AITrigger";
-            aiTrigger.OwnerName = "<all>";
-            map.AITriggerTypes.Add(aiTrigger);
-            ListAITriggers();
+        tbName.TextChanged += TbName_TextChanged;
+        ddSide.SelectedIndexChanged += DdSide_SelectedIndexChanged;
+        ddHouseType.SelectedIndexChanged += DdHouse_SelectedIndexChanged;
+        chkEnabled.CheckedChanged += chkEnabled_CheckedChanged;
+        ddConditionType.SelectedIndexChanged += DdConditionType_SelectedIndexChanged;
+        ddComparator.SelectedIndexChanged += DdComparator_SelectedIndexChanged;
+        tbQuantity.TextChanged += TbQuantity_TextChanged;
+        selComparisonObjectType.LeftClick += SelComparisonObjectType_LeftClick;
+        selPrimaryTeam.LeftClick += SelPrimaryTeam_LeftClick;
+        selSecondaryTeam.LeftClick += SelSecondaryTeam_LeftClick;
+        tbInitial.TextChanged += TbInitial_TextChanged;
+        tbMinimum.TextChanged += TbMinimum_TextChanged;
+        tbMaximum.TextChanged += TbMaximum_TextChanged;
+        chkEnabledOnEasy.CheckedChanged += ChkEnabledOnEasy_CheckedChanged;
+        chkEnabledOnMedium.CheckedChanged += ChkEnabledOnMedium_CheckedChanged;
+        chkEnabledOnHard.CheckedChanged += ChkEnabledOnHard_CheckedChanged;
+    }
+
+    private void TbFilter_TextChanged(object sender, EventArgs e) => ListAITriggers();
+
+    private void TbName_TextChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.Name = tbName.Text;
+        lbAITriggers.SelectedItem.Text = tbName.Text;
+    }
+
+    private void DdSide_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.Side = ddSide.SelectedIndex;
+        lbAITriggers.SelectedItem.TextColor = GetAITriggerUIColor(editedAITrigger);
+    }
+
+    private void DdHouse_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.OwnerName = ddHouseType.SelectedItem.Text;
+        lbAITriggers.SelectedItem.TextColor = GetAITriggerUIColor(editedAITrigger);
+    }
+
+    private void DdConditionType_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.ConditionType = (AITriggerConditionType)(ddConditionType.SelectedIndex - 1);
+    }
+
+    private void DdComparator_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.Comparator = new AITriggerComparator((AITriggerComparatorOperator)ddComparator.SelectedIndex, editedAITrigger.Comparator.Quantity);
+    }
+
+    private void TbQuantity_TextChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.Comparator = new AITriggerComparator(editedAITrigger.Comparator.ComparatorOperator, tbQuantity.Value);
+    }
+
+    private void SelComparisonObjectType_LeftClick(object sender, EventArgs e)
+    {
+        selectTechnoTypeWindow.Open(editedAITrigger.ConditionObject);
+    }
+
+    private void SelPrimaryTeam_LeftClick(object sender, EventArgs e)
+    {
+        selectTeamTypeWindow.IsForSecondaryTeam = false;
+        selectTeamTypeWindow.Open(editedAITrigger.PrimaryTeam);
+    }
+
+    private void SelSecondaryTeam_LeftClick(object sender, EventArgs e)
+    {
+        selectTeamTypeWindow.IsForSecondaryTeam = true;
+        selectTeamTypeWindow.Open(editedAITrigger.SecondaryTeam);
+    }
+
+    private void TbInitial_TextChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.InitialWeight = tbInitial.DoubleValue;
+    }
+
+    private void TbMinimum_TextChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.MinimumWeight = tbMinimum.DoubleValue;
+    }
+
+    private void TbMaximum_TextChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.MaximumWeight = tbMaximum.DoubleValue;
+    }
+
+    private void ChkEnabledOnEasy_CheckedChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.Easy = chkEnabledOnEasy.Checked;
+    }
+
+    private void ChkEnabledOnMedium_CheckedChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.Medium = chkEnabledOnMedium.Checked;
+    }
+
+    private void ChkEnabledOnHard_CheckedChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.Hard = chkEnabledOnHard.Checked;
+    }
+
+    private void chkEnabled_CheckedChanged(object sender, EventArgs e)
+    {
+        editedAITrigger.Enabled = chkEnabled.Checked;
+    }
+
+    private void Map_ScriptingChanged(object sender, ScriptingChangedEventArgs e)
+    {
+        if (Visible && e.AffectsAny(typeof(AITriggerType), typeof(TeamType)))
+            AddCallback(RefreshScriptingData);
+    }
+
+    private void RefreshScriptingData()
+    {
+        var aiTrigger = editedAITrigger;
+        if (aiTrigger != null && !map.AITriggerTypes.Contains(aiTrigger))
+            aiTrigger = null;
+
+        ListAITriggers();
+
+        if (aiTrigger != null)
             SelectAITrigger(aiTrigger);
-            WindowManager.SelectedControl = tbName;
-            tbName.SetSelection(0, tbName.Text.Length);
+
+        if (lbAITriggers.SelectedItem == null)
+            EditAITrigger(null);
+    }
+
+    public void Open()
+    {
+        ListAITriggers();
+        Show();
+    }
+
+    private void ListAITriggers()
+    {
+        lbAITriggers.Clear();
+        ddSide.Items.Clear();
+        ddHouseType.Items.Clear();
+
+        IEnumerable<AITriggerType> sortedAITriggers = map.AITriggerTypes;
+
+        var shouldViewTop = false; // when filtering the scroll bar should update so we use a flag here
+        if (tbFilter.Text != string.Empty && tbFilter.Text != tbFilter.Suggestion)
+        {
+            sortedAITriggers = sortedAITriggers.Where(sortedAITrigger => sortedAITrigger.Name.Contains(tbFilter.Text, StringComparison.CurrentCultureIgnoreCase));
+            shouldViewTop = true;
         }
 
-        private void BtnDelete_LeftClick(object sender, EventArgs e)
+        switch (AiTriggerSortMode)
         {
-            if (editedAITrigger == null)
-                return;
-
-            map.AITriggerTypes.Remove(editedAITrigger);
-            editedAITrigger = null;
-
-            ListAITriggers();
+            case AITriggerSortMode.Color:
+                sortedAITriggers = sortedAITriggers.OrderBy(aiTrigger => GetAITriggerUIColor(aiTrigger).ToString()).ThenBy(aiTrigger => aiTrigger.ININame);
+                break;
+            case AITriggerSortMode.Name:
+                sortedAITriggers = sortedAITriggers.OrderBy(aiTrigger => aiTrigger.Name).ThenBy(aiTrigger => aiTrigger.ININame);
+                break;
+            case AITriggerSortMode.ColorThenName:
+                sortedAITriggers = sortedAITriggers.OrderBy(aiTrigger => GetAITriggerUIColor(aiTrigger).ToString()).ThenBy(aiTrigger => aiTrigger.Name);
+                break;
+            case AITriggerSortMode.ID:
+            default:
+                sortedAITriggers = sortedAITriggers.OrderBy(aiTrigger => aiTrigger.ININame);
+                break;
         }
 
-        private void BtnClone_LeftClick(object sender, EventArgs e)
+        foreach (AITriggerType aiTriggerType in sortedAITriggers)
         {
-            if (editedAITrigger == null)
-                return;
-
-            var clone = editedAITrigger.Clone(map.GetNewUniqueInternalId());
-            map.AITriggerTypes.Add(clone);
-            ListAITriggers();
-            SelectAITrigger(clone);
-        }
-
-        private void SelectAITrigger(AITriggerType aiTrigger)
-        {
-            lbAITriggers.SelectedIndex = lbAITriggers.Items.FindIndex(item => item.Tag == aiTrigger);
-
-            if (lbAITriggers.LastIndex < lbAITriggers.SelectedIndex)
-                lbAITriggers.ScrollToBottom(); // TODO we don't actually have a good way to scroll the listbox into a specific place right now
-            else if (lbAITriggers.TopIndex > lbAITriggers.SelectedIndex)
-                lbAITriggers.TopIndex = lbAITriggers.SelectedIndex;
-        }
-
-        private void TeamTypeWindowDarkeningPanel_Hidden(object sender, EventArgs e)
-        {
-            if (selectTeamTypeWindow.IsForSecondaryTeam)
+            lbAITriggers.AddItem(new XNAListBoxItem()
             {
-                editedAITrigger.SecondaryTeam = selectTeamTypeWindow.SelectedObject;
+                Text = aiTriggerType.Name,
+                Tag = aiTriggerType,
+                TextColor = GetAITriggerUIColor(aiTriggerType)
+            });
+        }
+
+        if (shouldViewTop)
+            lbAITriggers.TopIndex = 0;
+
+        ddSide.AddItem("0 all sides");
+        for (int i = 0; i < map.Rules.Sides.Count; i++)
+        {
+            ddSide.AddItem((i + 1).ToString() + " " + map.Rules.Sides[i]);
+        }
+
+        ddHouseType.AddItem("<all>");
+        map.GetHouseTypes().ForEach(houseType => ddHouseType.AddItem(houseType.ININame, Helpers.GetHouseTypeUITextColor(houseType)));
+
+        LbAITriggers_SelectedIndexChanged(this, EventArgs.Empty);
+    }
+
+    private Color GetAITriggerUIColor(AITriggerType aitt)
+    {
+        if (!string.IsNullOrWhiteSpace(aitt.OwnerName))
+        {
+            var houseType = map.FindHouseType(aitt.OwnerName);
+            if (houseType != null)
+            {
+                return Helpers.GetHouseTypeUITextColor(houseType);
             }
-            else
+        }
+
+        if (aitt.Side > 0)
+        {
+            string sideName = aitt.Side > 0 && aitt.Side - 1 < map.Rules.Sides.Count ? map.Rules.Sides[aitt.Side - 1] : null;
+            if (sideName != null)
             {
-                editedAITrigger.PrimaryTeam = selectTeamTypeWindow.SelectedObject;
-            }
+                var houseTypeFromSide = map.GetHouseTypes().Find(ht => ht.Side == sideName);
 
-            EditAITrigger(editedAITrigger);
-        }
-
-        private void TechnoTypeDarkeningPanel_Hidden(object sender, EventArgs e)
-        {
-            editedAITrigger.ConditionObject = selectTechnoTypeWindow.SelectedObject;
-
-            EditAITrigger(editedAITrigger);
-        }
-
-        private void LbAITriggers_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (lbAITriggers.SelectedItem == null)
-            {
-                EditAITrigger(null);
-                return;
-            }
-
-            EditAITrigger((AITriggerType)lbAITriggers.SelectedItem.Tag);
-        }
-
-        private void EditAITrigger(AITriggerType aiTriggerType)
-        {
-            tbName.TextChanged -= TbName_TextChanged;
-            ddSide.SelectedIndexChanged -= DdSide_SelectedIndexChanged;
-            ddHouseType.SelectedIndexChanged -= DdHouse_SelectedIndexChanged;
-            chkEnabled.CheckedChanged -= chkEnabled_CheckedChanged;
-            ddConditionType.SelectedIndexChanged -= DdConditionType_SelectedIndexChanged;
-            ddComparator.SelectedIndexChanged -= DdComparator_SelectedIndexChanged;
-            tbQuantity.TextChanged -= TbQuantity_TextChanged;
-            selComparisonObjectType.LeftClick -= SelComparisonObjectType_LeftClick;
-            selPrimaryTeam.LeftClick -= SelPrimaryTeam_LeftClick;
-            selSecondaryTeam.LeftClick -= SelSecondaryTeam_LeftClick;
-            tbInitial.TextChanged -= TbInitial_TextChanged;
-            tbMinimum.TextChanged -= TbMinimum_TextChanged;
-            tbMaximum.TextChanged -= TbMaximum_TextChanged;
-            chkEnabledOnEasy.CheckedChanged -= ChkEnabledOnEasy_CheckedChanged;
-            chkEnabledOnMedium.CheckedChanged -= ChkEnabledOnMedium_CheckedChanged;
-            chkEnabledOnHard.CheckedChanged -= ChkEnabledOnHard_CheckedChanged;
-
-            editedAITrigger = aiTriggerType;
-
-            if (editedAITrigger == null)
-            {
-                tbName.Text = string.Empty;
-                ddSide.SelectedIndex = -1;
-                ddHouseType.SelectedIndex = -1;
-                chkEnabled.Checked = false;
-                ddConditionType.SelectedIndex = -1;
-                ddComparator.SelectedIndex = -1;
-                tbQuantity.Text = string.Empty;
-                selComparisonObjectType.Text = string.Empty;
-                selComparisonObjectType.Tag = null;
-                selPrimaryTeam.Text = string.Empty;
-                selSecondaryTeam.Text = string.Empty;
-                selPrimaryTeam.Tag = null;
-                selSecondaryTeam.Tag = null;
-                tbInitial.Text = string.Empty;
-                tbMinimum.Text = string.Empty;
-                tbMaximum.Text = string.Empty;
-                chkEnabledOnEasy.Checked = false;
-                chkEnabledOnMedium.Checked = false;
-                chkEnabledOnHard.Checked = false;
-                return;
-            }
-
-            tbName.Text = editedAITrigger.Name;
-            ddSide.SelectedIndex = editedAITrigger.Side < ddSide.Items.Count ? editedAITrigger.Side : 0;
-            ddHouseType.SelectedIndex = ddHouseType.Items.FindIndex(ddi => ddi.Text == editedAITrigger.OwnerName);
-            chkEnabled.Checked = editedAITrigger.Enabled;
-            ddConditionType.SelectedIndex = ((int)aiTriggerType.ConditionType + 1);
-            ddComparator.SelectedIndex = (int)aiTriggerType.Comparator.ComparatorOperator;
-            tbQuantity.Value = aiTriggerType.Comparator.Quantity;
-            selComparisonObjectType.Text = aiTriggerType.ConditionObject != null ? $"{aiTriggerType.ConditionObject.GetEditorDisplayName()} ({aiTriggerType.ConditionObject.ININame})" : string.Empty;
-            selComparisonObjectType.Tag = aiTriggerType.ConditionObject;
-            selPrimaryTeam.Text = aiTriggerType.PrimaryTeam != null ? aiTriggerType.PrimaryTeam.GetDisplayName() : string.Empty;
-            selPrimaryTeam.Tag = aiTriggerType.PrimaryTeam;
-            selSecondaryTeam.Text = aiTriggerType.SecondaryTeam != null ? aiTriggerType.SecondaryTeam.GetDisplayName() : string.Empty;
-            selSecondaryTeam.Tag = aiTriggerType.SecondaryTeam;
-            tbInitial.DoubleValue = aiTriggerType.InitialWeight;
-            tbMinimum.DoubleValue = aiTriggerType.MinimumWeight;
-            tbMaximum.DoubleValue = aiTriggerType.MaximumWeight;
-            chkEnabledOnEasy.Checked = aiTriggerType.Easy;
-            chkEnabledOnMedium.Checked = aiTriggerType.Medium;
-            chkEnabledOnHard.Checked = aiTriggerType.Hard;
-
-            tbName.TextChanged += TbName_TextChanged;
-            ddSide.SelectedIndexChanged += DdSide_SelectedIndexChanged;
-            ddHouseType.SelectedIndexChanged += DdHouse_SelectedIndexChanged;
-            chkEnabled.CheckedChanged += chkEnabled_CheckedChanged;
-            ddConditionType.SelectedIndexChanged += DdConditionType_SelectedIndexChanged;
-            ddComparator.SelectedIndexChanged += DdComparator_SelectedIndexChanged;
-            tbQuantity.TextChanged += TbQuantity_TextChanged;
-            selComparisonObjectType.LeftClick += SelComparisonObjectType_LeftClick;
-            selPrimaryTeam.LeftClick += SelPrimaryTeam_LeftClick;
-            selSecondaryTeam.LeftClick += SelSecondaryTeam_LeftClick;
-            tbInitial.TextChanged += TbInitial_TextChanged;
-            tbMinimum.TextChanged += TbMinimum_TextChanged;
-            tbMaximum.TextChanged += TbMaximum_TextChanged;
-            chkEnabledOnEasy.CheckedChanged += ChkEnabledOnEasy_CheckedChanged;
-            chkEnabledOnMedium.CheckedChanged += ChkEnabledOnMedium_CheckedChanged;
-            chkEnabledOnHard.CheckedChanged += ChkEnabledOnHard_CheckedChanged;
-        }
-
-        private void TbFilter_TextChanged(object sender, EventArgs e) => ListAITriggers();
-
-        private void TbName_TextChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.Name = tbName.Text;
-            lbAITriggers.SelectedItem.Text = tbName.Text;
-        }
-
-        private void DdSide_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.Side = ddSide.SelectedIndex;
-            lbAITriggers.SelectedItem.TextColor = GetAITriggerUIColor(editedAITrigger);
-        }
-
-        private void DdHouse_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.OwnerName = ddHouseType.SelectedItem.Text;
-            lbAITriggers.SelectedItem.TextColor = GetAITriggerUIColor(editedAITrigger);
-        }
-
-        private void DdConditionType_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.ConditionType = (AITriggerConditionType)(ddConditionType.SelectedIndex - 1);
-        }
-
-        private void DdComparator_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.Comparator = new AITriggerComparator((AITriggerComparatorOperator)ddComparator.SelectedIndex, editedAITrigger.Comparator.Quantity);
-        }
-
-        private void TbQuantity_TextChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.Comparator = new AITriggerComparator(editedAITrigger.Comparator.ComparatorOperator, tbQuantity.Value);
-        }
-
-        private void SelComparisonObjectType_LeftClick(object sender, EventArgs e)
-        {
-            selectTechnoTypeWindow.Open(editedAITrigger.ConditionObject);
-        }
-
-        private void SelPrimaryTeam_LeftClick(object sender, EventArgs e)
-        {
-            selectTeamTypeWindow.IsForSecondaryTeam = false;
-            selectTeamTypeWindow.Open(editedAITrigger.PrimaryTeam);
-        }
-
-        private void SelSecondaryTeam_LeftClick(object sender, EventArgs e)
-        {
-            selectTeamTypeWindow.IsForSecondaryTeam = true;
-            selectTeamTypeWindow.Open(editedAITrigger.SecondaryTeam);
-        }
-
-        private void TbInitial_TextChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.InitialWeight = tbInitial.DoubleValue;
-        }
-
-        private void TbMinimum_TextChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.MinimumWeight = tbMinimum.DoubleValue;
-        }
-
-        private void TbMaximum_TextChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.MaximumWeight = tbMaximum.DoubleValue;
-        }
-
-        private void ChkEnabledOnEasy_CheckedChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.Easy = chkEnabledOnEasy.Checked;
-        }
-
-        private void ChkEnabledOnMedium_CheckedChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.Medium = chkEnabledOnMedium.Checked;
-        }
-
-        private void ChkEnabledOnHard_CheckedChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.Hard = chkEnabledOnHard.Checked;
-        }
-
-        private void chkEnabled_CheckedChanged(object sender, EventArgs e)
-        {
-            editedAITrigger.Enabled = chkEnabled.Checked;
-        }
-
-        public void Open()
-        {
-            ListAITriggers();
-            Show();
-        }
-
-        private void ListAITriggers()
-        {
-            lbAITriggers.Clear();
-            ddSide.Items.Clear();
-            ddHouseType.Items.Clear();
-
-            IEnumerable<AITriggerType> sortedAITriggers = map.AITriggerTypes;
-
-            var shouldViewTop = false; // when filtering the scroll bar should update so we use a flag here
-            if (tbFilter.Text != string.Empty && tbFilter.Text != tbFilter.Suggestion)
-            {
-                sortedAITriggers = sortedAITriggers.Where(sortedAITrigger => sortedAITrigger.Name.Contains(tbFilter.Text, StringComparison.CurrentCultureIgnoreCase));
-                shouldViewTop = true;
-            }
-
-            switch (AiTriggerSortMode)
-            {
-                case AITriggerSortMode.Color:
-                    sortedAITriggers = sortedAITriggers.OrderBy(aiTrigger => GetAITriggerUIColor(aiTrigger).ToString()).ThenBy(aiTrigger => aiTrigger.ININame);
-                    break;
-                case AITriggerSortMode.Name:
-                    sortedAITriggers = sortedAITriggers.OrderBy(aiTrigger => aiTrigger.Name).ThenBy(aiTrigger => aiTrigger.ININame);
-                    break;
-                case AITriggerSortMode.ColorThenName:
-                    sortedAITriggers = sortedAITriggers.OrderBy(aiTrigger => GetAITriggerUIColor(aiTrigger).ToString()).ThenBy(aiTrigger => aiTrigger.Name);
-                    break;
-                case AITriggerSortMode.ID:
-                default:
-                    sortedAITriggers = sortedAITriggers.OrderBy(aiTrigger => aiTrigger.ININame);
-                    break;
-            }
-
-            foreach (AITriggerType aiTriggerType in sortedAITriggers)
-            {
-                lbAITriggers.AddItem(new XNAListBoxItem()
+                if (houseTypeFromSide != null)
                 {
-                    Text = aiTriggerType.Name,
-                    Tag = aiTriggerType,
-                    TextColor = GetAITriggerUIColor(aiTriggerType)
-                });
-            }
-
-            if (shouldViewTop)
-                lbAITriggers.TopIndex = 0;
-
-            ddSide.AddItem("0 all sides");
-            for (int i = 0; i < map.Rules.Sides.Count; i++)
-            {
-                ddSide.AddItem((i + 1).ToString() + " " + map.Rules.Sides[i]);
-            }
-
-            ddHouseType.AddItem("<all>");
-            map.GetHouseTypes().ForEach(houseType => ddHouseType.AddItem(houseType.ININame, Helpers.GetHouseTypeUITextColor(houseType)));
-
-            LbAITriggers_SelectedIndexChanged(this, EventArgs.Empty);
-        }
-
-        private Color GetAITriggerUIColor(AITriggerType aitt)
-        {
-            if (!string.IsNullOrWhiteSpace(aitt.OwnerName))
-            {
-                var houseType = map.FindHouseType(aitt.OwnerName);
-                if (houseType != null)
-                {
-                    return Helpers.GetHouseTypeUITextColor(houseType);
+                    return Helpers.GetHouseTypeUITextColor(houseTypeFromSide);
                 }
             }
-
-            if (aitt.Side > 0)
-            {
-                string sideName = aitt.Side > 0 && aitt.Side - 1 < map.Rules.Sides.Count ? map.Rules.Sides[aitt.Side - 1] : null;
-                if (sideName != null)
-                {
-                    var houseTypeFromSide = map.GetHouseTypes().Find(ht => ht.Side == sideName);
-
-                    if (houseTypeFromSide != null)
-                    {
-                        return Helpers.GetHouseTypeUITextColor(houseTypeFromSide);
-                    }
-                }
-            }
-
-            return UISettings.ActiveSettings.AltColor;
         }
+
+        return UISettings.ActiveSettings.AltColor;
     }
 }

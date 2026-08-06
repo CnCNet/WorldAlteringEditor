@@ -1,29 +1,28 @@
-﻿using TSMapEditor.GameMath;
-using TSMapEditor.Mutations.Classes.HeightMutations;
+﻿using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Mutations.Classes.HeightMutations;
 
-namespace TSMapEditor.UI.CursorActions.HeightActions
+namespace TSMapEditor.UI.CursorActions.HeightActions;
+
+internal class LowerGroundCursorAction : CursorAction
 {
-    internal class LowerGroundCursorAction : CursorAction
+    public LowerGroundCursorAction(ICursorActionTarget cursorActionTarget) : base(cursorActionTarget)
     {
-        public LowerGroundCursorAction(ICursorActionTarget cursorActionTarget) : base(cursorActionTarget)
-        {
-        }
+    }
 
-        public override string GetName() => Translate("Name", "Lower Ground (Steep Ramps)");
+    public override string GetName() => Translate("Name", "Lower Ground (Steep Ramps)");
 
-        public override void OnActionEnter()
-        {
-            CursorActionTarget.BrushSize = Map.EditorConfig.BrushSizes.Find(bs => bs.Width == 2 && bs.Height == 2) ?? Map.EditorConfig.BrushSizes[0];
-        }
+    public override void OnActionEnter()
+    {
+        CursorActionTarget.BrushSize = Map.EditorConfig.BrushSizes.Find(bs => bs.Width == 2 && bs.Height == 2) ?? Map.EditorConfig.BrushSizes[0];
+    }
 
-        public override bool DrawCellCursor => true;
+    public override bool DrawCellCursor => true;
 
-        public override void LeftClick(Point2D cellCoords)
-        {
-            base.LeftClick(cellCoords);
+    public override void LeftClick(Point2D cellCoords)
+    {
+        base.LeftClick(cellCoords);
 
-            var mutation = new LowerGroundMutation(CursorActionTarget.MutationTarget, cellCoords, CursorActionTarget.BrushSize);
-            CursorActionTarget.MutationManager.PerformMutation(mutation);
-        }
+        var mutation = new LowerGroundMutation(CursorActionTarget.MutationTarget, cellCoords, CursorActionTarget.BrushSize);
+        CursorActionTarget.MutationManager.PerformMutation(mutation);
     }
 }

@@ -1,27 +1,26 @@
-﻿using System;
-using TSMapEditor.GameMath;
+﻿using MapEditorLibrary.GameMath;
+using System;
 
-namespace TSMapEditor.UI.CursorActions
+namespace TSMapEditor.UI.CursorActions;
+
+/// <summary>
+/// A cursor action that allows the user to select a cell.
+/// </summary>
+public class SelectCellCursorAction : CursorAction
 {
-    /// <summary>
-    /// A cursor action that allows the user to select a cell.
-    /// </summary>
-    public class SelectCellCursorAction : CursorAction
+    public SelectCellCursorAction(ICursorActionTarget cursorActionTarget) : base(cursorActionTarget)
     {
-        public SelectCellCursorAction(ICursorActionTarget cursorActionTarget) : base(cursorActionTarget)
-        {
-        }
+    }
 
-        public override string GetName() => Translate("Name", "Select Cell");
+    public override string GetName() => Translate("Name", "Select Cell");
 
-        public override bool DrawCellCursor => true;
+    public override bool DrawCellCursor => true;
 
-        public event EventHandler<Point2D> CellSelected;
+    public event EventHandler<Point2D> CellSelected;
 
-        public override void LeftClick(Point2D cellCoords)
-        {
-            CellSelected?.Invoke(this, cellCoords);
-            ExitAction();
-        }
+    public override void LeftClick(Point2D cellCoords)
+    {
+        CellSelected?.Invoke(this, cellCoords);
+        ExitAction();
     }
 }

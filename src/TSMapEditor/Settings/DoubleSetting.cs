@@ -1,22 +1,21 @@
 ﻿using Rampastring.Tools;
 using System.Globalization;
 
-namespace TSMapEditor.Settings
+namespace TSMapEditor.Settings;
+
+public class DoubleSetting : SettingBase<double>
 {
-    public class DoubleSetting : SettingBase<double>
+    public DoubleSetting(string section, string key, double defaultValue) : base(section, key, defaultValue)
     {
-        public DoubleSetting(string section, string key, double defaultValue) : base(section, key, defaultValue)
-        {
-        }
+    }
 
-        protected override double GetValueFromString(string iniValue)
-        {
-            return Conversions.DoubleFromString(iniValue, DefaultValue);
-        }
+    protected override double GetValueFromString(string iniValue)
+    {
+        return Conversions.DoubleFromString(iniValue, DefaultValue);
+    }
 
-        protected override string GetValueString(double value)
-        {
-            return value.ToString(CultureInfo.InvariantCulture);
-        }
+    protected override string GetValueString(double value)
+    {
+        return value.ToString(CultureInfo.InvariantCulture);
     }
 }

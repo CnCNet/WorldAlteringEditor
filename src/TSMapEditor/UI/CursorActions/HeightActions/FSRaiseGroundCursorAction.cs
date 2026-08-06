@@ -1,32 +1,31 @@
-﻿using TSMapEditor.GameMath;
-using TSMapEditor.Mutations.Classes.HeightMutations;
+﻿using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Mutations.Classes.HeightMutations;
 
-namespace TSMapEditor.UI.CursorActions.HeightActions
+namespace TSMapEditor.UI.CursorActions.HeightActions;
+
+/// <summary>
+/// Non-steep, "FinalSun-like" ground raising cursor action.
+/// </summary>
+public class FSRaiseGroundCursorAction : CursorAction
 {
-    /// <summary>
-    /// Non-steep, "FinalSun-like" ground raising cursor action.
-    /// </summary>
-    public class FSRaiseGroundCursorAction : CursorAction
+    public FSRaiseGroundCursorAction(ICursorActionTarget cursorActionTarget) : base(cursorActionTarget)
     {
-        public FSRaiseGroundCursorAction(ICursorActionTarget cursorActionTarget) : base(cursorActionTarget)
-        {
-        }
+    }
 
-        public override string GetName() => Translate("Name", "Raise Ground (Non-Steep Ramps)");
+    public override string GetName() => Translate("Name", "Raise Ground (Non-Steep Ramps)");
 
-        public override void OnActionEnter()
-        {
-            CursorActionTarget.BrushSize = Map.EditorConfig.BrushSizes.Find(bs => bs.Width == 3 && bs.Height == 3) ?? Map.EditorConfig.BrushSizes[0];
-        }
+    public override void OnActionEnter()
+    {
+        CursorActionTarget.BrushSize = Map.EditorConfig.BrushSizes.Find(bs => bs.Width == 3 && bs.Height == 3) ?? Map.EditorConfig.BrushSizes[0];
+    }
 
-        public override bool DrawCellCursor => true;
+    public override bool DrawCellCursor => true;
 
-        public override void LeftClick(Point2D cellCoords)
-        {
-            base.LeftClick(cellCoords);
+    public override void LeftClick(Point2D cellCoords)
+    {
+        base.LeftClick(cellCoords);
 
-            var mutation = new FSRaiseGroundMutation(CursorActionTarget.MutationTarget, cellCoords, CursorActionTarget.BrushSize);
-            CursorActionTarget.MutationManager.PerformMutation(mutation);
-        }
+        var mutation = new FSRaiseGroundMutation(CursorActionTarget.MutationTarget, cellCoords, CursorActionTarget.BrushSize);
+        CursorActionTarget.MutationManager.PerformMutation(mutation);
     }
 }

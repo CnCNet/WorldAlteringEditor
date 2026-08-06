@@ -1,11 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.13.35806.99 d17.13
+# Visual Studio Version 18
+VisualStudioVersion = 18.8.12023.21
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TSMapEditor", "TSMapEditor\TSMapEditor.csproj", "{7F1101DE-6849-404C-9141-0DF6A6BF12E7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapEditorLauncher", "MapEditorLauncher\MapEditorLauncher.csproj", "{F786EB3A-1ADB-476E-AEC0-772F70ED0575}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapEditorLibrary", "MapEditorLibrary\MapEditorLibrary.csproj", "{2FC8C98E-17EC-485B-819C-5E823D5F5DAD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapEditorMCP", "MapEditorMCP\MapEditorMCP.csproj", "{D0CF40EC-EE19-4A58-9177-7DC6113AAAAF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +25,14 @@ Global
 		{F786EB3A-1ADB-476E-AEC0-772F70ED0575}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F786EB3A-1ADB-476E-AEC0-772F70ED0575}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F786EB3A-1ADB-476E-AEC0-772F70ED0575}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FC8C98E-17EC-485B-819C-5E823D5F5DAD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FC8C98E-17EC-485B-819C-5E823D5F5DAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FC8C98E-17EC-485B-819C-5E823D5F5DAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FC8C98E-17EC-485B-819C-5E823D5F5DAD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0CF40EC-EE19-4A58-9177-7DC6113AAAAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0CF40EC-EE19-4A58-9177-7DC6113AAAAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0CF40EC-EE19-4A58-9177-7DC6113AAAAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0CF40EC-EE19-4A58-9177-7DC6113AAAAF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

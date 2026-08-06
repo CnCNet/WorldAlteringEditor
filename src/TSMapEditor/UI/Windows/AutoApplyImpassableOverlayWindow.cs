@@ -1,115 +1,115 @@
-﻿using Rampastring.Tools;
+﻿using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
-using TSMapEditor.GameMath;
-using TSMapEditor.Models;
 using TSMapEditor.UI.Controls;
 
-namespace TSMapEditor.UI.Windows
+namespace TSMapEditor.UI.Windows;
+
+public class AutoApplyImpassableOverlayWindow : INItializableWindow
 {
-    public class AutoApplyImpassableOverlayWindow : INItializableWindow
+    public AutoApplyImpassableOverlayWindow(WindowManager windowManager, Map map, IMutationTarget mutationTarget) : base(windowManager)
     {
-        public AutoApplyImpassableOverlayWindow(WindowManager windowManager, Map map, IMutationTarget mutationTarget) : base(windowManager)
+        this.map = map;
+        this.mutationTarget = mutationTarget;
+    }
+
+    private readonly Map map;
+    private readonly IMutationTarget mutationTarget;
+
+    private XNACheckBox chkRemoveExistingImpassableOverlay;
+    private XNACheckBox chkOverrideExistingOverlay;
+
+    private string overlayTypeName = "";
+    private OverlayType impassableOverlayType;
+
+    public bool IsAvailable => impassableOverlayType != null;
+
+    protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
+    {
+        if (key == "ImpassableOverlayTypeName")
         {
-            this.map = map;
-            this.mutationTarget = mutationTarget;
+            overlayTypeName = value;
+            return;
         }
 
-        private readonly Map map;
-        private readonly IMutationTarget mutationTarget;
+        base.ParseControlINIAttribute(iniFile, key, value);
+    }
 
-        private XNACheckBox chkRemoveExistingImpassableOverlay;
-        private XNACheckBox chkOverrideExistingOverlay;
+    public override void Initialize()
+    {
+        Name = nameof(AutoApplyImpassableOverlayWindow);
+        base.Initialize();
 
-        private string overlayTypeName = "";
-        private OverlayType impassableOverlayType;
-
-        public bool IsAvailable => impassableOverlayType != null;
-
-        protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
+        impassableOverlayType = map.Rules.OverlayTypes.Find(ovt => ovt.ININame == overlayTypeName);
+        
+        if (impassableOverlayType == null)
         {
-            if (key == "ImpassableOverlayTypeName")
-            {
-                overlayTypeName = value;
-                return;
-            }
-
-            base.ParseControlINIAttribute(iniFile, key, value);
+            Logger.Log(nameof(AutoApplyImpassableOverlayWindow) + ": Invalid impassable overlay type " + overlayTypeName);
         }
 
-        public override void Initialize()
+        chkRemoveExistingImpassableOverlay = FindChild<XNACheckBox>(nameof(chkRemoveExistingImpassableOverlay));
+        chkOverrideExistingOverlay = FindChild<XNACheckBox>(nameof(chkOverrideExistingOverlay));
+        FindChild<EditorButton>("btnApply").LeftClick += BtnApply_LeftClick;
+    }
+
+    public void Open()
+    {
+        Show();
+    }
+
+    private void BtnApply_LeftClick(object sender, EventArgs e)
+    {
+        if (impassableOverlayType == null)
         {
-            Name = nameof(AutoApplyImpassableOverlayWindow);
-            base.Initialize();
+            EditorMessageBox.Show(WindowManager, 
+                Translate(this, "MissingOverlayType.Title", "Cannot apply impassable overlay"),
+                string.Format(Translate(this, "MissingOverlayType.Description", 
+                    "The editor has not been configured properly for applying impassable overlay." + Environment.NewLine + Environment.NewLine +
+                        "Expected overlay type not found, name: {0}"), overlayTypeName),
+                MessageBoxButtons.OK);
 
-            impassableOverlayType = map.Rules.OverlayTypes.Find(ovt => ovt.ININame == overlayTypeName);
-            
-            if (impassableOverlayType == null)
-            {
-                Logger.Log(nameof(AutoApplyImpassableOverlayWindow) + ": Invalid impassable overlay type " + overlayTypeName);
-            }
-
-            chkRemoveExistingImpassableOverlay = FindChild<XNACheckBox>(nameof(chkRemoveExistingImpassableOverlay));
-            chkOverrideExistingOverlay = FindChild<XNACheckBox>(nameof(chkOverrideExistingOverlay));
-            FindChild<EditorButton>("btnApply").LeftClick += BtnApply_LeftClick;
+            return;
         }
 
-        public void Open()
+        if (chkRemoveExistingImpassableOverlay.Checked)
         {
-            Show();
-        }
-
-        private void BtnApply_LeftClick(object sender, EventArgs e)
-        {
-            if (impassableOverlayType == null)
+            map.DoForAllValidTiles(tile =>
             {
-                EditorMessageBox.Show(WindowManager, 
-                    Translate(this, "MissingOverlayType.Title", "Cannot apply impassable overlay"),
-                    string.Format(Translate(this, "MissingOverlayType.Description", 
-                        "The editor has not been configured properly for applying impassable overlay." + Environment.NewLine + Environment.NewLine +
-                            "Expected overlay type not found, name: {0}"), overlayTypeName),
-                    MessageBoxButtons.OK);
-
-                return;
-            }
-
-            if (chkRemoveExistingImpassableOverlay.Checked)
-            {
-                map.DoForAllValidTiles(tile =>
-                {
-                    if (tile.Overlay != null && tile.Overlay.OverlayType == impassableOverlayType)
-                        tile.Overlay = null;
-                });
-            }
-
-            map.TerrainObjects.ForEach(tt =>
-            {
-                if (tt.TerrainType.ImpassableCells == null)
-                    return;
-
-                foreach (Point2D impassableCellOffset in tt.TerrainType.ImpassableCells)
-                {
-                    Point2D cellCoords = impassableCellOffset + tt.Position;
-                    var mapTile = map.GetTile(cellCoords);
-                    if (mapTile == null)
-                        continue;
-
-                    if (mapTile.Overlay != null && !chkOverrideExistingOverlay.Checked)
-                        continue;
-
-                    mapTile.Overlay = new Overlay()
-                    {
-                        Position = cellCoords,
-                        OverlayType = impassableOverlayType,
-                        FrameIndex = 0
-                    };
-                }
+                if (tile.Overlay != null && tile.Overlay.OverlayType == impassableOverlayType)
+                    tile.Overlay = null;
             });
-
-            mutationTarget.InvalidateMap();
-
-            Hide();
         }
+
+        map.TerrainObjects.ForEach(tt =>
+        {
+            if (tt.TerrainType.ImpassableCells == null)
+                return;
+
+            foreach (Point2D impassableCellOffset in tt.TerrainType.ImpassableCells)
+            {
+                Point2D cellCoords = impassableCellOffset + tt.Position;
+                var mapTile = map.GetTile(cellCoords);
+                if (mapTile == null)
+                    continue;
+
+                if (mapTile.Overlay != null && !chkOverrideExistingOverlay.Checked)
+                    continue;
+
+                mapTile.Overlay = new Overlay()
+                {
+                    Position = cellCoords,
+                    OverlayType = impassableOverlayType,
+                    FrameIndex = 0
+                };
+            }
+        });
+
+        mutationTarget.InvalidateMap();
+
+        Hide();
     }
 }
