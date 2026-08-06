@@ -1,7 +1,9 @@
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations;
+using MapEditorLibrary.Mutations.Classes;
 
-namespace MapEditorLibrary.Mutations.Classes.AIMutations;
+namespace MapEditorMCP.MCPMutations;
 
 public abstract class OverlayBatchMutationBase : Mutation
 {

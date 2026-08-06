@@ -1,9 +1,11 @@
+using MapEditorLibrary;
 using MapEditorLibrary.CCEngine.TileData;
 using MapEditorLibrary.Configuration;
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations;
 
-namespace MapEditorLibrary.Mutations.Classes.AIMutations;
+namespace MapEditorMCP.MCPMutations;
 
 /// <summary>
 /// Places random entries from an overlay collection on multiple individual map cells as one mutation.

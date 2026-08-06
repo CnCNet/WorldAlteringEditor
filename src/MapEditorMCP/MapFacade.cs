@@ -7,8 +7,8 @@ using MapEditorLibrary.Models;
 using MapEditorLibrary.Models.Enums;
 using MapEditorLibrary.Mutations;
 using MapEditorLibrary.Mutations.Classes;
-using MapEditorLibrary.Mutations.Classes.AIMutations;
 using MapEditorMCP.Infos;
+using MapEditorMCP.MCPMutations;
 using Microsoft.Xna.Framework;
 
 namespace MapEditorMCP;

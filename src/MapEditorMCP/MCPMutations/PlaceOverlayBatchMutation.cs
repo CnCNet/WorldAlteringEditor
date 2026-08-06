@@ -1,7 +1,8 @@
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations;
 
-namespace MapEditorLibrary.Mutations.Classes.AIMutations;
+namespace MapEditorMCP.MCPMutations;
 
 /// <summary>
 /// Places multiple explicitly selected overlays on individual map cells as one mutation.

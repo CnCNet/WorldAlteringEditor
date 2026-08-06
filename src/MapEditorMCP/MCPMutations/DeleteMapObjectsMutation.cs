@@ -1,6 +1,7 @@
 using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations;
 
-namespace MapEditorLibrary.Mutations.Classes.AIMutations;
+namespace MapEditorMCP.MCPMutations;
 
 public sealed class DeleteMapObjectsMutation : Mutation
 {

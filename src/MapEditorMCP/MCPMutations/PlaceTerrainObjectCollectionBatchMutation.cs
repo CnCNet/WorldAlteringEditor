@@ -1,8 +1,9 @@
 using MapEditorLibrary.Configuration;
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations;
 
-namespace MapEditorLibrary.Mutations.Classes.AIMutations;
+namespace MapEditorMCP.MCPMutations;
 
 /// <summary>
 /// Places random entries from a terrain object collection on multiple explicit map cells.

@@ -1,7 +1,8 @@
 using MapEditorLibrary.Models;
 using MapEditorLibrary.Models.Enums;
+using MapEditorLibrary.Mutations;
 
-namespace MapEditorLibrary.Mutations.Classes.AIMutations;
+namespace MapEditorMCP.MCPMutations;
 
 public sealed class TechnoPropertiesSnapshot
 {

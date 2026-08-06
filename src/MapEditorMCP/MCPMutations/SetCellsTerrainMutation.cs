@@ -1,7 +1,8 @@
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
+using MapEditorLibrary.Mutations;
 
-namespace MapEditorLibrary.Mutations.Classes.AIMutations;
+namespace MapEditorMCP.MCPMutations;
 
 /// <summary>
 /// Directly changes the absolute tile and sub-tile index of one or more map cells.
