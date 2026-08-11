@@ -94,7 +94,7 @@ public static class Constants
 
     public static int MaxHouseTechLevel = 10;
 
-    public const int MAX_MAP_LENGTH_IN_DIMENSION = 512;
+    public const int MAX_MAP_LENGTH_IN_DIMENSION = 2048;
     public const int NO_OVERLAY = -1;
     public const int OverlayPackFormat = 80;
 
