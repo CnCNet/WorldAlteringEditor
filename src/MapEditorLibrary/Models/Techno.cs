@@ -20,7 +20,7 @@ public abstract class Techno<T> : TechnoBase where T : TechnoType
 
     public override double GetGapGeneratorRange()
     {
-        return ObjectType.GapGenerator ? ObjectType.GapRadiusInCells : 0.0;
+        return ObjectType.GapRadiusInCells;
     }
 
     public override double GetCloakGeneratorRange() => 0.0;

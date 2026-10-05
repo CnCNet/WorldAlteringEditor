@@ -20,7 +20,6 @@ public abstract class TechnoType : GameObjectType
 
     public double GuardRange { get; set; }
 
-    public bool GapGenerator { get; set; }
     public int GapRadiusInCells { get; set; }
 
     public double GetWeaponRange()
