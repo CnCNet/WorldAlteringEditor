@@ -40,6 +40,7 @@ public class Trigger : IIDContainer
     public bool Easy { get; set; } = true;
     public bool Normal { get; set; } = true;
     public bool Hard { get; set; } = true;
+    public bool Transferable { get; set; } = false;
 
     public List<TriggerCondition> Conditions { get; private set; } = new List<TriggerCondition>();
     public List<TriggerAction> Actions { get; private set; } = new List<TriggerAction>();
@@ -111,7 +112,7 @@ public class Trigger : IIDContainer
         iniFile.SetStringValue("Triggers", ID,
             $"{owner},{linkedTriggerId},{Name}," +
             $"{Helpers.BoolToIntString(Disabled)}," +
-            $"{Helpers.BoolToIntString(Easy)},{Helpers.BoolToIntString(Normal)},{Helpers.BoolToIntString(Hard)},0");
+            $"{Helpers.BoolToIntString(Easy)},{Helpers.BoolToIntString(Normal)},{Helpers.BoolToIntString(Hard)},{Helpers.BoolToIntString(Transferable)}");
 
         // Write entry to [Events]
         var conditionDataString = new ExtendedStringBuilder(true, ',');
@@ -249,7 +250,7 @@ public class Trigger : IIDContainer
         // the 'REPEATING' field here is unused by the game, so we ignore it
 
         string[] parts = data.Split(',');
-        if (parts.Length < 7)
+        if (parts.Length < 8)
             return null;
 
         return new Trigger(id)
@@ -261,6 +262,7 @@ public class Trigger : IIDContainer
             Easy = Conversions.BooleanFromString(parts[4], true),
             Normal = Conversions.BooleanFromString(parts[5], true),
             Hard = Conversions.BooleanFromString(parts[6], true),
+            Transferable = Conversions.BooleanFromString(parts[7], false),
         };
     }
 
@@ -273,6 +275,7 @@ public class Trigger : IIDContainer
         StreamHelpers.WriteBool(memoryStream, Easy);
         StreamHelpers.WriteBool(memoryStream, Normal);
         StreamHelpers.WriteBool(memoryStream, Hard);
+        StreamHelpers.WriteBool(memoryStream, Transferable);
 
         StreamHelpers.WriteUnicodeString(memoryStream, EditorColor);
 
@@ -298,6 +301,7 @@ public class Trigger : IIDContainer
         Easy = StreamHelpers.ReadBool(memoryStream);
         Normal = StreamHelpers.ReadBool(memoryStream);
         Hard = StreamHelpers.ReadBool(memoryStream);
+        Transferable = StreamHelpers.ReadBool(memoryStream);
 
         EditorColor = StreamHelpers.ReadUnicodeString(memoryStream);            
         
