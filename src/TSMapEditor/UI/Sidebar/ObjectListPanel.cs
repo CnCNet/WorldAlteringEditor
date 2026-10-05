@@ -246,7 +246,7 @@ public abstract class ObjectListPanel : XNAPanel, ISearchBoxContainer
 
             if (string.IsNullOrWhiteSpace(categoriesString))
             {
-                categories.Add(new ObjectCategory("Uncategorized", Color.White));
+                categories.Add(new ObjectCategory(Translate(this, "Uncategorized", "Uncategorized"), Color.White));
             }
             else
             {
