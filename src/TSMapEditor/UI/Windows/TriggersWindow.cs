@@ -68,6 +68,7 @@ public class TriggersWindow : INItializableWindow
     private EditorPopUpSelector selAttachedTrigger;
     private XNADropDown ddTriggerColor;
     private XNACheckBox chkDisabled;
+    private XNACheckBox chkTransferable;
     private XNACheckBox chkEasy;
     private XNACheckBox chkMedium;
     private XNACheckBox chkHard;
@@ -152,6 +153,7 @@ public class TriggersWindow : INItializableWindow
         ddType = FindChild<XNADropDown>(nameof(ddType));
         selAttachedTrigger = FindChild<EditorPopUpSelector>(nameof(selAttachedTrigger));
         chkDisabled = FindChild<XNACheckBox>(nameof(chkDisabled));
+        chkTransferable = FindChild<XNACheckBox>(nameof(chkTransferable));
         chkEasy = FindChild<XNACheckBox>(nameof(chkEasy));
         chkMedium = FindChild<XNACheckBox>(nameof(chkMedium));
         chkHard = FindChild<XNACheckBox>(nameof(chkHard));
@@ -2343,6 +2345,7 @@ public class TriggersWindow : INItializableWindow
         ddHouseType.SelectedIndexChanged -= DdHouse_SelectedIndexChanged;
         ddType.SelectedIndexChanged -= DdType_SelectedIndexChanged;
         chkDisabled.CheckedChanged -= ChkDisabled_CheckedChanged;
+        chkTransferable.CheckedChanged -= ChkTransferable_CheckedChanged;
         selAttachedTrigger.LeftClick -= SelAttachedTrigger_LeftClick;
         ddTriggerColor.SelectedIndexChanged -= DdTriggerColor_SelectedIndexChanged;
         chkEasy.CheckedChanged -= ChkEasy_CheckedChanged;
@@ -2358,6 +2361,7 @@ public class TriggersWindow : INItializableWindow
             ddType.SelectedIndex = -1;
             selAttachedTrigger.Text = string.Empty;
             chkDisabled.Checked = false;
+            chkTransferable.Checked = false;
 
             lbEvents.Clear();
             selEventType.Text = string.Empty;
@@ -2398,6 +2402,7 @@ public class TriggersWindow : INItializableWindow
         selAttachedTrigger.Text = editedTrigger.LinkedTrigger == null ? Constants.NoneValue1 : editedTrigger.LinkedTrigger.Name;
         selAttachedTrigger.Tag = editedTrigger.LinkedTrigger;
         chkDisabled.Checked = editedTrigger.Disabled;
+        chkTransferable.Checked = editedTrigger.Transferable;
         chkEasy.Checked = editedTrigger.Easy;
         chkMedium.Checked = editedTrigger.Normal;
         chkHard.Checked = editedTrigger.Hard;
@@ -2423,6 +2428,7 @@ public class TriggersWindow : INItializableWindow
         ddHouseType.SelectedIndexChanged += DdHouse_SelectedIndexChanged;
         ddType.SelectedIndexChanged += DdType_SelectedIndexChanged;
         chkDisabled.CheckedChanged += ChkDisabled_CheckedChanged;
+        chkTransferable.CheckedChanged += ChkTransferable_CheckedChanged;
         selAttachedTrigger.LeftClick += SelAttachedTrigger_LeftClick;
         ddTriggerColor.SelectedIndexChanged += DdTriggerColor_SelectedIndexChanged;
         chkEasy.CheckedChanged += ChkEasy_CheckedChanged;
@@ -2479,6 +2485,11 @@ public class TriggersWindow : INItializableWindow
     private void ChkDisabled_CheckedChanged(object sender, EventArgs e)
     {
         editedTrigger.Disabled = chkDisabled.Checked;
+    }
+
+    private void ChkTransferable_CheckedChanged(object sender, EventArgs e)
+    {
+        editedTrigger.Transferable = chkTransferable.Checked;
     }
 
     private void TbName_TextChanged(object sender, EventArgs e)
