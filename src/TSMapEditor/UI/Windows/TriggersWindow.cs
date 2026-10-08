@@ -783,8 +783,15 @@ public class TriggersWindow : INItializableWindow
 
         // Check other triggers to see whether this trigger is referenced by them
         bool selfReference = false;
-        var allReferringTriggers = map.Triggers.FindAll(trig =>
+        bool selfTagReference = false;
+        var triggersReferringToThisTrigger = new List<Trigger>();
+        var triggersReferringToTag = new List<Trigger>();
+
+        foreach (var trig in map.Triggers)
         {
+            bool addedTriggerReference = false;
+            bool addedTagReference = false;
+
             foreach (var triggerAction in trig.Actions)
             {
                 if (!map.EditorConfig.TriggerEventTypes.ContainsKey(triggerAction.ActionIndex))
@@ -795,29 +802,49 @@ public class TriggersWindow : INItializableWindow
                 for (int i = 0; i < triggerAction.Parameters.Length && i < actionType.Parameters.Length; i++)
                 {
                     string paramValue = triggerAction.Parameters[i];
-                    if (actionType.Parameters[i].TriggerParamType == TriggerParamType.Trigger && paramValue == editedTrigger.ID)
+                    if (!addedTriggerReference && actionType.Parameters[i].TriggerParamType == TriggerParamType.Trigger && paramValue == editedTrigger.ID)
                     {
                         if (trig == editedTrigger)
                         {
                             selfReference = true;
-                            return false;
+                            addedTriggerReference = true;
+                            break;
                         }
 
-                        return true;
+                        triggersReferringToThisTrigger.Add(trig);
+                        addedTriggerReference = true;
+                    }
+                    else if (!addedTagReference && tag != null && actionType.Parameters[i].TriggerParamType == TriggerParamType.Tag && paramValue == tag.ID)
+                    {
+                        if (trig == editedTrigger)
+                        {
+                            selfTagReference = true;
+                            addedTagReference = true;
+                            break;
+                        }
+
+                        triggersReferringToTag.Add(trig);
+                        addedTagReference = true;
                     }
                 }
             }
 
-            if (trig.LinkedTrigger == editedTrigger)
-                return true;
+            if (!addedTriggerReference && trig.LinkedTrigger == editedTrigger)
+                triggersReferringToThisTrigger.Add(trig);
+        }
 
-            return false;
-        });
-
-        if (allReferringTriggers.Count > 0)
+        if (triggersReferringToThisTrigger.Count > 0)
         {
             stringBuilder.Append(Translate(this, "TriggerReferences", "The trigger is referenced by the following other triggers:"));
-            allReferringTriggers.ForEach(trig => stringBuilder.Append(Environment.NewLine + string.Format(Translate(this, "TriggerReference", "    - {0} ({1})"), trig.Name, trig.ID)));
+            triggersReferringToThisTrigger.ForEach(trig => stringBuilder.Append(Environment.NewLine + string.Format(Translate(this, "TriggerReference", "    - {0} ({1})"), trig.Name, trig.ID)));
+            stringBuilder.Append(Environment.NewLine);
+            stringBuilder.Append(Environment.NewLine);
+        }
+
+        if (triggersReferringToTag.Count > 0)
+        {
+            stringBuilder.Append(Translate(this, "TagReferences", "The trigger's tag is referenced by the following other triggers:"));
+            triggersReferringToTag.ForEach(trig => stringBuilder.Append(Environment.NewLine + string.Format(Translate(this, "TagReference", "    - {0} ({1})"), trig.Name, trig.ID)));
             stringBuilder.Append(Environment.NewLine);
             stringBuilder.Append(Environment.NewLine);
         }
@@ -826,6 +853,11 @@ public class TriggersWindow : INItializableWindow
         {
             stringBuilder.Append(Translate(this, "SelfReference", "The trigger is referenced by one or more of its own actions."));
             stringBuilder.Append(Environment.NewLine);
+        }
+
+        if (selfTagReference)
+        {
+            stringBuilder.Append(Translate(this, "SelfTagReference", "The trigger's tag is referenced by one or more of its own actions."));
             stringBuilder.Append(Environment.NewLine);
         }
 
