@@ -113,7 +113,7 @@ public class TerrainGeneratorConfigWindow : EditorWindow
         tabControl.AddTab(Translate(this, "Tabs.Overlays", "Overlays"), idleTexture, selectedTexture);
         tabControl.AddTab(Translate(this, "Tabs.Smudges", "Smudges"), idleTexture, selectedTexture);
         AddChild(tabControl);
-        tabControl.SelectedIndexChanged += (s, e) => { HideAllPanels(); panels[tabControl.SelectedTab].Enable(); };
+        tabControl.SelectedIndexChanged += (s, e) => { HideAllPanels(); panels[tabControl.SelectedTabIndex].Enable(); };
 
         panels = new XNAPanel[4];
 
@@ -154,7 +154,7 @@ public class TerrainGeneratorConfigWindow : EditorWindow
 
         HideAllPanels();
 
-        tabControl.SelectedTab = 0;
+        tabControl.SelectedTabIndex = 0;
         panels[0].Enable();
 
         var btnApply = new EditorButton(WindowManager);
