@@ -77,17 +77,18 @@ public class TriggersWindow : INItializableWindow
     private EditorListBox lbEvents;
     private EditorPopUpSelector selEventType;
     private EditorDescriptionPanel panelEventDescription;
-    private EditorListBox lbEventParameters;
-    private EditorTextBox tbEventParameterValue;
+    private TriggerParameterPanel panelEventParameters;
+    private TriggerCondition presetTriggerEvent;
+    private int presetEventParameterIndex;
     private XNAContextMenu ctxEventParameterPresetValues;
 
     // Actions
     private EditorListBox lbActions;
     private EditorPopUpSelector selActionType;
     private EditorDescriptionPanel panelActionDescription;
-    private EditorListBox lbActionParameters;
-    private EditorTextBox tbActionParameterValue;
-    private EditorButton btnActionGoToTarget;        
+    private TriggerParameterPanel panelActionParameters;
+    private TriggerAction presetTriggerAction;
+    private int presetActionParameterIndex;
     private XNAContextMenu ctxActionParameterPresetValues;
 
     private SelectEventWindow selectEventWindow;
@@ -167,9 +168,7 @@ public class TriggersWindow : INItializableWindow
         selEventType = FindChild<EditorPopUpSelector>(nameof(selEventType));
         selEventType.MouseScrolled += SelEventType_MouseScrolled;
         panelEventDescription = FindChild<EditorDescriptionPanel>(nameof(panelEventDescription));
-        lbEventParameters = FindChild<EditorListBox>(nameof(lbEventParameters));
-        tbEventParameterValue = FindChild<EditorTextBox>(nameof(tbEventParameterValue));
-        tbEventParameterValue.MouseScrolled += TbEventParameterValue_MouseScrolled;
+        panelEventParameters = FindChild<TriggerParameterPanel>(nameof(panelEventParameters));
 
         ctxEventParameterPresetValues = new XNAContextMenu(WindowManager);
         ctxEventParameterPresetValues.Name = nameof(ctxEventParameterPresetValues);
@@ -181,10 +180,7 @@ public class TriggersWindow : INItializableWindow
         selActionType = FindChild<EditorPopUpSelector>(nameof(selActionType));
         selActionType.MouseScrolled += SelActionType_MouseScrolled;
         panelActionDescription = FindChild<EditorDescriptionPanel>(nameof(panelActionDescription));
-        lbActionParameters = FindChild<EditorListBox>(nameof(lbActionParameters));
-        tbActionParameterValue = FindChild<EditorTextBox>(nameof(tbActionParameterValue));
-        tbActionParameterValue.MouseScrolled += TbActionParameterValue_MouseScrolled;
-        btnActionGoToTarget = FindChild<EditorButton>(nameof(btnActionGoToTarget));
+        panelActionParameters = FindChild<TriggerParameterPanel>(nameof(panelActionParameters));
 
         ctxActionParameterPresetValues = new XNAContextMenu(WindowManager);
         ctxActionParameterPresetValues.Name = nameof(ctxActionParameterPresetValues);
@@ -201,7 +197,7 @@ public class TriggersWindow : INItializableWindow
 
         var triggerContextMenu = new EditorContextMenu(WindowManager);
         triggerContextMenu.Name = nameof(triggerContextMenu);
-        triggerContextMenu.Width = 270;
+        triggerContextMenu.Width = 290;
         triggerContextMenu.AddItem(Translate(this, "PlaceCellTag", "Place CellTag"), PlaceCellTag, null, () => editedTrigger != null);
         triggerContextMenu.AddItem(Translate(this, "ClearCellTags", "Clear CellTags"), ClearCellTags, null, () => editedTrigger != null);
         triggerContextMenu.AddItem(Translate(this, "AttachToObjects", "Attach to Objects"), AttachTagToObjects, null, () => editedTrigger != null);
@@ -240,11 +236,6 @@ public class TriggersWindow : INItializableWindow
         FindChild<EditorButton>("btnAddAction").LeftClick += BtnAddAction_LeftClick;
         FindChild<EditorButton>("btnDeleteAction").LeftClick += BtnDeleteAction_LeftClick;
         FindChild<EditorButton>("btnCloneAction").LeftClick += BtnCloneAction_LeftClick;
-
-        FindChild<EditorButton>("btnActionParameterValuePreset").LeftClick += BtnActionParameterValuePreset_LeftClick;
-        FindChild<EditorButton>("btnEventParameterValuePreset").LeftClick += BtnEventParameterValuePreset_LeftClick;
-
-        btnActionGoToTarget.LeftClick += btnActionGoToTarget_LeftClick;
 
         selectEventWindow = new SelectEventWindow(WindowManager, map);
         var eventWindowDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectEventWindow);
@@ -444,12 +435,12 @@ public class TriggersWindow : INItializableWindow
             if (Cursor.ScrollWheelValue < 0 && existingIndex < list.Count - 1)
             {
                 textBox.Text = idGetter(list[existingIndex + 1]);
-                EditTrigger(editedTrigger);
+                RefreshParameterValues();
             }
             else if (Cursor.ScrollWheelValue > 0 && existingIndex > 0)
             {
                 textBox.Text = idGetter(list[existingIndex - 1]);
-                EditTrigger(editedTrigger);
+                RefreshParameterValues();
             }
         }
     }
@@ -470,7 +461,7 @@ public class TriggersWindow : INItializableWindow
                 textBox.Text = presetOptions[currentPresetOptionIndex + 1];
             }
 
-            EditTrigger(editedTrigger);
+            RefreshParameterValues();
             return;
         }
 
@@ -500,12 +491,12 @@ public class TriggersWindow : INItializableWindow
                     if (Cursor.ScrollWheelValue < 0 && !string.IsNullOrEmpty(map.Rules.TutorialLines.GetStringByIdOrEmptyString(textLineIndex + 1)))
                     {
                         textBox.Text = (textLineIndex + 1).ToString(CultureInfo.InvariantCulture);
-                        EditTrigger(editedTrigger);
+                        RefreshParameterValues();
                     }
                     else if (Cursor.ScrollWheelValue > 0 && !string.IsNullOrEmpty(map.Rules.TutorialLines.GetStringByIdOrEmptyString(textLineIndex - 1)))
                     {
                         textBox.Text = (textLineIndex - 1).ToString(CultureInfo.InvariantCulture);
-                        EditTrigger(editedTrigger);
+                        RefreshParameterValues();
                     }
                 }
                 break;
@@ -517,12 +508,12 @@ public class TriggersWindow : INItializableWindow
                 if (Cursor.ScrollWheelValue < 0 && map.Waypoints.Exists(wp => wp.Identifier == waypointIdentifier + 1))
                 {
                     textBox.Text = (waypointIdentifier + 1).ToString(CultureInfo.InvariantCulture);
-                    EditTrigger(editedTrigger);
+                    RefreshParameterValues();
                 }
                 else if (Cursor.ScrollWheelValue > 0 && map.Waypoints.Exists(wp => wp.Identifier == waypointIdentifier - 1))
                 {
                     textBox.Text = (waypointIdentifier - 1).ToString(CultureInfo.InvariantCulture);
-                    EditTrigger(editedTrigger);
+                    RefreshParameterValues();
                 }
                 break;
             case TriggerParamType.Waypoint:
@@ -540,12 +531,12 @@ public class TriggersWindow : INItializableWindow
                     if (Cursor.ScrollWheelValue < 0 && map.EditorConfig.Speeches.List.Exists(speech => speech.Index == speechIndex + 1))
                     {
                         textBox.Text = (speechIndex + 1).ToString(CultureInfo.InvariantCulture);
-                        EditTrigger(editedTrigger);
+                        RefreshParameterValues();
                     }
                     else if (Cursor.ScrollWheelValue > 0 && map.EditorConfig.Speeches.List.Exists(speech => speech.Index == speechIndex - 1))
                     {
                         textBox.Text = (speechIndex - 1).ToString(CultureInfo.InvariantCulture);
-                        EditTrigger(editedTrigger);
+                        RefreshParameterValues();
                     }
                 }
                 break;
@@ -555,12 +546,12 @@ public class TriggersWindow : INItializableWindow
                     if (Cursor.ScrollWheelValue < 0 && map.Rules.Sounds.List.Exists(sound => sound.Index == soundIndex + 1))
                     {
                         textBox.Text = (soundIndex + 1).ToString(CultureInfo.InvariantCulture);
-                        EditTrigger(editedTrigger);
+                        RefreshParameterValues();
                     }
                     else if (Cursor.ScrollWheelValue > 0 && map.Rules.Sounds.List.Exists(sound => sound.Index == soundIndex - 1))
                     {
                         textBox.Text = (soundIndex - 1).ToString(CultureInfo.InvariantCulture);
-                        EditTrigger(editedTrigger);
+                        RefreshParameterValues();
                     }
                 }
                 break;
@@ -574,14 +565,18 @@ public class TriggersWindow : INItializableWindow
 
     private void TbEventParameterValue_MouseScrolled(object sender, InputEventArgs e)
     {
-        e.Handled = true;
+        if (panelEventParameters.CanScroll.Y)
+            return;
 
-        if (editedTrigger == null || lbEvents.SelectedItem == null || lbEventParameters.SelectedItem == null)
+        e.Handled = true;
+        var textBox = (EditorTextBox)sender;
+
+        if (editedTrigger == null || lbEvents.SelectedItem == null)
             return;
 
         var triggerEvent = (TriggerCondition)lbEvents.SelectedItem.Tag;
         var triggerEventType = GetTriggerEventType(triggerEvent.ConditionIndex);
-        int paramIndex = (int)lbEventParameters.SelectedItem.Tag;
+        int paramIndex = (int)textBox.Tag;
 
         if (triggerEventType == null)
             return;
@@ -590,19 +585,23 @@ public class TriggersWindow : INItializableWindow
 
         string currentParameterValue = triggerEvent.Parameters[paramIndex];
 
-        HandleScrollOnEventOrActionParameterTextBox(currentParameterValue, parameter.PresetOptions, parameter.TriggerParamType, tbEventParameterValue);
+        HandleScrollOnEventOrActionParameterTextBox(currentParameterValue, parameter.PresetOptions, parameter.TriggerParamType, textBox);
     }
 
     private void TbActionParameterValue_MouseScrolled(object sender, InputEventArgs e)
     {
-        e.Handled = true;
+        if (panelActionParameters.CanScroll.Y)
+            return;
 
-        if (editedTrigger == null || lbActions.SelectedItem == null || lbActionParameters.SelectedItem == null)
+        e.Handled = true;
+        var textBox = (EditorTextBox)sender;
+
+        if (editedTrigger == null || lbActions.SelectedItem == null)
             return;
 
         var triggerAction = (TriggerAction)lbActions.SelectedItem.Tag;
         var triggerActionType = GetTriggerActionType(triggerAction.ActionIndex);
-        int paramIndex = (int)lbActionParameters.SelectedItem.Tag;
+        int paramIndex = (int)textBox.Tag;
 
         if (triggerActionType == null)
             return;
@@ -611,7 +610,7 @@ public class TriggersWindow : INItializableWindow
 
         string currentParameterValue = triggerAction.Parameters[paramIndex];
 
-        HandleScrollOnEventOrActionParameterTextBox(currentParameterValue, parameter.PresetOptions, parameter.TriggerParamType, tbActionParameterValue);
+        HandleScrollOnEventOrActionParameterTextBox(currentParameterValue, parameter.PresetOptions, parameter.TriggerParamType, textBox);
     }
     #endregion
 
@@ -1273,14 +1272,15 @@ public class TriggersWindow : INItializableWindow
 
     #endregion
 
-    private void BtnEventParameterValuePreset_LeftClick(object sender, EventArgs e)
+    private void SelectEventParameterPreset(int paramIndex)
     {
-        if (editedTrigger == null || lbEvents.SelectedItem == null || lbEventParameters.SelectedItem == null)
+        if (editedTrigger == null || lbEvents.SelectedItem == null)
             return;
 
         var triggerEvent = (TriggerCondition)lbEvents.SelectedItem.Tag;
         var triggerEventType = GetTriggerEventType(triggerEvent.ConditionIndex);
-        int paramIndex = (int)lbEventParameters.SelectedItem.Tag;
+        presetTriggerEvent = triggerEvent;
+        presetEventParameterIndex = paramIndex;
 
         if (triggerEventType == null)
             return;
@@ -1375,17 +1375,19 @@ public class TriggersWindow : INItializableWindow
 
     private void CtxActionParameterPresetValues_OptionSelected(object sender, ContextMenuItemSelectedEventArgs e)
     {
-        tbActionParameterValue.Text = ctxActionParameterPresetValues.Items[e.ItemIndex].Text;
+        if (lbActions.SelectedItem?.Tag == presetTriggerAction)
+            panelActionParameters.GetTextBox(presetActionParameterIndex).Text = ctxActionParameterPresetValues.Items[e.ItemIndex].Text;
     }
 
-    private void BtnActionParameterValuePreset_LeftClick(object sender, EventArgs e)
+    private void SelectActionParameterPreset(int paramIndex)
     {
-        if (editedTrigger == null || lbActions.SelectedItem == null || lbActionParameters.SelectedItem == null)
+        if (editedTrigger == null || lbActions.SelectedItem == null)
             return;
 
         var triggerAction = (TriggerAction)lbActions.SelectedItem.Tag;
         var triggerActionType = GetTriggerActionType(triggerAction.ActionIndex);
-        int paramIndex = (int)lbActionParameters.SelectedItem.Tag;
+        presetTriggerAction = triggerAction;
+        presetActionParameterIndex = paramIndex;
 
         if (triggerActionType == null)
             return;
@@ -1539,24 +1541,12 @@ public class TriggersWindow : INItializableWindow
         }
     }
 
-    private void btnActionGoToTarget_LeftClick(object sender, EventArgs e)
+    private void GoToParameterTarget(TriggerParamType triggerParamType, string parameterValue)
     {
-        if (lbActions.SelectedItem == null)
-            return;
-
-        if (lbActionParameters.SelectedItem == null)
-            return;
-
-        GetTriggerActionAndParamIndex(out TriggerAction triggerAction, out int paramIndex);            
-
-        var triggerActionType = GetTriggerActionType(triggerAction.ActionIndex);
-        var triggerActionParam = triggerActionType.Parameters[paramIndex];
-        var triggerParamType = triggerActionParam.TriggerParamType;            
-
         switch (triggerParamType)
         {
             case TriggerParamType.Trigger:
-                var triggerId = triggerAction.Parameters[paramIndex];
+                var triggerId = parameterValue;
                 var triggerIndex = lbTriggers.Items.FindIndex(listBoxTrigger => ((Trigger)listBoxTrigger.Tag).ID == triggerId);
                 if (triggerIndex == -1)
                     break;
@@ -1565,7 +1555,7 @@ public class TriggersWindow : INItializableWindow
                 break;
 
             case TriggerParamType.TeamType:
-                var teamTypeId = triggerAction.Parameters[paramIndex];
+                var teamTypeId = parameterValue;
                 var teamType = map.TeamTypes.Find(teamType => teamType.ININame == teamTypeId);
                 if (teamType == null) 
                     break;
@@ -1578,11 +1568,11 @@ public class TriggersWindow : INItializableWindow
                 int waypointNumber;
                 if (triggerParamType == TriggerParamType.WaypointZZ)
                 {
-                    waypointNumber = Helpers.GetWaypointNumberFromAlphabeticalString(triggerAction.Parameters[paramIndex]);
+                    waypointNumber = Helpers.GetWaypointNumberFromAlphabeticalString(parameterValue);
                 }
                 else
                 {
-                    waypointNumber = Conversions.IntFromString(triggerAction.Parameters[paramIndex], -1);
+                    waypointNumber = Conversions.IntFromString(parameterValue, -1);
                 }
 
                 if (waypointNumber == -1)
@@ -1745,34 +1735,17 @@ public class TriggersWindow : INItializableWindow
 
     private void AssignParamValue(bool isForEvent, int paramValue)
     {
-        if (isForEvent)
-        {
-            GetTriggerEventAndParamIndex(out TriggerCondition triggerCondition, out int paramIndex);
-            triggerCondition.Parameters[paramIndex] = paramValue.ToString(CultureInfo.InvariantCulture);
-        }
-        else
-        {
-            GetTriggerActionAndParamIndex(out TriggerAction triggerAction, out int paramIndex);
-            triggerAction.Parameters[paramIndex] = paramValue.ToString(CultureInfo.InvariantCulture);
-        }
-
-        EditTrigger(editedTrigger);
+        AssignParamValue(isForEvent, paramValue.ToString(CultureInfo.InvariantCulture));
     }
 
     private void AssignParamValue(bool isForEvent, string paramValue)
     {
         if (isForEvent)
-        {
-            GetTriggerEventAndParamIndex(out TriggerCondition triggerCondition, out int paramIndex);
-            triggerCondition.Parameters[paramIndex] = paramValue;
-        }
+            presetTriggerEvent.Parameters[presetEventParameterIndex] = paramValue;
         else
-        {
-            GetTriggerActionAndParamIndex(out TriggerAction triggerAction, out int paramIndex);
-            triggerAction.Parameters[paramIndex] = paramValue;
-        }
+            presetTriggerAction.Parameters[presetActionParameterIndex] = paramValue;
 
-        EditTrigger(editedTrigger);
+        RefreshParameterValues();
     }
 
     private void TriggerWindowDarkeningPanel_Hidden(object sender, EventArgs e)
@@ -1787,9 +1760,7 @@ public class TriggersWindow : INItializableWindow
         if (selectTriggerWindow.SelectedObject == null)
             return;
 
-        GetTriggerActionAndParamIndex(out TriggerAction triggerAction, out int paramIndex);
-        triggerAction.Parameters[paramIndex] = selectTriggerWindow.SelectedObject.ID;
-        EditTrigger(editedTrigger);
+        AssignParamValue(false, selectTriggerWindow.SelectedObject.ID);
     }
 
     private void TeamTypeWindowDarkeningPanel_Hidden(object sender, EventArgs e)
@@ -1799,18 +1770,6 @@ public class TriggersWindow : INItializableWindow
 
         var teamType = selectTeamTypeWindow.SelectedObject;
         AssignParamValue(selectTeamTypeWindow.IsForEvent, teamType.ININame);
-    }
-
-    private void GetTriggerActionAndParamIndex(out TriggerAction triggerAction, out int paramIndex)
-    {
-        triggerAction = (TriggerAction)lbActions.SelectedItem.Tag;
-        paramIndex = (int)lbActionParameters.SelectedItem.Tag;
-    }
-
-    private void GetTriggerEventAndParamIndex(out TriggerCondition triggerEvent, out int paramIndex)
-    {
-        triggerEvent = (TriggerCondition)lbEvents.SelectedItem.Tag;
-        paramIndex = (int)lbEventParameters.SelectedItem.Tag;
     }
 
     private void BtnNewTrigger_LeftClick(object sender, EventArgs e)
@@ -1893,10 +1852,8 @@ public class TriggersWindow : INItializableWindow
     {
         TriggerEventType triggerEventType = map.EditorConfig.TriggerEventTypes[condition.ConditionIndex];
 
-        for (int i = 0; i < lbEventParameters.Items.Count; i++)
+        foreach (int parameterIndex in panelEventParameters.ParameterIndices)
         {
-            int parameterIndex = (int)lbEventParameters.Items[i].Tag;
-
             if (UserSettings.Instance.SmartScriptActionDefaultValues)
             {
                 TriggerParamType triggerParamType = triggerEventType.Parameters[parameterIndex].TriggerParamType;
@@ -1924,14 +1881,13 @@ public class TriggersWindow : INItializableWindow
         }
     }
 
-    private bool IsEventParameterEliqibleForQuickSelection()
+    private bool IsEventParameterEligibleForQuickSelection(int paramIndex)
     {
-        if (editedTrigger == null || lbEvents.SelectedItem == null || lbEventParameters.SelectedItem == null)
+        if (editedTrigger == null || lbEvents.SelectedItem == null)
             return false;
 
         var triggerEvent = (TriggerCondition)lbEvents.SelectedItem.Tag;
         var triggerEventType = GetTriggerEventType(triggerEvent.ConditionIndex);
-        int paramIndex = (int)lbEventParameters.SelectedItem.Tag;
 
         if (triggerEventType == null)
             return false;
@@ -1973,7 +1929,7 @@ public class TriggersWindow : INItializableWindow
             EditTrigger(editedTrigger);
             lbEvents.SelectedIndex = lbEvents.Items.Count - 1;
 
-            if (lbEventParameters.Items.Count > 0)
+            if (panelEventParameters.ParameterIndices.Any())
             {
                 if (UserSettings.Instance.SmartScriptActionDefaultValues)
                 {
@@ -1981,12 +1937,12 @@ public class TriggersWindow : INItializableWindow
                     EditTrigger(editedTrigger);
                 }
 
-                lbEventParameters.SelectedIndex = 0;
+                int firstParameterIndex = panelEventParameters.ParameterIndices.First();
 
                 if (UserSettings.Instance.QuickTriggerParameterSelection &&
-                    IsEventParameterEliqibleForQuickSelection())
+                    IsEventParameterEligibleForQuickSelection(firstParameterIndex))
                 {
-                    BtnEventParameterValuePreset_LeftClick(this, EventArgs.Empty);
+                    SelectEventParameterPreset(firstParameterIndex);
                 }
             }
         }
@@ -2006,10 +1962,8 @@ public class TriggersWindow : INItializableWindow
     {
         TriggerActionType triggerActionType = map.EditorConfig.TriggerActionTypes[action.ActionIndex];
 
-        for (int i = 0; i < lbActionParameters.Items.Count; i++)
+        foreach (int parameterIndex in panelActionParameters.ParameterIndices)
         {
-            int parameterIndex = (int)lbActionParameters.Items[i].Tag;
-
             TriggerParamType triggerParamType = triggerActionType.Parameters[parameterIndex].TriggerParamType;
 
             // Set default values if we can infer ones from the trigger's name or from other information
@@ -2066,14 +2020,13 @@ public class TriggersWindow : INItializableWindow
         }
     }
 
-    private bool IsActionParameterEligibleForQuickSelection()
+    private bool IsActionParameterEligibleForQuickSelection(int paramIndex)
     {
-        if (editedTrigger == null || lbActions.SelectedItem == null || lbActionParameters.SelectedItem == null)
+        if (editedTrigger == null || lbActions.SelectedItem == null)
             return false;
 
         var triggerAction = (TriggerAction)lbActions.SelectedItem.Tag;
         var triggerActionType = GetTriggerActionType(triggerAction.ActionIndex);
-        int paramIndex = (int)lbActionParameters.SelectedItem.Tag;
 
         if (triggerActionType == null)
             return false;
@@ -2127,7 +2080,7 @@ public class TriggersWindow : INItializableWindow
             EditTrigger(editedTrigger);
             lbActions.SelectedIndex = lbActions.Items.Count - 1;
 
-            if (lbActionParameters.Items.Count > 0)
+            if (panelActionParameters.ParameterIndices.Any())
             {
                 if (UserSettings.Instance.SmartScriptActionDefaultValues)
                 {
@@ -2135,12 +2088,12 @@ public class TriggersWindow : INItializableWindow
                     EditTrigger(editedTrigger);
                 }
 
-                lbActionParameters.SelectedIndex = 0;
+                int firstParameterIndex = panelActionParameters.ParameterIndices.First();
 
                 if (UserSettings.Instance.QuickTriggerParameterSelection &&
-                    IsActionParameterEligibleForQuickSelection())
+                    IsActionParameterEligibleForQuickSelection(firstParameterIndex))
                 {
-                    BtnActionParameterValuePreset_LeftClick(this, EventArgs.Empty);
+                    SelectActionParameterPreset(firstParameterIndex);
                 }
             }
         }
@@ -2366,16 +2319,12 @@ public class TriggersWindow : INItializableWindow
             lbEvents.Clear();
             selEventType.Text = string.Empty;
             panelEventDescription.Text = string.Empty;
-            lbEventParameters.Clear();
-            tbEventParameterValue.Text = string.Empty;
+            panelEventParameters.ClearParameters();
 
             lbActions.Clear();
             selActionType.Text = string.Empty;
             panelActionDescription.Text = string.Empty;
-            lbActionParameters.Clear();
-            tbActionParameterValue.Text = string.Empty;
-
-            btnActionGoToTarget.Disable();
+            panelActionParameters.ClearParameters();
 
             return;
         }
@@ -2506,51 +2455,40 @@ public class TriggersWindow : INItializableWindow
 
     private void LbActions_SelectedIndexChanged(object sender, EventArgs e)
     {
-        lbActionParameters.SelectedIndexChanged -= LbActionParameters_SelectedIndexChanged;
+        selActionType.LeftClick -= SelActionType_LeftClick;
+        panelActionParameters.ClearParameters();
+        ctxActionParameterPresetValues.Disable();
 
         if (lbActions.SelectedItem == null)
         {
             selActionType.Text = string.Empty;
             panelActionDescription.Text = string.Empty;
-            lbActionParameters.Clear();
-            tbActionParameterValue.Text = string.Empty;
-
-            btnActionGoToTarget.Disable();
             return;
         }
 
         var triggerAction = (TriggerAction)lbActions.SelectedItem.Tag;
-        TriggerActionType triggerActionType = map.EditorConfig.TriggerActionTypes.GetValueOrDefault(triggerAction.ActionIndex);
-
+        var triggerActionType = GetTriggerActionType(triggerAction.ActionIndex);
         selActionType.Text = triggerAction.ActionIndex + " " + (triggerActionType == null ? Translate(this, "UnknownActionType", "Unknown") : triggerActionType.Name);
         panelActionDescription.Text = triggerActionType == null ? Translate(this, "UnknownActionDescription", "Unknown action. It has most likely been added with another editor.") : triggerActionType.Description;
 
-        lbActionParameters.Clear();
-        if (triggerActionType == null)
+        for (int i = 0; i < triggerAction.Parameters.Length; i++)
         {
-            for (int i = 0; i < TriggerActionType.MAX_PARAM_COUNT; i++)
-            {
-                lbActionParameters.AddItem(new XNAListBoxItem() { Text = $"Parameter {i}", Tag = i });
-            }
-        }
-        else
-        {
-            for (int i = 0; i < triggerActionType.Parameters.Length; i++)
-            {
-                var param = triggerActionType.Parameters[i];
-                if (param.TriggerParamType == TriggerParamType.Unused || (int)param.TriggerParamType < 0)
-                    continue;
+            var parameter = triggerActionType?.Parameters[i];
+            var paramType = parameter?.TriggerParamType ?? TriggerParamType.Unknown;
+            if (paramType == TriggerParamType.Unused || (int)paramType < 0)
+                continue;
 
-                lbActionParameters.AddItem(new XNAListBoxItem() { Text = param.NameOverride ?? param.TriggerParamType.ToString(), Tag = i });
-            }
+            string name = parameter == null ? string.Format(Translate(this, "UnknownParameter", "Parameter {0}"), i) :
+                parameter.NameOverride ?? paramType.ToString();
+            var textBox = panelActionParameters.AddParameter(i, name, triggerActionType == null ? null : SelectActionParameterPreset,
+                supportedGoToSourceTriggerParamTypes.Contains(paramType) ? index => GoToParameterTarget(paramType, triggerAction.Parameters[index]) : null);
+            textBox.TextChanged += TbActionParameterValue_TextChanged;
+            textBox.MouseScrolled += TbActionParameterValue_MouseScrolled;
         }
 
-        if (lbActionParameters.SelectedItem == null && lbActionParameters.Items.Count > 0)
-            lbActionParameters.SelectedIndex = 0;
+        panelActionParameters.LayoutRows();
 
-        LbActionParameters_SelectedIndexChanged(this, EventArgs.Empty);
-
-        lbActionParameters.SelectedIndexChanged += LbActionParameters_SelectedIndexChanged;
+        RefreshActionParameterValues();
         selActionType.LeftClick += SelActionType_LeftClick;
     }
 
@@ -2564,60 +2502,44 @@ public class TriggersWindow : INItializableWindow
         selectActionWindow.Open(GetTriggerActionType(actionTypeIndex));
     }
 
-    private void LbActionParameters_SelectedIndexChanged(object sender, EventArgs e)
+    private void RefreshParameterValues()
     {
-        tbActionParameterValue.TextChanged -= TbActionParameterValue_TextChanged;
+        RefreshActionParameterValues();
+        RefreshEventParameterValues();
+    }
 
-        if (lbActionParameters.SelectedItem == null || editedTrigger == null || lbActions.SelectedItem == null)
-        {
-            tbActionParameterValue.Text = string.Empty;
-            btnActionGoToTarget.Disable();
+    private void RefreshActionParameterValues()
+    {
+        if (lbActions.SelectedItem == null)
             return;
-        }
 
-        TriggerAction triggerAction = editedTrigger.Actions[lbActions.SelectedIndex];
-        int paramNumber = (int)lbActionParameters.SelectedItem.Tag;
+        var triggerAction = (TriggerAction)lbActions.SelectedItem.Tag;
         var triggerActionType = GetTriggerActionType(triggerAction.ActionIndex);
-        if (triggerActionType != null)
+        foreach (int index in panelActionParameters.ParameterIndices)
         {
-            var triggerActionParam = triggerActionType.Parameters[paramNumber];
-            var triggerParamType = triggerActionParam.TriggerParamType;
-
-            tbActionParameterValue.Text = GetParamValueText(triggerAction.Parameters[paramNumber], triggerParamType, triggerActionParam.PresetOptions);
-            tbActionParameterValue.TextColor = GetParamValueColor(triggerAction.Parameters[paramNumber], triggerParamType);
-
-            bool isSupportedGoToSourceParamType = supportedGoToSourceTriggerParamTypes.Contains(triggerParamType);
-            if (isSupportedGoToSourceParamType)
-            {
-                btnActionGoToTarget.Enable();
-            }
-            else
-            {
-                btnActionGoToTarget.Disable();
-            }
+            var textBox = panelActionParameters.GetTextBox(index);
+            var parameter = triggerActionType?.Parameters[index];
+            textBox.TextChanged -= TbActionParameterValue_TextChanged;
+            textBox.Text = parameter == null ? triggerAction.Parameters[index] :
+                GetParamValueText(triggerAction.Parameters[index], parameter.TriggerParamType, parameter.PresetOptions);
+            textBox.TextColor = parameter == null ? UISettings.ActiveSettings.AltColor :
+                GetParamValueColor(triggerAction.Parameters[index], parameter.TriggerParamType);
+            textBox.TextChanged += TbActionParameterValue_TextChanged;
         }
-        else
-        {
-            tbActionParameterValue.Text = triggerAction.Parameters[paramNumber];
-            tbActionParameterValue.TextColor = UISettings.ActiveSettings.AltColor;
-
-            btnActionGoToTarget.Disable();
-        }
-
-        tbActionParameterValue.TextChanged += TbActionParameterValue_TextChanged;
     }
 
     private void TbActionParameterValue_TextChanged(object sender, EventArgs e)
     {
-        if (lbActionParameters.SelectedItem == null || editedTrigger == null || lbActions.SelectedItem == null)
+        if (editedTrigger == null || lbActions.SelectedItem == null)
         {
             return;
         }
 
-        int paramNumber = (int)lbActionParameters.SelectedItem.Tag;
+        var textBox = (EditorTextBox)sender;
+        int paramNumber = (int)textBox.Tag;
         var triggerAction = (TriggerAction)lbActions.SelectedItem.Tag;
 
-        string value = tbActionParameterValue.Text.Split(' ')[0];
+        string value = textBox.Text.Split(' ')[0];
         var triggerActionType = GetTriggerActionType(triggerAction.ActionIndex);
 
         if (triggerActionType != null)
@@ -2646,7 +2568,7 @@ public class TriggersWindow : INItializableWindow
 
         if (triggerActionType == null)
         {
-            lbActions.AddItem(new XNAListBoxItem() { Text = action.ActionIndex + Translate(this, "UnknownActionType", "Unknown"), Tag = action });
+            lbActions.AddItem(new XNAListBoxItem() { Text = action.ActionIndex + " " + Translate(this, "UnknownActionType", "Unknown"), Tag = action });
             return;
         }
 
@@ -2655,50 +2577,40 @@ public class TriggersWindow : INItializableWindow
 
     private void LbEvents_SelectedIndexChanged(object sender, EventArgs e)
     {
-        lbEventParameters.SelectedIndexChanged -= LbEventParameters_SelectedIndexChanged;
         selEventType.LeftClick -= SelEventType_LeftClick;
+        panelEventParameters.ClearParameters();
+        ctxEventParameterPresetValues.Disable();
 
         if (lbEvents.SelectedItem == null)
         {
             selEventType.Text = string.Empty;
             panelEventDescription.Text = string.Empty;
-            lbEventParameters.Clear();
-            tbEventParameterValue.Text = string.Empty;
             return;
         }
 
         var triggerCondition = (TriggerCondition)lbEvents.SelectedItem.Tag;
-        TriggerEventType triggerEventType = map.EditorConfig.TriggerEventTypes.GetValueOrDefault(triggerCondition.ConditionIndex);
-
+        var triggerEventType = GetTriggerEventType(triggerCondition.ConditionIndex);
         selEventType.Text = triggerCondition.ConditionIndex + " " + (triggerEventType == null ? Translate(this, "UnknownEventType", "Unknown") : triggerEventType.Name);
         panelEventDescription.Text = triggerEventType == null ? Translate(this, "UnknownEventDescription", "Unknown event. It has most likely been added with another editor.") : triggerEventType.Description;
 
-        lbEventParameters.Clear();
-        if (triggerEventType == null)
+        for (int i = 0; i < triggerCondition.Parameters.Length; i++)
         {
-            for (int i = 0; i < TriggerEventType.MAX_PARAM_COUNT; i++)
-            {
-                lbEventParameters.AddItem(new XNAListBoxItem() { Text = $"Parameter {i}", Tag = i });
-            }
-        }
-        else
-        {
-            for (int i = 0; i < triggerEventType.Parameters.Length; i++)
-            {
-                var param = triggerEventType.Parameters[i];
-                if (param.TriggerParamType == TriggerParamType.Unused || (int)param.TriggerParamType < 0)
-                    continue;
+            var parameter = triggerEventType?.Parameters[i];
+            var paramType = parameter?.TriggerParamType ?? TriggerParamType.Unknown;
+            if (paramType == TriggerParamType.Unused || (int)paramType < 0)
+                continue;
 
-                lbEventParameters.AddItem(new XNAListBoxItem() { Text = param.NameOverride ?? param.TriggerParamType.ToString(), Tag = i });
-            }
+            string name = parameter == null ? string.Format(Translate(this, "UnknownParameter", "Parameter {0}"), i) :
+                parameter.NameOverride ?? paramType.ToString();
+            var textBox = panelEventParameters.AddParameter(i, name, triggerEventType == null ? null : SelectEventParameterPreset,
+                supportedGoToSourceTriggerParamTypes.Contains(paramType) ? index => GoToParameterTarget(paramType, triggerCondition.Parameters[index]) : null);
+            textBox.TextChanged += TbEventParameterValue_TextChanged;
+            textBox.MouseScrolled += TbEventParameterValue_MouseScrolled;
         }
 
-        if (lbEventParameters.SelectedItem == null && lbEventParameters.Items.Count > 0)
-            lbEventParameters.SelectedIndex = 0;
+        panelEventParameters.LayoutRows();
 
-        LbEventParameters_SelectedIndexChanged(this, EventArgs.Empty);
-
-        lbEventParameters.SelectedIndexChanged += LbEventParameters_SelectedIndexChanged;
+        RefreshEventParameterValues();
         selEventType.LeftClick += SelEventType_LeftClick;
     }
 
@@ -2712,54 +2624,45 @@ public class TriggersWindow : INItializableWindow
         selectEventWindow.Open(GetTriggerEventType(eventTypeIndex));
     }
 
-    private void LbEventParameters_SelectedIndexChanged(object sender, EventArgs e)
+    private void RefreshEventParameterValues()
     {
-        tbEventParameterValue.TextChanged -= TbEventParameterValue_TextChanged;
-
-        if (lbEventParameters.SelectedItem == null || editedTrigger == null || lbEvents.SelectedItem == null)
-        {
-            tbEventParameterValue.Text = string.Empty;
+        if (lbEvents.SelectedItem == null)
             return;
-        }
 
-        TriggerCondition triggerCondition = editedTrigger.Conditions[lbEvents.SelectedIndex];
-        int paramNumber = (int)lbEventParameters.SelectedItem.Tag;
-        var triggerEventType = GetTriggerEventType(editedTrigger.Conditions[lbEvents.SelectedIndex].ConditionIndex);
-        var triggerEventParam = triggerEventType.Parameters[paramNumber];            
-
-        if (triggerEventType != null)
+        var triggerCondition = (TriggerCondition)lbEvents.SelectedItem.Tag;
+        var triggerEventType = GetTriggerEventType(triggerCondition.ConditionIndex);
+        foreach (int index in panelEventParameters.ParameterIndices)
         {
-            var triggerParamType = triggerEventType.Parameters[paramNumber]?.TriggerParamType ?? TriggerParamType.Unknown;
-
-            tbEventParameterValue.Text = GetParamValueText(triggerCondition.Parameters[paramNumber], triggerParamType, triggerEventParam.PresetOptions);
-            tbEventParameterValue.TextColor = GetParamValueColor(triggerCondition.Parameters[paramNumber], triggerParamType);
+            var textBox = panelEventParameters.GetTextBox(index);
+            var parameter = triggerEventType?.Parameters[index];
+            textBox.TextChanged -= TbEventParameterValue_TextChanged;
+            textBox.Text = parameter == null ? triggerCondition.Parameters[index] :
+                GetParamValueText(triggerCondition.Parameters[index], parameter.TriggerParamType, parameter.PresetOptions);
+            textBox.TextColor = parameter == null ? UISettings.ActiveSettings.AltColor :
+                GetParamValueColor(triggerCondition.Parameters[index], parameter.TriggerParamType);
+            textBox.TextChanged += TbEventParameterValue_TextChanged;
         }
-        else
-        {
-            tbEventParameterValue.Text = triggerCondition.Parameters[paramNumber];
-            tbEventParameterValue.TextColor = UISettings.ActiveSettings.AltColor;
-        }
-
-        tbEventParameterValue.TextChanged += TbEventParameterValue_TextChanged;
     }
 
     private void CtxEventParameterPresetValues_OptionSelected(object sender, ContextMenuItemSelectedEventArgs e)
     {
-        tbEventParameterValue.Text = ctxEventParameterPresetValues.Items[e.ItemIndex].Text;
+        if (lbEvents.SelectedItem?.Tag == presetTriggerEvent)
+            panelEventParameters.GetTextBox(presetEventParameterIndex).Text = ctxEventParameterPresetValues.Items[e.ItemIndex].Text;
     }
 
     private void TbEventParameterValue_TextChanged(object sender, EventArgs e)
     {
-        if (lbEventParameters.SelectedItem == null || editedTrigger == null || lbEvents.SelectedItem == null)
+        if (editedTrigger == null || lbEvents.SelectedItem == null)
         {
             return;
         }
 
-        int paramNumber = (int)lbEventParameters.SelectedItem.Tag;
+        var textBox = (EditorTextBox)sender;
+        int paramNumber = (int)textBox.Tag;
         var triggerCondition = (TriggerCondition)lbEvents.SelectedItem.Tag;
 
-        string value = tbEventParameterValue.Text.Split(' ')[0];
-        var triggerEventType = GetTriggerActionType(triggerCondition.ConditionIndex);
+        string value = textBox.Text.Split(' ')[0];
+        var triggerEventType = GetTriggerEventType(triggerCondition.ConditionIndex);
 
         if (triggerEventType != null &&
             triggerEventType.Parameters[paramNumber].TriggerParamType == TriggerParamType.WaypointZZ)
