@@ -299,7 +299,7 @@ public sealed class BuildingRenderer : ObjectRenderer<Structure>
 
     protected override float GetDepthAddition(Structure gameObject)
     {
-        float buildingAdditionalDepth = gameObject.ObjectType.EditorZAdjust / (float)Map.HeightInPixelsWithCellHeight;
+        float buildingAdditionalDepth = gameObject.ObjectType.EditorZAdjust / Map.DepthRenderRange;
         return buildingAdditionalDepth + (Constants.DepthEpsilon * ObjectDepthAdjustments.Building);
     }
 

@@ -110,7 +110,7 @@ public sealed class OverlayRenderer : ObjectRenderer<Overlay>
         }
 
         var tile = Map.GetTile(gameObject.Position);
-        return (Constants.DepthEpsilon * ObjectDepthAdjustments.Overlay) + ((tile.Level + Constants.HighBridgeHeight) * Constants.CellHeight / (float)Map.HeightInPixelsWithCellHeight);
+        return (Constants.DepthEpsilon * ObjectDepthAdjustments.Overlay) + ((tile.Level + Constants.HighBridgeHeight) * Constants.CellHeight / Map.DepthRenderRange);
     }
 
     protected override DepthRectangle GetShadowDepthFromPosition(Overlay gameObject, Rectangle drawingBounds)

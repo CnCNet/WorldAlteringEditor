@@ -105,7 +105,7 @@ public static class Constants
     // Depth is between 0.0 and 1.0. How much of the scale is reserved for depth increasing as we go southwards on the map.
     public const float DownwardsDepthRenderSpace = 0.90f;
 
-    // How much of the depth scale (0.0 to 1.0) is reserved for depth increasing as we go up the map height levels.
+    // Depth increase per terrain height level, using the same normalization range as southward position.
     // Calculated dynamically.
     public static float DepthRenderStep = 0;
 

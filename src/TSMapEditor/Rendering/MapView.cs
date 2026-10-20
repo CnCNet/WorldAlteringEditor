@@ -634,7 +634,7 @@ public class MapView : IMapView, IMapScreenCropper
         alphaRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Alpha8);
         minimapRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Color);
 
-        Constants.DepthRenderStep = (float)Constants.CellSizeY / mapRenderTarget.Height;
+        Constants.DepthRenderStep = Constants.CellSizeY / Map.DepthRenderRange;
     }
 
     private void CreateDepthStencilStates()

@@ -242,19 +242,19 @@ public static class CellMath
             height = tile.Level;
         }
 
-        return ((CellTopLeftPointFromCellCoords(cellCoords, map).Y + Constants.CellSizeY) / (float)map.HeightInPixelsWithCellHeight) * Constants.DownwardsDepthRenderSpace +
+        return ((CellTopLeftPointFromCellCoords(cellCoords, map).Y + Constants.CellSizeY) / map.DepthRenderRange) * Constants.DownwardsDepthRenderSpace +
             (height * Constants.DepthRenderStep);
     }
 
     public static float GetDepthForCellTop(MapTile cell, Map map)
     {
-        return ((CellTopLeftPointFromCellCoords(cell.CoordsToPoint(), map).Y) / (float)map.HeightInPixelsWithCellHeight) * Constants.DownwardsDepthRenderSpace +
+        return ((CellTopLeftPointFromCellCoords(cell.CoordsToPoint(), map).Y) / map.DepthRenderRange) * Constants.DownwardsDepthRenderSpace +
             (cell.Level * Constants.DepthRenderStep);
     }
 
     public static float GetDepthForCellBottom(MapTile cell, Map map)
     {
-        return ((CellTopLeftPointFromCellCoords(cell.CoordsToPoint(), map).Y) / (float)map.HeightInPixelsWithCellHeight) * Constants.DownwardsDepthRenderSpace +
+        return ((CellTopLeftPointFromCellCoords(cell.CoordsToPoint(), map).Y) / map.DepthRenderRange) * Constants.DownwardsDepthRenderSpace +
             (cell.Level * Constants.DepthRenderStep);
     }
 
@@ -266,7 +266,7 @@ public static class CellMath
 
         y -= x;
 
-        return (y / (float)map.HeightInPixelsWithCellHeight) * Constants.DownwardsDepthRenderSpace +
+        return (y / map.DepthRenderRange) * Constants.DownwardsDepthRenderSpace +
             ((cell != null ? cell.Level : Constants.MaxMapHeightLevel) * Constants.DepthRenderStep);
     }
 
@@ -276,7 +276,7 @@ public static class CellMath
         if (y < topYReference)
             y = topYReference + (topYReference - y);
 
-        return (y / (float)map.HeightInPixelsWithCellHeight) * Constants.DownwardsDepthRenderSpace +
+        return (y / map.DepthRenderRange) * Constants.DownwardsDepthRenderSpace +
             (cell.Level * Constants.DepthRenderStep);
     }
 

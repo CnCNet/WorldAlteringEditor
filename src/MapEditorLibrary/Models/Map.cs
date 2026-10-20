@@ -220,6 +220,36 @@ public class Map : IMap
 
     public int HeightInPixelsWithCellHeight => Size.Y * Constants.CellSizeY + Constants.MapYBaseline;
 
+    /// <summary>
+    /// Normalization denominator for terrain and object depth calculations.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Base terrain depth is calculated as (S * y + level * C) / R, where S is DownwardsDepthRenderSpace,
+    /// y is the map-pixel Y coordinate before applying the screen-space elevation offset,
+    /// C is CellSizeY, and R is this range. Higher depth values are drawn in front.
+    /// DepthRenderStep is C / R.
+    /// </para>
+    /// <para>
+    /// The southernmost half-row extends CellHeight pixels below HeightInPixelsWithCellHeight,
+    /// so a base tile diamond reaches Ymax = HeightInPixelsWithCellHeight + CellHeight.
+    /// To keep base terrain at the maximum height level within S of the available depth range, require:
+    /// (S * Ymax + MaxMapHeightLevel * C) / R = S.
+    /// Solving for R gives Ymax + MaxMapHeightLevel * C / S, leaving 1 - S for terrain extras and object depth offsets.
+    /// </para>
+    /// <para>
+    /// C is used for weighting for Z depth.
+    /// </para>
+    /// <para>
+    /// HeightInPixelsWithCellHeight already includes MapYBaseline as top padding for raised terrain.
+    /// That padding alone does not bound the separate level * C depth contribution. Using only
+    /// HeightInPixelsWithCellHeight as the denominator allowed elevated southern terrain to exceed
+    /// depth 1.0 and be clipped. This range budgets for the sum of position and elevation instead.
+    /// </para>
+    /// </remarks>
+    public float DepthRenderRange => HeightInPixelsWithCellHeight + Constants.CellHeight +
+        (Constants.MaxMapHeightLevel * Constants.CellSizeY / Constants.DownwardsDepthRenderSpace);
+
     public string TheaterName { get; set; }
     public ITheater TheaterInstance { get; set; }
     public string LoadedTheaterName => TheaterInstance.Theater.UIName;

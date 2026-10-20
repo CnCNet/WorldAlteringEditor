@@ -94,7 +94,7 @@ public sealed class AnimRenderer : ObjectRenderer<Animation>
             {
                 var frame = drawParams.ShapeImage.GetFrame(gameObject.GetFrameIndex(drawParams.ShapeImage.GetFrameCount()));
                 if (frame != null && frame.Texture != null)
-                    depthAddition -= frame.Texture.Height / (float)Map.HeightInPixelsWithCellHeight;
+                    depthAddition -= frame.Texture.Height / Map.DepthRenderRange;
             }
         }
 
