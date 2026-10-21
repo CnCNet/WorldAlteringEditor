@@ -13,12 +13,18 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapEditorMCP", "MapEditorMC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapEditorMCP.Tests", "MapEditorMCP.Tests\MapEditorMCP.Tests.csproj", "{A0FE8675-67B5-4B92-994D-B2B2AE691544}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TSMapEditor.Tests", "TSMapEditor.Tests\TSMapEditor.Tests.csproj", "{72C7E84C-982A-44B7-B2D0-486F1351B334}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{72C7E84C-982A-44B7-B2D0-486F1351B334}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72C7E84C-982A-44B7-B2D0-486F1351B334}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72C7E84C-982A-44B7-B2D0-486F1351B334}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72C7E84C-982A-44B7-B2D0-486F1351B334}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7F1101DE-6849-404C-9141-0DF6A6BF12E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7F1101DE-6849-404C-9141-0DF6A6BF12E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7F1101DE-6849-404C-9141-0DF6A6BF12E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
