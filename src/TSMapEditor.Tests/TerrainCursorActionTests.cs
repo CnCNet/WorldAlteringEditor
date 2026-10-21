@@ -4,6 +4,7 @@ using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Graphics;
 using MapEditorLibrary.Misc;
 using MapEditorLibrary.Models;
+using MapEditorLibrary.Models.Enums;
 using MapEditorLibrary.Mutations;
 using MapEditorLibrary.Mutations.Classes;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -44,6 +45,84 @@ public class TerrainCursorActionTests
         CollectionAssert.AreEqual(before, fixture.Snapshot());
         fixture.MutationManager.Redo();
         CollectionAssert.AreEqual(preview, fixture.Snapshot());
+    }
+
+    [TestMethod]
+    [DataRow(0, LightingPreviewMode.Normal)]
+    [DataRow(1, LightingPreviewMode.Normal)]
+    [DataRow(6, LightingPreviewMode.Normal)]
+    [DataRow(0, LightingPreviewMode.IonStorm)]
+    [DataRow(1, LightingPreviewMode.IonStorm)]
+    [DataRow(6, LightingPreviewMode.IonStorm)]
+    [DataRow(0, LightingPreviewMode.Dominator)]
+    [DataRow(1, LightingPreviewMode.Dominator)]
+    [DataRow(6, LightingPreviewMode.Dominator)]
+    public void HeightChangingLineRefreshesLightingForPreviewPlacementAndUndo(int length, LightingPreviewMode lightingMode)
+    {
+        var fixture = new CursorFixture(3, 3, tileHeightOffset: 1) { LightingPreviewState = lightingMode };
+        Lighting lighting = fixture.Map.Lighting;
+        lighting.Red = lighting.Green = lighting.Blue = 1.0;
+        lighting.IonRed = lighting.IonGreen = lighting.IonBlue = 1.0;
+        lighting.DominatorRed = lighting.DominatorGreen = lighting.DominatorBlue = 1.0;
+        lighting.Ambient = lighting.IonAmbient = 0.4;
+        lighting.DominatorAmbient = 0.4;
+        lighting.Level = lighting.IonLevel = 0.1;
+        lighting.DominatorLevel = 0.1;
+
+        for (int y = 0; y < TerrainFixture.Size; y++)
+        {
+            for (int x = 0; x < TerrainFixture.Size; x++)
+                fixture.Map.GetTile(x, y).RefreshLighting(lighting, lightingMode, false);
+        }
+
+        var action = new PlaceTerrainCursorAction(fixture) { Tile = fixture.Tile };
+        var start = new Point2D(25, 25);
+        var end = new Point2D(25 + length, 25);
+        action.LeftDown(start);
+        action.PreMapDraw(end);
+        var paintedCells = fixture.PaintedCells();
+        Assert.AreEqual(length == 0 ? 9 : length == 1 ? 12 : 27, paintedCells.Count);
+        foreach (Point2D point in paintedCells)
+        {
+            Assert.AreEqual(4, fixture.Map.GetTile(point).Level);
+            AssertLighting(fixture.Map.GetTile(point), 0.8);
+        }
+
+        action.PostMapDraw(end);
+        foreach (Point2D point in paintedCells)
+        {
+            Assert.AreEqual(3, fixture.Map.GetTile(point).Level);
+            AssertLighting(fixture.Map.GetTile(point), 0.7);
+        }
+
+        action.LeftClick(end);
+        if (length == 0)
+        {
+            Assert.AreEqual(0, fixture.MutationManager.UndoList.Count);
+            foreach (Point2D point in paintedCells)
+                AssertLighting(fixture.Map.GetTile(point), 0.7);
+
+            return;
+        }
+
+        Assert.AreEqual(1, fixture.MutationManager.UndoList.Count);
+        foreach (Point2D point in paintedCells)
+            AssertLighting(fixture.Map.GetTile(point), 0.8);
+
+        fixture.MutationManager.Undo();
+        foreach (Point2D point in paintedCells)
+            AssertLighting(fixture.Map.GetTile(point), 0.7);
+
+        fixture.MutationManager.Redo();
+        foreach (Point2D point in paintedCells)
+            AssertLighting(fixture.Map.GetTile(point), 0.8);
+    }
+
+    private static void AssertLighting(MapTile cell, double expected)
+    {
+        Assert.AreEqual(expected, cell.CellLighting.R, 0.000001, $"Red lighting at {cell.CoordsToPoint()}");
+        Assert.AreEqual(expected, cell.CellLighting.G, 0.000001, $"Green lighting at {cell.CoordsToPoint()}");
+        Assert.AreEqual(expected, cell.CellLighting.B, 0.000001, $"Blue lighting at {cell.CoordsToPoint()}");
     }
 
     [TestMethod]
@@ -110,8 +189,8 @@ public class TerrainCursorActionTests
 
 internal class CursorFixture : TerrainFixture, ICursorActionTarget
 {
-    internal CursorFixture(int brushWidth, int brushHeight, int tileWidth = 1, int tileHeight = 1, bool autoLAT = false)
-        : base(brushWidth, brushHeight, tileWidth, tileHeight, autoLAT)
+    internal CursorFixture(int brushWidth, int brushHeight, int tileWidth = 1, int tileHeight = 1, bool autoLAT = false, byte tileHeightOffset = 0)
+        : base(brushWidth, brushHeight, tileWidth, tileHeight, autoLAT, tileHeightOffset)
     {
         // Input handlers need keyboard state, not a native window or graphics device.
         WindowManager = (WindowManager)RuntimeHelpers.GetUninitializedObject(typeof(WindowManager));

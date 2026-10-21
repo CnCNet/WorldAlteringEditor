@@ -52,7 +52,7 @@ internal class TerrainFixture : IMutationTarget, ITheater
     public BrushSize BrushSize { get; set; }
     public Randomizer Randomizer { get; } = new();
     public bool AutoLATEnabled { get; set; }
-    public LightingPreviewMode LightingPreviewState => LightingPreviewMode.NoLighting;
+    public LightingPreviewMode LightingPreviewState { get; set; } = LightingPreviewMode.NoLighting;
     public bool LightDisabledLightSources => false;
     public bool OnlyPaintOnClearGround => false;
     public Theater Theater { get; }

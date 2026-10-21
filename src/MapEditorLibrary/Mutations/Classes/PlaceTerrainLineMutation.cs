@@ -153,6 +153,7 @@ public class PlaceTerrainLineMutation : Mutation
             AddCellToUndoData(cellCoords);
             cell.ChangeTileIndex(tile.TileID, (byte)i);
             cell.Level = (byte)Math.Min(cell.Level + tile.GetSubTile(i).TmpImage.Height, Constants.MaxMapHeightLevel);
+            RefreshCellLighting(cell);
 
             if (autoLATEnabled)
             {
