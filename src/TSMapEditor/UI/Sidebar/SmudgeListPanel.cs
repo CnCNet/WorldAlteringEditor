@@ -99,13 +99,29 @@ class SmudgeListPanel : XNAPanel, ISearchBoxContainer
         }
     }
 
+    protected override void OnClientRectangleUpdated()
+    {
+        RefreshControlSizes();
+        base.OnClientRectangleUpdated();
+    }
+
     public override void RefreshSize()
     {
         Width = Parent.Width;
-        SearchBox.Width = Width - Constants.UIEmptySideSpace * 2;
-        ObjectTreeView.Width = Width;
         Height = Parent.Height - Y;
-        ObjectTreeView.Height = Height - ObjectTreeView.Y;
+        RefreshControlSizes();
+    }
+
+    private void RefreshControlSizes()
+    {
+        if (SearchBox != null)
+            SearchBox.Width = Width - Constants.UIEmptySideSpace * 2;
+
+        if (ObjectTreeView != null)
+        {
+            ObjectTreeView.Width = Width;
+            ObjectTreeView.Height = Height - ObjectTreeView.Y;
+        }
     }
 
     private void NextSidebarNode_Triggered(object sender, EventArgs e)
