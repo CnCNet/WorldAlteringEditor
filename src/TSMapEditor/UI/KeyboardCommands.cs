@@ -30,6 +30,7 @@ public class KeyboardCommands
             PreviousBrushSize,
             DeleteObject,
             ToggleAutoLAT,
+            ToggleOnlyPaintOnClear,
             ToggleMapWideOverlay,
             Toggle2DMode,
             ZoomIn,
@@ -123,6 +124,7 @@ public class KeyboardCommands
     public KeyboardCommand PreviousBrushSize { get; } = new KeyboardCommand("PreviousBrushSize", Translate("KeyboardCommands.PreviousBrushSize", "Previous Brush Size"), new KeyboardCommandInput(Keys.D0, KeyboardModifiers.None));
     public KeyboardCommand DeleteObject { get; } = new KeyboardCommand("DeleteObject", Translate("KeyboardCommands.DeleteObject", "Delete Object"), new KeyboardCommandInput(Keys.Delete, KeyboardModifiers.None));
     public KeyboardCommand ToggleAutoLAT { get; } = new KeyboardCommand("ToggleAutoLAT", Translate("KeyboardCommands.ToggleAutoLAT", "Toggle AutoLAT"), new KeyboardCommandInput(Keys.L, KeyboardModifiers.Ctrl));
+    public KeyboardCommand ToggleOnlyPaintOnClear { get; } = new KeyboardCommand("ToggleOnlyPaintOnClear", Translate("KeyboardCommands.ToggleOnlyPaintOnClear", "Toggle Only Paint on Clear"), new KeyboardCommandInput(Keys.O, KeyboardModifiers.Ctrl));
     public KeyboardCommand ToggleMapWideOverlay { get; } = new KeyboardCommand("ToggleMapWideOverlay", Translate("KeyboardCommands.ToggleMapWideOverlay", "Toggle Map-Wide Overlay"), new KeyboardCommandInput(Keys.F2, KeyboardModifiers.None));
     public KeyboardCommand Toggle2DMode { get; } = new KeyboardCommand("Toggle2DMode", Translate("KeyboardCommands.Toggle2DMode", "Toggle 2D Mode"), new KeyboardCommandInput(Keys.D, KeyboardModifiers.Shift));
     public KeyboardCommand ZoomIn { get; } = new KeyboardCommand("ZoomIn", Translate("KeyboardCommands.ZoomIn", "Zoom In"), new KeyboardCommandInput(Keys.OemPlus, KeyboardModifiers.Ctrl));

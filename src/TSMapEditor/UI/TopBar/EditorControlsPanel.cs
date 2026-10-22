@@ -146,6 +146,7 @@ public class EditorControlsPanel : INItializableWindow
         KeyboardCommands.Instance.NextBrushSize.Triggered += NextBrushSize_Triggered;
         KeyboardCommands.Instance.PreviousBrushSize.Triggered += PreviousBrushSize_Triggered;
         KeyboardCommands.Instance.ToggleAutoLAT.Triggered += ToggleAutoLAT_Triggered;
+        KeyboardCommands.Instance.ToggleOnlyPaintOnClear.Triggered += ToggleOnlyPaintOnClear_Triggered;
         KeyboardCommands.Instance.ToggleMapWideOverlay.Triggered += (s, e) => { if (editorState.MapWideOverlayExists) chkDrawMapWideOverlay.Checked = !chkDrawMapWideOverlay.Checked; };
 
         editorState.AutoLATEnabledChanged += (s, e) => chkAutoLAT.Checked = editorState.AutoLATEnabled;
@@ -308,5 +309,10 @@ public class EditorControlsPanel : INItializableWindow
     private void ToggleAutoLAT_Triggered(object sender, EventArgs e)
     {
         chkAutoLAT.Checked = !chkAutoLAT.Checked;
+    }
+
+    private void ToggleOnlyPaintOnClear_Triggered(object sender, EventArgs e)
+    {
+        chkOnlyPaintOnClearGround.Checked = !chkOnlyPaintOnClearGround.Checked;
     }
 }
