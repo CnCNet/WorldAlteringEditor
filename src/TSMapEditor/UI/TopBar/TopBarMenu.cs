@@ -81,7 +81,7 @@ class TopBarMenu : EditorPanel
         fileContextMenu.AddItem(Translate(this, "File.New", "New"), () => windowController.CreateNewMapWindow.Open(), null, null, null);
         fileContextMenu.AddItem(Translate(this, "File.Open", "Open"), () => Open(), null, null, null);
 
-        fileContextMenu.AddItem(Translate(this, "File.Save", "Save"), () => SaveMap());
+        fileContextMenu.AddItem(Translate(this, "File.Save", "Save"), () => SaveMap(), null, null, null, () => KeyboardCommands.Instance.Save.GetKeyDisplayString());
         fileContextMenu.AddItem(Translate(this, "File.SaveAs", "Save As"), () => SaveAs(), null, null, null);
         fileContextMenu.AddItem(" ", null, () => false, null, null);
         fileContextMenu.AddItem(Translate(this, "File.ReloadInputFile", "Reload Input File"),
