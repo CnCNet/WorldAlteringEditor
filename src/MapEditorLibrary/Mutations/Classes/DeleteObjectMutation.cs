@@ -55,6 +55,8 @@ public class DeleteObjectMutation : Mutation
 
     public override void Perform()
     {
+        deletedObjects.Clear();
+
         // We adjust the deletion mode based on the first object we delete.
         // This is to prevent the mutation from deleting many objects of different types
         // when deleting objects over a larger area, as that kind of behaviour could be seen
