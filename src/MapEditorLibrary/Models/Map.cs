@@ -1267,6 +1267,7 @@ public class Map : IMap
                 {
                     returnValue = tile.Infantry[i];
                     RemoveInfantry(tile.Infantry[i]);
+                    break;
                 }
             }
         }
