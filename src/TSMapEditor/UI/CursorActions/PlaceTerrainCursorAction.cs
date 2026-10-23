@@ -123,41 +123,14 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
     private void ApplyTerrainLinePreview(Point2D cellCoords)
     {
         Point2D adjustedCellCoords = GetAdjustedCellCoords(cellCoords);
+        Direction direction = default;
+        int length = 0;
 
-        MapTile originTile = CursorActionTarget.Map.GetTile(cellCoords);
-
-        Direction direction;
-        int length;
-
-        if (LineSourceCell.Value == adjustedCellCoords)
-        {
-            direction = default;
-            length = 1;
-        }
-        else
-        {
+        if (LineSourceCell.Value != adjustedCellCoords)
             (direction, length) = GetLineInformation(adjustedCellCoords);
-        }
 
-        if (length < 2)
-        {
-            Tile.DoForValidSubTiles((subTile, subTileOffset, subTileIndex) =>
-            {
-                var mapTile = Map.GetTile(adjustedCellCoords + subTileOffset);
-
-                if (mapTile != null && (!CursorActionTarget.OnlyPaintOnClearGround || mapTile.IsClearGround()))
-                {
-                    int previewLevel = Math.Min(mapTile.Level + subTile.TmpImage.Height, Constants.MaxMapHeightLevel);
-                    mapTile.ApplyPreview(Tile, subTileIndex, previewLevel, Map.Lighting, CursorActionTarget.LightingPreviewState, MutationTarget.LightDisabledLightSources);
-                    previewTiles.Add(mapTile);
-                }
-            });
-        }
-        else
-        {
-            LinePreviewMutation = new PlaceTerrainLineMutation(MutationTarget, Map.GetTile(LineSourceCell.Value), direction, length, Tile);
-            LinePreviewMutation.Perform();
-        }
+        LinePreviewMutation = CreateLinePlacementMutation(direction, length);
+        LinePreviewMutation.Perform();
     }
 
     private void ApplyPreviewForCells(Point2D cellCoords)
@@ -382,6 +355,19 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
             Blocked = true;
             placedDownNonFlatTile = true;
         }
+    }
+
+    public override void LeftClick(Point2D cellCoords)
+    {
+        if (KeyboardCommands.Instance.PlaceTerrainLine.AreKeysOrModifiersDown(Keyboard))
+        {
+            if (LineSourceCell.HasValue && GetAdjustedCellCoords(cellCoords) != LineSourceCell.Value)
+                ApplyLineInternal(cellCoords);
+
+            return;
+        }
+
+        base.LeftClick(cellCoords);
     }
 
     public override void LeftDown(Point2D cellCoords)

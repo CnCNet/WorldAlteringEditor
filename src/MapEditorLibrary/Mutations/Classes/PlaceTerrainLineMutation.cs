@@ -14,6 +14,7 @@ public class PlaceTerrainLineMutation : Mutation
         this.length = length;
         this.tile = tile;
         autoLATEnabled = mutationTarget.AutoLATEnabled;
+        brushSize = mutationTarget.BrushSize;
     }
 
     private readonly MapTile sourceTile;
@@ -21,6 +22,7 @@ public class PlaceTerrainLineMutation : Mutation
     private readonly int length;
     private readonly TileImage tile;
     private readonly bool autoLATEnabled;
+    private readonly BrushSize brushSize;
     private List<OriginalCellTerrainData> undoData = new List<OriginalCellTerrainData>();
     private HashSet<Point2D> undoDataCellCoords = new HashSet<Point2D>();
     private HashSet<Point2D> placedTerrainCellCoords = new HashSet<Point2D>();
@@ -101,7 +103,8 @@ public class PlaceTerrainLineMutation : Mutation
         {
             Point2D coords = sourceTile.CoordsToPoint() + Helpers.VisualDirectionToPoint(direction).ScaleBy(processedLength);
 
-            PlaceTile(coords);
+            brushSize.DoForBrushSize(offset =>
+                PlaceTile(coords + new Point2D(offset.X * tile.Width, offset.Y * tile.Height)));
 
             switch (direction)
             {
@@ -150,6 +153,7 @@ public class PlaceTerrainLineMutation : Mutation
             AddCellToUndoData(cellCoords);
             cell.ChangeTileIndex(tile.TileID, (byte)i);
             cell.Level = (byte)Math.Min(cell.Level + tile.GetSubTile(i).TmpImage.Height, Constants.MaxMapHeightLevel);
+            RefreshCellLighting(cell);
 
             if (autoLATEnabled)
             {
