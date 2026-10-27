@@ -52,6 +52,7 @@ class Parser
 
     private string translationKeyName;
 
+    private int openParenDepth = 0;
     private int tokenPlace;
     private XNAControl primaryControl;
     private XNAControl parsingControl;
@@ -159,9 +160,13 @@ class Parser
         return value;
     }
 
+    /// <summary>
+    /// Entry point for parsing a full arithmetic expression.
+    /// </summary>
     private int GetExprValue()
     {
         int value = 0;
+        bool firstiter = true;
 
         while (true)
         {
@@ -172,57 +177,45 @@ class Parser
 
             char c = PeekChar();
 
-            if (char.IsDigit(c))
-            {
-                value = GetInt();
-            }
-            else if (c == '+')
+            if (c == '+')
             {
                 tokenPlace++;
-                value += GetNumericalValue();
+                value += GetTermValue();
             }
             else if (c == '-')
             {
                 tokenPlace++;
-                value -= GetNumericalValue();
-            }
-            else if (c == '/')
-            {
-                tokenPlace++;
-                value /= GetExprValue();
-            }
-            else if (c == '*')
-            {
-                tokenPlace++;
-                value *= GetExprValue();
-            }
-            else if (c == '(')
-            {
-                tokenPlace++;
-                value = GetExprValue();
+                value -= GetTermValue();
             }
             else if (c == ')')
             {
-                tokenPlace++;
-                return value;
+                if (openParenDepth > 0)
+                    return value;
+                else
+                    throw new INIConfigException($"Unmatched closing parenthesis in: {Input}, position {tokenPlace}");
             }
-            else if (char.IsUpper(c))
+            else if (firstiter)
             {
-                value = GetConstantValue();
+                value = GetTermValue();
             }
-            else if (char.IsLower(c))
+            else
             {
-                value = GetFunctionIntegerValue();
+                throw new INIConfigException($"Unexpected character {c} when parsing input: {Input}, position {tokenPlace}");
             }
+
+            firstiter = false;
         }
     }
 
-    private int GetNumericalValue()
+    /// <summary>
+    /// Parses a factor and returns its value: an integer, constant, function value, or an expression in parentheses.
+    /// </summary>
+    private int GetFactorValue()
     {
         SkipWhitespace();
 
         if (IsEndOfInput())
-            return 0;
+            throw new INIConfigException("Unexpected end of input when parsing input: " + Input);
 
         char c = PeekChar();
 
@@ -238,13 +231,82 @@ class Parser
         {
             return GetFunctionIntegerValue();
         }
-        else if (c == '(')
+        else if (c == '-')
         {
             tokenPlace++;
-            return GetExprValue();
+            return -GetFactorValue();
+        }
+        else if (c == '+')
+        {
+            tokenPlace++;
+            return GetFactorValue();
+        }
+        else if (c == '(')
+        {
+            return GetParValue();
         }
         else
-            throw new INIConfigException("Unexpected character " + c + " when parsing input: " + Input);
+        {
+            throw new INIConfigException($"Unexpected character {c} when parsing input: {Input}, position {tokenPlace}");
+        }
+    }
+
+    /// <summary>
+    /// Parses a term. A term is one or more factors joined by multiplication and division operators.
+    /// </summary>
+    private int GetTermValue()
+    {
+        int value = GetFactorValue();
+
+        while (true)
+        {
+            SkipWhitespace();
+
+            if (IsEndOfInput())
+                return value;
+
+            char c = PeekChar();
+
+            if (c == '/')
+            {
+                tokenPlace++;
+                value /= GetFactorValue();
+            }
+            else if (c == '*')
+            {
+                tokenPlace++;
+                value *= GetFactorValue();
+            }
+            else
+            {
+                return value;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Parses an expression wrapped in parentheses.
+    /// </summary>
+    private int GetParValue()
+    {
+        ConsumeChar('(');
+        openParenDepth++;
+        int value;
+
+        try
+        {
+            value = GetExprValue();
+        }
+        finally
+        {
+            openParenDepth--;
+        }
+
+        if (IsEndOfInput())
+            throw new INIConfigException($"Opening parenthesis not matched in: {Input}, position {tokenPlace}");
+
+        ConsumeChar(')');
+        return value;
     }
 
     private void SkipWhitespace()
@@ -485,7 +547,7 @@ class Parser
     private void ConsumeChar(char token)
     {
         if (Input[tokenPlace] != token)
-            throw new INIConfigException("Parse error: expected '" + token + "' in expression " + Input);
+            throw new INIConfigException($"Parse error: expected '{token}' in expression {Input}, position {tokenPlace}");
         tokenPlace++;
     }
 
