@@ -40,6 +40,7 @@ public class KeyboardCommands
             RotateUnitOneStep,
             PlaceTerrainBelow,
             FillTerrain,
+            PlaceTerrainLine,
             CloneObject,
             OverlapObjects,
             ViewMegamap,
