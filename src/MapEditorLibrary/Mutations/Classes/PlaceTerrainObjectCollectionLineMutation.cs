@@ -15,12 +15,14 @@ public class PlaceTerrainObjectCollectionLineMutation : Mutation
         this.sourceCoords = sourceCoords;
         this.direction = direction;
         this.length = length;
+        brushSize = mutationTarget.BrushSize;
     }
 
     private readonly TerrainObjectCollection terrainObjectCollection;
     private readonly Point2D sourceCoords;
     private readonly Direction direction;
     private readonly int length;
+    private readonly BrushSize brushSize;
 
     private List<Point2D> placedCells = new List<Point2D>();
 
@@ -35,11 +37,9 @@ public class PlaceTerrainObjectCollectionLineMutation : Mutation
     public override void Perform()
     {
         placedCells.Clear();
-        Point2D step = Helpers.VisualDirectionToPoint(direction);
 
-        for (int i = 0; i <= length; i++)
+        foreach (Point2D coords in brushSize.GetCellsAlongLine(sourceCoords, direction, length))
         {
-            Point2D coords = sourceCoords + step.ScaleBy(i);
             var tile = MutationTarget.Map.GetTile(coords);
             if (tile == null)
                 continue;

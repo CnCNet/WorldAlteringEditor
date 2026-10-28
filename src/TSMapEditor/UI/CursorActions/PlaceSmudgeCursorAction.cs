@@ -111,7 +111,7 @@ public class PlaceSmudgeCursorAction : LineAndRegularPaintingAction
 
     protected override Mutation CreateLinePlacementMutation(Direction direction, int length)
     {
-        return new PlaceSmudgeLineMutation(MutationTarget, SmudgeType, LineSourceCell.Value, direction, length);
+        return new PlaceSmudgeLineMutation(MutationTarget, SmudgeType, GetCenteredBrushSizeCellCoords(LineSourceCell.Value), direction, length);
     }
 
     protected override void ApplyLine(Point2D cellCoords)

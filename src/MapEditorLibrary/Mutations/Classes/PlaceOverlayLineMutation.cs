@@ -1,3 +1,4 @@
+using MapEditorLibrary.Configuration;
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
 
@@ -15,6 +16,7 @@ public class PlaceOverlayLineMutation : Mutation
         this.sourceCoords = sourceCoords;
         this.direction = direction;
         this.length = length;
+        brushSize = mutationTarget.BrushSize;
     }
 
     private readonly OverlayType overlayType;
@@ -22,6 +24,7 @@ public class PlaceOverlayLineMutation : Mutation
     private readonly Point2D sourceCoords;
     private readonly Direction direction;
     private readonly int length;
+    private readonly BrushSize brushSize;
 
     private OriginalOverlayInfo[] undoData;
 
@@ -37,21 +40,25 @@ public class PlaceOverlayLineMutation : Mutation
     public override void Perform()
     {
         var originalOverlayInfos = new List<OriginalOverlayInfo>();
-        Point2D step = Helpers.VisualDirectionToPoint(direction);
-
-        for (int i = 0; i <= length; i++)
+        foreach (Point2D coords in brushSize.GetCellsAlongLine(sourceCoords, direction, length, 1))
         {
-            Point2D coords = sourceCoords + step.ScaleBy(i);
-            var tile = MutationTarget.Map.GetTile(coords);
+            var tile = Map.GetTile(coords);
             if (tile == null)
                 continue;
 
             originalOverlayInfos.Add(new OriginalOverlayInfo()
             {
-                CellCoords = tile.CoordsToPoint(),
-                OverlayTypeIndex = tile.Overlay == null ? -1 : tile.Overlay.OverlayType.Index,
-                FrameIndex = tile.Overlay == null ? -1 : tile.Overlay.FrameIndex,
+                CellCoords = coords,
+                OverlayTypeIndex = tile.Overlay?.OverlayType.Index ?? -1,
+                FrameIndex = tile.Overlay?.FrameIndex ?? -1,
             });
+        }
+
+        foreach (Point2D coords in brushSize.GetCellsAlongLine(sourceCoords, direction, length))
+        {
+            var tile = MutationTarget.Map.GetTile(coords);
+            if (tile == null)
+                continue;
 
             tile.Overlay = new Overlay()
             {
@@ -63,30 +70,18 @@ public class PlaceOverlayLineMutation : Mutation
 
         if (!forcedFrameIndex.HasValue)
         {
-            UpdateFrameIndexesAroundLine(step);
+            UpdateFrameIndexesAroundLine();
         }
 
         undoData = originalOverlayInfos.ToArray();
-        MutationTarget.AddRefreshPoint(sourceCoords, length + 2);
+        MutationTarget.AddRefreshPoint(sourceCoords, length + brushSize.Max + 1);
     }
 
-    private void UpdateFrameIndexesAroundLine(Point2D step)
+    private void UpdateFrameIndexesAroundLine()
     {
-        var updatedCells = new HashSet<Point2D>();
-
-        for (int i = 0; i <= length; i++)
+        foreach (Point2D coords in brushSize.GetCellsAlongLine(sourceCoords, direction, length, 1))
         {
-            Point2D coords = sourceCoords + step.ScaleBy(i);
-
-            for (int y = -1; y <= 1; y++)
-            {
-                for (int x = -1; x <= 1; x++)
-                {
-                    Point2D neighbor = coords + new Point2D(x, y);
-                    if (updatedCells.Add(neighbor))
-                        SetOverlayFrameIndexForTile(neighbor);
-                }
-            }
+            SetOverlayFrameIndexForTile(coords);
         }
     }
 
@@ -121,11 +116,6 @@ public class PlaceOverlayLineMutation : Mutation
             };
         }
 
-        if (!forcedFrameIndex.HasValue)
-        {
-            UpdateFrameIndexesAroundLine(Helpers.VisualDirectionToPoint(direction));
-        }
-
-        MutationTarget.AddRefreshPoint(sourceCoords, length + 2);
+        MutationTarget.AddRefreshPoint(sourceCoords, length + brushSize.Max + 1);
     }
 }

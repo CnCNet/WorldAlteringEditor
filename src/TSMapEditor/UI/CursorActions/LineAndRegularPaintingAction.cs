@@ -44,6 +44,10 @@ public abstract class LineAndRegularPaintingAction : CursorAction
 
     protected (Direction direction, int length) GetLineInformation(Point2D cellCoords)
     {
+        // A zero-length line previews one brush stamp, for which direction is irrelevant.
+        if (cellCoords == LineSourceCell.Value)
+            return (Direction.NE, 0);
+
         Direction direction = Helpers.DirectionFromPoints(LineSourceCell.Value, cellCoords);
         Point2D vector = cellCoords - LineSourceCell.Value;
         int length = Math.Max(Math.Abs(vector.X), Math.Abs(vector.Y));
@@ -62,13 +66,10 @@ public abstract class LineAndRegularPaintingAction : CursorAction
 
     protected void ApplyLinePreview(Point2D cellCoords)
     {
-        if (!LineSourceCell.HasValue || LineSourceCell.Value == cellCoords || !CanDrawLinePreview())
+        if (!LineSourceCell.HasValue || !CanDrawLinePreview())
             return;
 
         (Direction direction, int length) = GetLineInformation(cellCoords);
-
-        if (length < 1)
-            return;
 
         LinePreviewMutation = CreateLinePlacementMutation(direction, length);
         LinePreviewMutation.Perform();
@@ -140,7 +141,7 @@ public abstract class LineAndRegularPaintingAction : CursorAction
             coords = cellCoords;
         }
 
-        cell = Map.GetTile(coords);
+        cell = Map.GetTile(cellCoords);
 
         if (KeyboardCommands.Instance.PlaceTerrainLine.AreKeysOrModifiersDown(Keyboard))
         {

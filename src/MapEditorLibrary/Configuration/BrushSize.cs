@@ -16,6 +16,40 @@ public class BrushSize
 
     public Point2D CenterWithinBrush(Point2D point) => new Point2D(point.X - (Width / 2), point.Y - (Height / 2));
 
+    /// <summary>
+    /// Enumerates the cells covered by a brush anchored at the given coordinates.
+    /// Optional padding includes surrounding cells for connection updates and undo.
+    /// </summary>
+    public IEnumerable<Point2D> GetCells(Point2D origin, int padding = 0)
+    {
+        for (int y = -padding; y < Height + padding; y++)
+        {
+            for (int x = -padding; x < Width + padding; x++)
+            {
+                yield return origin + new Point2D(x, y);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sweeps the brush along an inclusive line, returning each covered cell only once.
+    /// Optional padding includes surrounding cells for connection updates and undo.
+    /// </summary>
+    public IEnumerable<Point2D> GetCellsAlongLine(Point2D sourceCoords, Direction direction, int length, int padding = 0)
+    {
+        var visitedCells = new HashSet<Point2D>();
+        Point2D step = Helpers.VisualDirectionToPoint(direction);
+
+        for (int i = 0; i <= length; i++)
+        {
+            foreach (Point2D coords in GetCells(sourceCoords + step.ScaleBy(i), padding))
+            {
+                if (visitedCells.Add(coords))
+                    yield return coords;
+            }
+        }
+    }
+
     public void DoForBrushSize(Action<Point2D> action)
     {
         DoForArea(0, 0, Height, Width, action);

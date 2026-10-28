@@ -17,7 +17,7 @@ public class TerrainObjectCollectionPlacementAction : LineAndRegularPaintingActi
 
     protected override bool PreventInputEventsOnPreviousCell => false; // Not needed, PlaceTerrainObjectCollectionMutation.ShouldPerform does the job already
 
-    private TerrainObject terrainObject;
+    private PlaceTerrainObjectMutation previewMutation;
     private TerrainObjectCollection _terrainObjectCollection;
     public TerrainObjectCollection TerrainObjectCollection
     {
@@ -30,7 +30,6 @@ public class TerrainObjectCollectionPlacementAction : LineAndRegularPaintingActi
             }
 
             _terrainObjectCollection = value;
-            terrainObject = new TerrainObject(_terrainObjectCollection.Entries[0].TerrainType);
         }
     }
 
@@ -48,14 +47,11 @@ public class TerrainObjectCollectionPlacementAction : LineAndRegularPaintingActi
             return;
         }
 
-        var cell = CursorActionTarget.Map.GetTile(cellCoords);
-        if (cell.TerrainObject == null)
-        {
-            terrainObject.Position = cell.CoordsToPoint();
-            cell.TerrainObject = terrainObject;
-        }
+        if (!CanDrawLinePreview())
+            return;
 
-        CursorActionTarget.AddRefreshPoint(cellCoords);
+        previewMutation = new PlaceTerrainObjectMutation(MutationTarget, TerrainObjectCollection.Entries[0].TerrainType, cellCoords, Mutation.EventIdNone);
+        previewMutation.Perform();
     }
 
     public override void PostMapDraw(Point2D cellCoords)
@@ -66,13 +62,11 @@ public class TerrainObjectCollectionPlacementAction : LineAndRegularPaintingActi
             return;
         }
 
-        var cell = CursorActionTarget.Map.GetTile(cellCoords);
-        if (cell.TerrainObject == terrainObject)
+        if (previewMutation != null)
         {
-            cell.TerrainObject = null;
+            previewMutation.Undo();
+            previewMutation = null;
         }
-
-        CursorActionTarget.AddRefreshPoint(cellCoords);
     }
 
     protected override bool CanDrawLinePreview() => _terrainObjectCollection != null;

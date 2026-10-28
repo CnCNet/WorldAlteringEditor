@@ -1,3 +1,4 @@
+using MapEditorLibrary.Configuration;
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
 
@@ -14,12 +15,14 @@ public class PlaceTerrainObjectLineMutation : Mutation
         this.sourceCoords = sourceCoords;
         this.direction = direction;
         this.length = length;
+        brushSize = mutationTarget.BrushSize;
     }
 
     private readonly TerrainType terrainType;
     private readonly Point2D sourceCoords;
     private readonly Direction direction;
     private readonly int length;
+    private readonly BrushSize brushSize;
 
     private List<Point2D> placedCells;
 
@@ -34,11 +37,9 @@ public class PlaceTerrainObjectLineMutation : Mutation
     public override void Perform()
     {
         placedCells = new List<Point2D>();
-        Point2D step = Helpers.VisualDirectionToPoint(direction);
 
-        for (int i = 0; i <= length; i++)
+        foreach (Point2D coords in brushSize.GetCellsAlongLine(sourceCoords, direction, length))
         {
-            Point2D coords = sourceCoords + step.ScaleBy(i);
             var tile = MutationTarget.Map.GetTile(coords);
             if (tile == null)
                 continue;

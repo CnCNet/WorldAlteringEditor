@@ -1,3 +1,4 @@
+using MapEditorLibrary.Configuration;
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
 
@@ -13,11 +14,13 @@ public class PlaceConnectedOverlayLineMutation : ConnectedOverlayMutationBase
         this.sourceCoords = sourceCoords;
         this.direction = direction;
         this.length = length;
+        brushSize = mutationTarget.BrushSize;
     }
 
     private readonly Point2D sourceCoords;
     private readonly Direction direction;
     private readonly int length;
+    private readonly BrushSize brushSize;
 
     private OriginalOverlayInfo[] undoData;
 
@@ -32,12 +35,10 @@ public class PlaceConnectedOverlayLineMutation : ConnectedOverlayMutationBase
     public override void Perform()
     {
         var lineCells = new List<Point2D>();
-        Point2D step = Helpers.VisualDirectionToPoint(direction);
 
         // Collect all cells along the line
-        for (int i = 0; i <= length; i++)
+        foreach (Point2D coords in brushSize.GetCellsAlongLine(sourceCoords, direction, length))
         {
-            Point2D coords = sourceCoords + step.ScaleBy(i);
             var tile = MutationTarget.Map.GetTile(coords);
             if (tile != null)
                 lineCells.Add(coords);
@@ -86,7 +87,7 @@ public class PlaceConnectedOverlayLineMutation : ConnectedOverlayMutationBase
         }
 
         undoData = originalOverlayInfos.ToArray();
-        MutationTarget.AddRefreshPoint(sourceCoords, length + 2);
+        MutationTarget.AddRefreshPoint(sourceCoords, length + brushSize.Max + 1);
     }
 
     public override void Undo()
@@ -108,6 +109,6 @@ public class PlaceConnectedOverlayLineMutation : ConnectedOverlayMutationBase
             };
         }
 
-        MutationTarget.AddRefreshPoint(sourceCoords, length + 2);
+        MutationTarget.AddRefreshPoint(sourceCoords, length + brushSize.Max + 1);
     }
 }

@@ -18,30 +18,9 @@ public class TerrainObjectPlacementAction : LineAndRegularPaintingAction
 
     protected override bool PreventInputEventsOnPreviousCell => false; // Not needed, PlaceTerrainObjectMutation.ShouldPerform does the job already
 
-    private TerrainObject terrainObject;
+    private PlaceTerrainObjectMutation previewMutation;
 
-    private TerrainType _terrainType;
-
-    public TerrainType TerrainType
-    {
-        get => _terrainType;
-        set
-        {
-            if (_terrainType != value)
-            {
-                _terrainType = value;
-
-                if (_terrainType == null)
-                {
-                    terrainObject = null;
-                }
-                else
-                {
-                    terrainObject = new TerrainObject(_terrainType);
-                }
-            }
-        }
-    }
+    public TerrainType TerrainType { get; set; }
 
     public override void OnActionExit()
     {
@@ -57,14 +36,11 @@ public class TerrainObjectPlacementAction : LineAndRegularPaintingAction
             return;
         }
 
-        var cell = CursorActionTarget.Map.GetTile(cellCoords);
-        if (cell.TerrainObject == null)
-        {
-            terrainObject.Position = cell.CoordsToPoint();
-            cell.TerrainObject = terrainObject;
-        }
+        if (!CanDrawLinePreview())
+            return;
 
-        CursorActionTarget.AddRefreshPoint(cellCoords);
+        previewMutation = new PlaceTerrainObjectMutation(MutationTarget, TerrainType, cellCoords, Mutation.EventIdNone);
+        previewMutation.Perform();
     }
 
     public override void PostMapDraw(Point2D cellCoords)
@@ -75,16 +51,14 @@ public class TerrainObjectPlacementAction : LineAndRegularPaintingAction
             return;
         }
 
-        var cell = CursorActionTarget.Map.GetTile(cellCoords);
-        if (cell.TerrainObject == terrainObject)
+        if (previewMutation != null)
         {
-            cell.TerrainObject = null;
+            previewMutation.Undo();
+            previewMutation = null;
         }
-
-        CursorActionTarget.AddRefreshPoint(cellCoords);
     }
 
-    protected override bool CanDrawLinePreview() => _terrainType != null;
+    protected override bool CanDrawLinePreview() => TerrainType != null;
 
     protected override ICheckableMutation CreateRegularPlacementMutation(Point2D cellCoords)
     {
@@ -98,7 +72,7 @@ public class TerrainObjectPlacementAction : LineAndRegularPaintingAction
 
     protected override void ApplyLine(Point2D cellCoords)
     {
-        if (_terrainType != null)
+        if (TerrainType != null)
         {
             (Direction direction, int length) = GetLineInformation(cellCoords);
             var mutation = CreateLinePlacementMutation(direction, length);

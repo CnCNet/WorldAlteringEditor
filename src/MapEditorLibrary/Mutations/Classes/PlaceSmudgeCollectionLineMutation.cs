@@ -15,12 +15,14 @@ public class PlaceSmudgeCollectionLineMutation : Mutation
         this.sourceCoords = sourceCoords;
         this.direction = direction;
         this.length = length;
+        brushSize = mutationTarget.BrushSize;
     }
 
     private readonly SmudgeCollection smudgeCollection;
     private readonly Point2D sourceCoords;
     private readonly Direction direction;
     private readonly int length;
+    private readonly BrushSize brushSize;
 
     private readonly List<CachedSmudge> oldSmudges = new List<CachedSmudge>(1);
 
@@ -36,11 +38,8 @@ public class PlaceSmudgeCollectionLineMutation : Mutation
     {
         oldSmudges.Clear();
 
-        Point2D step = Helpers.VisualDirectionToPoint(direction);
-
-        for (int i = 0; i <= length; i++)
+        foreach (Point2D currentCellCoords in brushSize.GetCellsAlongLine(sourceCoords, direction, length))
         {
-            Point2D currentCellCoords = sourceCoords + step.ScaleBy(i);
             var cell = MutationTarget.Map.GetTile(currentCellCoords);
             if (cell == null)
                 continue;
@@ -51,7 +50,7 @@ public class PlaceSmudgeCollectionLineMutation : Mutation
             cell.Smudge = new Smudge() { SmudgeType = collectionEntry.SmudgeType, Position = cell.CoordsToPoint() };
         }
 
-        MutationTarget.AddRefreshPoint(sourceCoords, length + 2);
+        MutationTarget.AddRefreshPoint(sourceCoords, length + brushSize.Max + 1);
     }
 
     public override void Undo()
@@ -66,6 +65,6 @@ public class PlaceSmudgeCollectionLineMutation : Mutation
                 cell.Smudge = new Smudge() { SmudgeType = oldSmudge.SmudgeType, Position = oldSmudge.CellCoords };
         }
 
-        MutationTarget.AddRefreshPoint(sourceCoords, length + 2);
+        MutationTarget.AddRefreshPoint(sourceCoords, length + brushSize.Max + 1);
     }
 }

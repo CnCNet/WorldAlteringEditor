@@ -14,6 +14,8 @@ public class PlaceTerrainLineMutation : Mutation
         this.length = length;
         this.tile = tile;
         autoLATEnabled = mutationTarget.AutoLATEnabled;
+        brushSize = mutationTarget.BrushSize;
+        onlyPaintOnClearGround = mutationTarget.OnlyPaintOnClearGround;
     }
 
     private readonly MapTile sourceTile;
@@ -21,6 +23,8 @@ public class PlaceTerrainLineMutation : Mutation
     private readonly int length;
     private readonly TileImage tile;
     private readonly bool autoLATEnabled;
+    private readonly BrushSize brushSize;
+    private readonly bool onlyPaintOnClearGround;
     private List<OriginalCellTerrainData> undoData = new List<OriginalCellTerrainData>();
     private HashSet<Point2D> undoDataCellCoords = new HashSet<Point2D>();
     private HashSet<Point2D> placedTerrainCellCoords = new HashSet<Point2D>();
@@ -96,12 +100,17 @@ public class PlaceTerrainLineMutation : Mutation
         undoDataCellCoords.Clear();
         placedTerrainCellCoords.Clear();
 
+        var brushOrigins = new List<Point2D>();
         int processedLength = 0;
         while (processedLength <= length)
         {
             Point2D coords = sourceTile.CoordsToPoint() + Helpers.VisualDirectionToPoint(direction).ScaleBy(processedLength);
 
-            PlaceTile(coords);
+            brushOrigins.Add(coords);
+            brushSize.DoForBrushSize(offset =>
+            {
+                PlaceTile(coords + new Point2D(offset.X * tile.Width, offset.Y * tile.Height));
+            });
 
             switch (direction)
             {
@@ -126,6 +135,16 @@ public class PlaceTerrainLineMutation : Mutation
             }
         }
 
+        // Apply transitions after placing the entire stroke so overlapping brush
+        // stamps cannot turn a transition tile into a later placement's input.
+        if (autoLATEnabled)
+        {
+            foreach (Point2D coords in brushOrigins)
+            {
+                ApplyAutoLATForTilePlacement(tile, brushSize, coords, AddCellToUndoData);
+            }
+        }
+
         MutationTarget.InvalidateMap();
     }
 
@@ -141,7 +160,7 @@ public class PlaceTerrainLineMutation : Mutation
 
             Point2D cellCoords = coords + subTileOffset.Value;
             var cell = Map.GetTile(cellCoords);
-            if (cell == null)
+            if (cell == null || (onlyPaintOnClearGround && !cell.IsClearGround()))
                 continue;
 
             if (!placedTerrainCellCoords.Add(cellCoords))
@@ -151,14 +170,7 @@ public class PlaceTerrainLineMutation : Mutation
             cell.ChangeTileIndex(tile.TileID, (byte)i);
             cell.Level = (byte)Math.Min(cell.Level + tile.GetSubTile(i).TmpImage.Height, Constants.MaxMapHeightLevel);
 
-            if (autoLATEnabled)
-            {
-                BrushSize brush1x1 = Map.EditorConfig.BrushSizes.Find(static bs => bs.Width == 1 && bs.Height == 1);
-                if (brush1x1 == null)
-                    throw new InvalidOperationException($"{nameof(PlaceTerrainLineMutation)}.{nameof(PlaceTile)}: Unable to find 1x1 brush!");
-
-                ApplyAutoLATForTilePlacement(tile, brush1x1, cellCoords, AddCellToUndoData);
-            }
+            RefreshCellLighting(cell);
         }
     }
 

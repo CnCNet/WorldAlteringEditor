@@ -14,15 +14,21 @@ public class PlaceTerrainObjectCollectionMutation : Mutation, ICheckableMutation
         this.terrainObjectCollection = terrainObjectCollection;
         this.cellCoords = cellCoords;
         EventID = eventID;
+        brushSize = mutationTarget.BrushSize;
     }
 
     private readonly TerrainObjectCollection terrainObjectCollection;
     private readonly Point2D cellCoords;
+    private readonly BrushSize brushSize;
+    private readonly List<Point2D> placedCells = new List<Point2D>();
 
     public bool ShouldPerform()
     {
-        var tile = MutationTarget.Map.GetTile(cellCoords);
-        return tile != null && tile.TerrainObject == null;
+        return brushSize.CheckForAnyCellInBrushArea(offset =>
+        {
+            var tile = Map.GetTile(cellCoords + offset);
+            return tile != null && tile.TerrainObject == null;
+        });
     }
 
     public override string GetDisplayString()
@@ -34,17 +40,30 @@ public class PlaceTerrainObjectCollectionMutation : Mutation, ICheckableMutation
 
     public override void Perform()
     {
-        var tile = MutationTarget.Map.GetTile(cellCoords);
-        if (tile.TerrainObject != null)
-            throw new InvalidOperationException("Cannot place a terrain object on a tile that already has a terrain object!");
+        placedCells.Clear();
 
-        var collectionEntry = terrainObjectCollection.Entries[MutationTarget.Randomizer.GetRandomNumber(0, terrainObjectCollection.Entries.Length - 1)];
-        var terrainObject = new TerrainObject(collectionEntry.TerrainType, cellCoords);
-        MutationTarget.Map.AddTerrainObject(terrainObject);
+        foreach (Point2D coords in brushSize.GetCells(cellCoords))
+        {
+            var tile = Map.GetTile(coords);
+            if (tile == null || tile.TerrainObject != null)
+                continue;
+
+            var collectionEntry = terrainObjectCollection.Entries[MutationTarget.Randomizer.GetRandomNumber(0, terrainObjectCollection.Entries.Length - 1)];
+            var terrainObject = new TerrainObject(collectionEntry.TerrainType, coords);
+            Map.AddTerrainObject(terrainObject);
+            placedCells.Add(coords);
+        }
+
+        MutationTarget.InvalidateMap();
     }
 
     public override void Undo()
     {
-        MutationTarget.Map.RemoveTerrainObject(cellCoords);
+        foreach (Point2D coords in placedCells)
+        {
+            Map.RemoveTerrainObject(coords);
+        }
+
+        MutationTarget.InvalidateMap();
     }
 }

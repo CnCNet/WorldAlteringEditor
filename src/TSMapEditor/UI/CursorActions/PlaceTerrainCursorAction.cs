@@ -123,41 +123,10 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
     private void ApplyTerrainLinePreview(Point2D cellCoords)
     {
         Point2D adjustedCellCoords = GetAdjustedCellCoords(cellCoords);
+        (Direction direction, int length) = GetLineInformation(adjustedCellCoords);
 
-        MapTile originTile = CursorActionTarget.Map.GetTile(cellCoords);
-
-        Direction direction;
-        int length;
-
-        if (LineSourceCell.Value == adjustedCellCoords)
-        {
-            direction = default;
-            length = 1;
-        }
-        else
-        {
-            (direction, length) = GetLineInformation(adjustedCellCoords);
-        }
-
-        if (length < 2)
-        {
-            Tile.DoForValidSubTiles((subTile, subTileOffset, subTileIndex) =>
-            {
-                var mapTile = Map.GetTile(adjustedCellCoords + subTileOffset);
-
-                if (mapTile != null && (!CursorActionTarget.OnlyPaintOnClearGround || mapTile.IsClearGround()))
-                {
-                    int previewLevel = Math.Min(mapTile.Level + subTile.TmpImage.Height, Constants.MaxMapHeightLevel);
-                    mapTile.ApplyPreview(Tile, subTileIndex, previewLevel, Map.Lighting, CursorActionTarget.LightingPreviewState, MutationTarget.LightDisabledLightSources);
-                    previewTiles.Add(mapTile);
-                }
-            });
-        }
-        else
-        {
-            LinePreviewMutation = new PlaceTerrainLineMutation(MutationTarget, Map.GetTile(LineSourceCell.Value), direction, length, Tile);
-            LinePreviewMutation.Perform();
-        }
+        LinePreviewMutation = CreateLinePlacementMutation(direction, length);
+        LinePreviewMutation.Perform();
     }
 
     private void ApplyPreviewForCells(Point2D cellCoords)
