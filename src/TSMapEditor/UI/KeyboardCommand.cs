@@ -37,7 +37,7 @@ public class KeyboardCommandInput
             // Build a different kind of string when there's only modifiers
 
             if ((Modifiers & KeyboardModifiers.Ctrl) == KeyboardModifiers.Ctrl)
-                key += Translate(this, "CTRL", "CTRL");
+                key += Translate(this, "CTRL", "Ctrl");
 
             if ((Modifiers & KeyboardModifiers.Shift) == KeyboardModifiers.Shift)
             {

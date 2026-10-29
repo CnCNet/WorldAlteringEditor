@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.Input;
 using System;
+using System.Collections.Generic;
 
 namespace TSMapEditor.UI;
 
@@ -69,6 +70,11 @@ public abstract class CursorAction
     public virtual bool UseOnBridge => false;
 
     public abstract string GetName();
+
+    /// <summary>
+    /// Override in derived classes to return hint lines relevant for this cursor action.
+    /// </summary>
+    public virtual IEnumerable<string> GetHintLines() => Array.Empty<string>();
 
     protected Map Map => CursorActionTarget.Map;
 

@@ -425,33 +425,35 @@ public class MapUI : XNAControl, ICursorActionTarget, IMutationTarget, IMapScree
         // To avoid accidental dragging, this requires the cursor to move within the cell that the left mouse button was first pressed down on.
         if (CursorAction == null && tileUnderCursor != null && tileUnderCursor == pressedDownTile && Cursor.LeftDown && !isDraggingObject && !isRotatingObject && cursorPoint != pressedDownPoint)
         {
-            var tilePosition = GetRelativeTilePositionFromCursorPosition(tileUnderCursor);
-            var cellObject = tileUnderCursor.GetObject(tilePosition);
-
-            if (cellObject != null)
+            draggedOrRotatedObject = GetMovableObjectUnderCursor();
+            if (draggedOrRotatedObject != null)
             {
-                draggedOrRotatedObject = cellObject;
-
-                if (KeyboardCommands.Instance.RotateUnit.AreKeysDown(Keyboard))
+                if (draggedOrRotatedObject is GameObject && KeyboardCommands.Instance.RotateUnit.AreKeysDown(Keyboard))
                     isRotatingObject = true;
                 else
                     isDraggingObject = true;
-            }
-            else if (tileUnderCursor.Waypoints.Count > 0)
-            {
-                draggedOrRotatedObject = tileUnderCursor.Waypoints[0];
-                isDraggingObject = true;
-            }
-            else if (tileUnderCursor.CellTag != null)
-            {
-                draggedOrRotatedObject = tileUnderCursor.CellTag;
-                isDraggingObject = true;
             }
         }
 
         pressedDownPoint = GetCursorPoint();
 
         base.OnMouseOnControl();
+    }
+
+    private IMovable GetMovableObjectUnderCursor()
+    {
+        if (tileUnderCursor == null)
+            return null;
+
+        var tilePosition = GetRelativeTilePositionFromCursorPosition(tileUnderCursor);
+        var cellObject = tileUnderCursor.GetObject(tilePosition);
+        if (cellObject != null)
+            return cellObject;
+
+        if (tileUnderCursor.Waypoints.Count > 0)
+            return tileUnderCursor.Waypoints[0];
+
+        return tileUnderCursor.CellTag;
     }
 
     public override void OnMouseEnter()
@@ -649,6 +651,15 @@ public class MapUI : XNAControl, ICursorActionTarget, IMutationTarget, IMapScree
         var tile = CalculateBestTileUnderCursor();
 
         tileUnderCursor = tile;
+        TileInfoDisplay.CanCloneObject = false;
+        TileInfoDisplay.CanRotateObject = false;
+        if (IsActive && CursorAction == null)
+        {
+            var pickedObject = isDraggingObject || isRotatingObject ? draggedOrRotatedObject : GetMovableObjectUnderCursor();
+            TileInfoDisplay.CanCloneObject = !isRotatingObject && pickedObject != null && Helpers.IsCloningSupported(pickedObject);
+            TileInfoDisplay.CanRotateObject = !isDraggingObject && pickedObject is TechnoBase;
+        }
+
         TileInfoDisplay.MapTile = tile;
 
         if (IsActive)

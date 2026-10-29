@@ -1,10 +1,12 @@
 ﻿using MapEditorLibrary;
 using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Misc;
 using MapEditorLibrary.Models;
 using MapEditorLibrary.Mutations;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using System;
+using System.Collections.Generic;
 
 namespace TSMapEditor.UI.CursorActions;
 
@@ -18,6 +20,13 @@ public abstract class LineAndRegularPaintingAction : CursorAction
     }
 
     public override bool OnlyUniqueCellEvents => false;
+
+    public override IEnumerable<string> GetHintLines()
+    {
+        string key = KeyboardCommands.Instance.PlaceTerrainLine.GetKeyDisplayString();
+        if (!string.IsNullOrEmpty(key))
+            yield return string.Format(Translator.Translate("LineAndRegularPaintingAction.PaintInLineHint", "<{0}> to paint in line"), key);
+    }
 
     protected virtual bool PreventInputEventsOnPreviousCell => true;
 

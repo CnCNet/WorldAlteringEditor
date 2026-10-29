@@ -38,6 +38,10 @@ public class TileInfoDisplay : EditorPanel
         set { _mapTile = value; RefreshInfo(); }
     }
 
+    public bool CanCloneObject { get; set; }
+
+    public bool CanRotateObject { get; set; }
+
     private XNATextRenderer textRenderer;
 
     public override void Initialize()
@@ -86,16 +90,6 @@ public class TileInfoDisplay : EditorPanel
         Color baseTextColor = Color.White;
 
         Visible = true;
-
-        if (editorState.CursorAction != null)
-        {
-            textRenderer.AddTextPart(new XNATextPart(Translate(this, "SelectedTool", "Selected tool: "), Constants.UIDefaultFont, subtleTextColor));
-            textRenderer.AddTextPart(new XNATextPart(editorState.CursorAction.GetName() + Environment.NewLine, Constants.UIDefaultFont, baseTextColor));
-        }
-        else
-        {
-            textRenderer.AddTextPart(new XNATextPart(Translate(this, "NoToolSelected", "No tool selected") + Environment.NewLine, Constants.UIDefaultFont, subtleTextColor));
-        }
 
         textRenderer.AddTextPart(new XNATextPart(MapTile.X + ", " + MapTile.Y + Environment.NewLine, Constants.UIDefaultFont, baseTextColor));
 
@@ -148,6 +142,33 @@ public class TileInfoDisplay : EditorPanel
         MapTile.DoForAllWaypoints(waypoint => AddWaypointInfo(waypoint));
         AddBaseNodeInformation(map.GetBaseNodes(MapTile.CoordsToPoint()));
         AddTerrainObjectInformation(MapTile.TerrainObject);
+
+        if (editorState.CursorAction != null)
+        {
+            textRenderer.AddTextLine(new XNATextPart(Translate(this, "SelectedTool", "Selected tool: "), Constants.UIDefaultFont, baseTextColor));
+            textRenderer.AddTextPart(new XNATextPart(editorState.CursorAction.GetName(), Constants.UIDefaultFont, baseTextColor));
+
+            foreach (string hint in editorState.CursorAction.GetHintLines())
+                textRenderer.AddTextLine(new XNATextPart(hint, Constants.UIDefaultFont, subtleTextColor));
+        }
+        else
+        {
+            // textRenderer.AddTextLine(new XNATextPart(Translate(this, "NoToolSelected", "No tool selected"), Constants.UIDefaultFont, baseTextColor));
+
+            string key = KeyboardCommands.Instance.CloneObject.GetKeyDisplayString();
+            if (CanCloneObject && !string.IsNullOrEmpty(key))
+            {
+                textRenderer.AddTextLine(new XNATextPart(string.Format(Translate(this, "CloneHint", "<{0}> + drag to clone"), key),
+                    Constants.UIDefaultFont, subtleTextColor));
+            }
+
+            key = KeyboardCommands.Instance.RotateUnit.GetKeyDisplayString();
+            if (CanRotateObject && !string.IsNullOrEmpty(key))
+            {
+                textRenderer.AddTextLine(new XNATextPart(string.Format(Translate(this, "RotateHint", "<{0}> + drag to rotate"), key),
+                    Constants.UIDefaultFont, subtleTextColor));
+            }
+        }
 
         textRenderer.PrepareTextParts();
 

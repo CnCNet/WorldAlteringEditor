@@ -21,6 +21,19 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
 
     public override bool HandlesKeyboardInput => true;
 
+    public override IEnumerable<string> GetHintLines()
+    {
+        if (Tile == null)
+            yield break;
+
+        foreach (string hint in base.GetHintLines())
+            yield return hint;
+
+        string key = KeyboardCommands.Instance.FillTerrain.GetKeyDisplayString();
+        if (Tile.Width == 1 && Tile.Height == 1 && !string.IsNullOrEmpty(key))
+            yield return string.Format(Translate("FillHint", "<{0}> to fill"), key);
+    }
+
     private MGTileImage _tile;
     public MGTileImage Tile
     {
