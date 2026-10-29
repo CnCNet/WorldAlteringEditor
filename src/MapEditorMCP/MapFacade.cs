@@ -503,7 +503,7 @@ internal class MapFacade
                     coordOffset.Value.X,
                     coordOffset.Value.Y,
                     subTile.TmpImage.Height,
-                    ((LandType)subTile.TmpImage.TerrainType).ToString(),
+                    subTile.TmpImage.TerrainType,
                     subTile.TmpImage.RampType.ToString()));
             }
         }

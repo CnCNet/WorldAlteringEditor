@@ -67,7 +67,7 @@ public static class Helpers
         return GetLandTypeName(landType) + " (0x" + landType.ToString("X") + ")";
     }
 
-    private static string GetLandTypeName(int landType)
+    public static string GetLandTypeName(int landType)
     {
         switch (landType)
         {

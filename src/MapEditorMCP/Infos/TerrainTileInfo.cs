@@ -1,3 +1,4 @@
+using MapEditorLibrary;
 using System.ComponentModel;
 
 namespace MapEditorMCP.Infos;
@@ -19,13 +20,14 @@ internal sealed class TileIndexInfo
 
 internal sealed class SubTileInfo
 {
-    public SubTileInfo(int subTileIndex, int x, int y, int height, string landType, string rampType)
+    public SubTileInfo(int subTileIndex, int x, int y, int height, int landType, string rampType)
     {
         SubTileIndex = subTileIndex;
         X = x;
         Y = y;
         Height = height;
-        LandType = landType;
+        LandType = Helpers.GetLandTypeName(landType);
+        LandTypeId = landType;
         RampType = rampType;
     }
 
@@ -43,6 +45,9 @@ internal sealed class SubTileInfo
 
     [Description("Type of land of this sub-tile.")]
     public string LandType { get; }
+
+    [Description("Raw TMP terrain type code of this sub-tile.")]
+    public int LandTypeId { get; }
 
     [Description("Type of ramp of this sub-tile.")]
     public string RampType { get; }
