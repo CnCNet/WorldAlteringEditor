@@ -86,6 +86,7 @@ public class UserSettings : IniSettings
     public BoolSetting QuickTriggerParameterSelection { get; } = new BoolSetting(General, nameof(QuickTriggerParameterSelection), true);
     public IntSetting AutoSaveInterval { get; } = new IntSetting(General, nameof(AutoSaveInterval), 300);
     public IntSetting SidebarWidth { get; } = new IntSetting(General, nameof(SidebarWidth), 284);
+    public IntSetting TileInfoDisplayWidth { get; } = new IntSetting(General, nameof(TileInfoDisplayWidth), -1);
     public BoolSetting DoNotSuggestMPStartingWaypoints { get; } = new BoolSetting(General, nameof(DoNotSuggestMPStartingWaypoints), false);
 
     public BoolSetting EnableMCP { get; } = new BoolSetting(MCPServer, nameof(EnableMCP), false);

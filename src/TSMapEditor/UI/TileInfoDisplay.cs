@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using TSMapEditor.Rendering;
+using TSMapEditor.Settings;
 
 namespace TSMapEditor.UI;
 
@@ -48,7 +49,7 @@ public class TileInfoDisplay : EditorPanel
     {
         Name = nameof(TileInfoDisplay);
 
-        Width = 300;
+        Width = Math.Max(Constants.TileInfoDisplayMinWidth, UserSettings.Instance.TileInfoDisplayWidth);
 
         textRenderer = new XNATextRenderer(WindowManager);
         textRenderer.Name = nameof(textRenderer);

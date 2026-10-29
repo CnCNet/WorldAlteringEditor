@@ -128,6 +128,7 @@ public static class Constants
     public static int UITreeViewLineHeight = 22;
     public static int UITreeViewLineIndentation = 50;
     public static int TileSetListWidth = 200;
+    public static int TileInfoDisplayMinWidth = 300;
     public static double UIAccidentalClickPreventionTime = 0.2;
 
     public static void Init()
@@ -201,6 +202,7 @@ public static class Constants
         UITreeViewLineHeight = uiConstantsIni.GetIntValue("UI", nameof(UITreeViewLineHeight), UITreeViewLineHeight);
         UITreeViewLineIndentation = uiConstantsIni.GetIntValue("UI", nameof(UITreeViewLineIndentation), UITreeViewLineIndentation);
         TileSetListWidth = uiConstantsIni.GetIntValue("UI", nameof(TileSetListWidth), TileSetListWidth);
+        TileInfoDisplayMinWidth = uiConstantsIni.GetIntValue("UI", nameof(TileInfoDisplayMinWidth), TileInfoDisplayMinWidth);
         UIAccidentalClickPreventionTime = uiConstantsIni.GetDoubleValue("UI", nameof(UIAccidentalClickPreventionTime), UIAccidentalClickPreventionTime);
     }
 }
