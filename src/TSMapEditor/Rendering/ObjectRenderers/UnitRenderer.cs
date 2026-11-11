@@ -86,11 +86,12 @@ public sealed class UnitRenderer : ObjectRenderer<Unit>
     {
         bool affectedByLighting = RenderDependencies.EditorState.IsLighting;
 
-        if (gameObject.UnitType.ArtConfig.Voxel)
+        bool isVoxel = gameObject.UnitType.ArtConfig.Voxel;
+        if (isVoxel)
         {
             RenderVoxelModel(gameObject, drawPoint, drawParams.MainVoxel, affectedByLighting, 0);
         }
-        else
+        else if (drawParams.ShapeImage != null)
         {
             RenderMainShape(gameObject, drawPoint, drawParams, 0);
         }
@@ -111,10 +112,11 @@ public sealed class UnitRenderer : ObjectRenderer<Unit>
             leptonTurretOffset = Vector2.Transform(leptonTurretOffset, Matrix.CreateRotationZ(rotationFromFacing));
 
             Point2D turretOffset = Helpers.ScreenCoordsFromWorldLeptons(leptonTurretOffset);
+            bool useVoxelTurret = isVoxel || drawParams.ShapeImage == null;
 
             if (gameObject.Facing is > facingStartDrawAbove and <= facingEndDrawAbove)
             {
-                if (gameObject.UnitType.ArtConfig.Voxel)
+                if (useVoxelTurret)
                     RenderVoxelModel(gameObject, drawPoint + turretOffset, drawParams.TurretVoxel, affectedByLighting, Constants.DepthEpsilon);
                 else
                     RenderTurretShape(gameObject, drawPoint, drawParams, Constants.DepthEpsilon);
@@ -125,7 +127,7 @@ public sealed class UnitRenderer : ObjectRenderer<Unit>
             {
                 RenderVoxelModel(gameObject, drawPoint + turretOffset, drawParams.BarrelVoxel, affectedByLighting, Constants.DepthEpsilon);
 
-                if (gameObject.UnitType.ArtConfig.Voxel)
+                if (useVoxelTurret)
                     RenderVoxelModel(gameObject, drawPoint + turretOffset, drawParams.TurretVoxel, affectedByLighting, Constants.DepthEpsilon * ObjectDepthAdjustments.Turret);
                 else
                     RenderTurretShape(gameObject,  drawPoint, drawParams, Constants.DepthEpsilon * ObjectDepthAdjustments.Turret);
