@@ -24,9 +24,8 @@ namespace TSMapEditor.Rendering;
 
 public class GameClass : Microsoft.Xna.Framework.Game
 {
-    private const double PowerSavingTime = 100.0;
-
     private GraphicsDeviceManager graphics;
+    private PowerSaveManager powerSaveManager;
 
     public GameClass()
     {
@@ -68,9 +67,6 @@ public class GameClass : Microsoft.Xna.Framework.Game
         Content.RootDirectory = "Content";
         graphics.SynchronizeWithVerticalRetrace = false;
         Window.Title = "C&C World-Altering Editor (WAE)";
-
-        //IsFixedTimeStep = false;
-        SetTargetFPS();
     }
 
     private void HandleUnhandledException(Exception ex)
@@ -113,8 +109,6 @@ public class GameClass : Microsoft.Xna.Framework.Game
     }
 
     private WindowManager windowManager;
-
-    private bool wasActiveOnPreviousFrame;
 
     private readonly char DSC = Path.DirectorySeparatorChar;
 
@@ -185,6 +179,9 @@ public class GameClass : Microsoft.Xna.Framework.Game
 
         Components.Add(windowManager);
 
+        powerSaveManager = new PowerSaveManager(this);
+        windowManager.PowerSaveManager = powerSaveManager;
+
         EditorThemes.Initialize();
         UISettings.ActiveSettings = new CustomUISettings()
         {
@@ -207,23 +204,15 @@ public class GameClass : Microsoft.Xna.Framework.Game
         windowManager.CenterControlOnScreen(mainMenuWrapper);
     }
 
-    private void SetTargetFPS()
-    {
-        TargetElapsedTime = TimeSpan.FromMilliseconds(1000.0 / UserSettings.Instance.TargetFPS);
-    }
-
     protected override void Update(GameTime gameTime)
     {
-        if (IsActive != wasActiveOnPreviousFrame)
-        {
-            if (!IsActive)
-                TargetElapsedTime = TimeSpan.FromMilliseconds(PowerSavingTime); // Don't run at max FPS if we're not the active window
-            else
-                SetTargetFPS();
-
-            wasActiveOnPreviousFrame = IsActive;
-        }
+        powerSaveManager.Update();
 
         base.Update(gameTime);
+    }
+
+    protected override bool BeginDraw()
+    {
+        return powerSaveManager.ShouldDraw();
     }
 }

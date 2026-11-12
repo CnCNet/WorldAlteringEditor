@@ -120,6 +120,8 @@ public class ToolTip : XNAControl
             return;
         }
 
+        float oldAlpha = Alpha;
+
         if (IsMasterControlOnCursor)
         {
             cursorTime += gameTime.ElapsedGameTime;
@@ -128,11 +130,18 @@ public class ToolTip : XNAControl
             {
                 Alpha += AlphaRate * (float)gameTime.ElapsedGameTime.TotalSeconds;
                 ShowToolTip();
+
+                if (Alpha != oldAlpha)
+                    WindowManager.RequestRedraw();
+
                 return;
             }
         }
 
         Alpha -= AlphaRate * (float)gameTime.ElapsedGameTime.TotalSeconds;
+        if (Alpha != oldAlpha)
+            WindowManager.RequestRedraw();
+
         if (Alpha < 0f)
         {
             HideToolTip();
