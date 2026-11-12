@@ -794,7 +794,7 @@ public class TriggersWindow : INItializableWindow
 
             foreach (var triggerAction in trig.Actions)
             {
-                if (!map.EditorConfig.TriggerEventTypes.ContainsKey(triggerAction.ActionIndex))
+                if (!map.EditorConfig.TriggerActionTypes.ContainsKey(triggerAction.ActionIndex))
                     continue;
 
                 var actionType = map.EditorConfig.TriggerActionTypes[triggerAction.ActionIndex];
