@@ -616,7 +616,7 @@ public class TeamTypesWindow : INItializableWindow
             lbTeamTypes.TopIndex = 0;
     }
 
-    public void SelectTeamType(TeamType teamType)
+    public void SelectTeamType(TeamType teamType, bool reveal = false)
     {
         if (teamType == null)
         {
@@ -625,6 +625,11 @@ public class TeamTypesWindow : INItializableWindow
         }
 
         int index = lbTeamTypes.Items.FindIndex(lbi => lbi.Tag == teamType);
+        if (index < 0 && reveal)
+        {
+            tbFilter.Text = string.Empty;
+            index = lbTeamTypes.Items.FindIndex(lbi => lbi.Tag == teamType);
+        }
 
         if (index < 0)
         {

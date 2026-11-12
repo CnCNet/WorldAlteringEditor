@@ -68,7 +68,11 @@ public class WindowController : XNAWindowController
         TeamTypesWindow = new TeamTypesWindow(WindowParentControl.WindowManager, map);
         RegisterWindow(TeamTypesWindow);
 
-        TriggersWindow = new TriggersWindow(WindowParentControl.WindowManager, map, editorState, cursorActionTarget);
+        var referenceListWindow = new ReferenceListWindow(WindowParentControl.WindowManager,
+            target => NavigateToReference(target, map, cursorActionTarget, notificationManager));
+        RegisterWindow(referenceListWindow);
+
+        TriggersWindow = new TriggersWindow(WindowParentControl.WindowManager, map, editorState, cursorActionTarget, referenceListWindow);
         RegisterWindow(TriggersWindow);
 
         TagsWindow = new TagsWindow(WindowParentControl.WindowManager, map);
@@ -180,6 +184,34 @@ public class WindowController : XNAWindowController
         Initialized?.Invoke(this, EventArgs.Empty);
 
         WindowParentControl.RenderResolutionChanged += (s, e) => RenderResolutionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void NavigateToReference(object target, Map map, IMapView mapView, NotificationManager notificationManager)
+    {
+        switch (target)
+        {
+            case Trigger trigger when map.Triggers.Contains(trigger):
+                TriggersWindow.Open();
+                TriggersWindow.SelectTrigger(trigger, reveal: true);
+                break;
+
+            case TeamType teamType when map.TeamTypes.Contains(teamType):
+                TeamTypesWindow.Open();
+                TeamTypesWindow.SelectTeamType(teamType, reveal: true);
+                break;
+
+            case TechnoBase techno when map.GetTile(techno.Position)?.ContainsObject(techno) == true:
+                mapView.Camera.CenterOnCell(techno.Position);
+                break;
+
+            case CellTag cellTag when map.GetTile(cellTag.Position)?.CellTag == cellTag:
+                mapView.Camera.CenterOnCell(cellTag.Position);
+                break;
+
+            default:
+                notificationManager.AddNotification(Translate(this, "ReferenceTargetMissing", "The referenced object no longer exists."));
+                break;
+        }
     }
 
     private void Window_TagOpened(object sender, TagEventArgs e)

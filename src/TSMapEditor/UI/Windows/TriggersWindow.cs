@@ -10,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text;
 using TSMapEditor.Rendering;
 using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
@@ -28,11 +27,13 @@ public enum TriggerSortMode
 
 public class TriggersWindow : INItializableWindow
 {
-    public TriggersWindow(WindowManager windowManager, Map map, EditorState editorState, ICursorActionTarget cursorActionTarget) : base(windowManager)
+    public TriggersWindow(WindowManager windowManager, Map map, EditorState editorState, ICursorActionTarget cursorActionTarget,
+        ReferenceListWindow referenceListWindow) : base(windowManager)
     {
         this.map = map;
         this.editorState = editorState;
         this.cursorActionTarget = cursorActionTarget;
+        this.referenceListWindow = referenceListWindow;
 
         placeCellTagCursorAction = new PlaceCellTagCursorAction(cursorActionTarget);
         changeAttachedTagCursorAction = new ChangeAttachedTagCursorAction(cursorActionTarget);
@@ -42,6 +43,7 @@ public class TriggersWindow : INItializableWindow
     public event EventHandler<TeamTypeEventArgs> TeamTypeOpened;
 
     private readonly Map map;
+    private readonly ReferenceListWindow referenceListWindow;
     private readonly ICursorActionTarget cursorActionTarget;
     private readonly PlaceCellTagCursorAction placeCellTagCursorAction;
     private readonly ChangeAttachedTagCursorAction changeAttachedTagCursorAction;
@@ -722,199 +724,103 @@ public class TriggersWindow : INItializableWindow
         if (editedTrigger == null)
             return;
 
-        var stringBuilder = new StringBuilder();
+        var tags = map.Tags.Where(tag => tag.Trigger == editedTrigger).ToHashSet();
+        string notice = tags.Count == 0
+            ? string.Format(Translate(this, "NoAssociatedTag",
+                "The selected trigger \"{0}\" has no associated tag. As such, it is not attached to any objects."), editedTrigger.Name)
+            : null;
 
-        var tag = map.Tags.Find(t => t.Trigger == editedTrigger);
-
-        if (tag == null)
+        var references = GetReferences(editedTrigger, tags).ToList();
+        if (references.Count == 0)
         {
-            stringBuilder.Append(string.Format(Translate(this, "NoAssociatedTag", "The selected trigger {0} has no associated tag. As such, it is not attached to any objects."), editedTrigger.Name));
+            string description = string.Format(Translate(this, "NoLinkedObjects.Description",
+                "The selected trigger \"{0}\" is not linked to any objects, CellTags or other triggers."), editedTrigger.Name);
+
+            if (notice != null)
+                description += Environment.NewLine + Environment.NewLine + notice;
+
+            EditorMessageBox.Show(WindowManager, Translate(this, "LinkedObjects.Title", "Linked Objects"), description, MessageBoxButtons.OK);
+
+            return;
         }
-        else
+
+        referenceListWindow.Open(editedTrigger, references, notice);
+    }
+
+    private IEnumerable<(string Text, object Target)> GetReferences(Trigger trigger, IReadOnlySet<Tag> tags)
+    {
+        if (tags.Count > 0)
         {
-            var objectList = new List<TechnoBase>();
-            map.Infantry.ForEach(inf => AddObjectToListIfLinkedToTag(inf, objectList, tag));
-            map.Units.ForEach(unit => AddObjectToListIfLinkedToTag(unit, objectList, tag));
-            map.Structures.ForEach(structure => AddObjectToListIfLinkedToTag(structure, objectList, tag));
-            map.Aircraft.ForEach(aircraft => AddObjectToListIfLinkedToTag(aircraft, objectList, tag));
-
-            if (objectList.Count > 0)
+            var technos = map.Infantry.Cast<TechnoBase>().Concat(map.Units).Concat(map.Structures).Concat(map.Aircraft);
+            foreach (var techno in technos.Where(techno => tags.Contains(techno.AttachedTag)))
             {
-                stringBuilder.Append(string.Format(Translate(this, "ObjectReferences", "The selected trigger '{0}' is linked to the following objects:\r\n"), editedTrigger.Name));
-
-                objectList.ForEach(techno =>
-                {
-                    switch (techno.WhatAmI())
-                    {
-                        case RTTIType.Aircraft:
-                            AppendToStringBuilder((Aircraft)techno, stringBuilder);
-                            break;
-                        case RTTIType.Building:
-                            AppendToStringBuilder((Structure)techno, stringBuilder);
-                            break;
-                        case RTTIType.Infantry:
-                            AppendToStringBuilder((Infantry)techno, stringBuilder);
-                            break;
-                        case RTTIType.Unit:
-                            AppendToStringBuilder((Unit)techno, stringBuilder);
-                            break;
-                        default:
-                            throw new NotImplementedException("Unknown RTTI type encountered when listing linked objects for a trigger.");
-                    }
-                });
-
-                stringBuilder.Append(Environment.NewLine);
+                yield return (string.Format(Translate(this, "ObjectReference", "{0} at {1}"),
+                    techno.GetObjectType().GetEditorDisplayName(), techno.Position), techno);
             }
 
-            var teamTypes = map.TeamTypes.FindAll(tt => tt.Tag == tag);
-            foreach (var teamType in teamTypes)
+            foreach (var teamType in map.TeamTypes.Where(teamType => tags.Contains(teamType.Tag)))
             {
-                stringBuilder.Append(string.Format(Translate(this, "TeamTypeReferences", "The trigger is linked to TeamType '{0}' ({1})."), teamType.Name, teamType.ININame));
-                stringBuilder.Append(Environment.NewLine);
-            }
-
-            var celltag = map.CellTags.Find(ct => ct.Tag == tag);
-            if (celltag != null)
-            {
-                stringBuilder.Append(string.Format(Translate(this, "LinkedCellTags", "The trigger is linked to one or more celltags (first match at {0})."), celltag.Position));
-                stringBuilder.Append(Environment.NewLine);
+                yield return (string.Format(Translate(this, "TeamTypeReference", "TeamType \"{0}\" ({1})"),
+                    teamType.Name, teamType.ININame), teamType);
             }
         }
 
-        // Check other triggers to see whether this trigger is referenced by them
-        bool selfReference = false;
-        bool selfTagReference = false;
-        var triggersReferringToThisTrigger = new List<Trigger>();
-        var triggersReferringToTag = new List<Trigger>();
+        var tagIds = tags.Select(tag => tag.ID).ToHashSet();
+        string triggerReferenceFormat = Translate(this, "TriggerActionReference.v3",
+            "Trigger \"{0}\" ({1}) references this trigger in action #{2} \"{3}\"");
+        string tagReferenceFormat = Translate(this, "TagActionReference.v3",
+            "Trigger \"{0}\" ({1}) references this trigger's tag in action #{2} \"{3}\"");
 
-        foreach (var trig in map.Triggers)
+        foreach (var otherTrigger in map.Triggers)
         {
-            bool addedTriggerReference = false;
-            bool addedTagReference = false;
-
-            foreach (var triggerAction in trig.Actions)
+            for (int actionListIndex = 0; actionListIndex < otherTrigger.Actions.Count; actionListIndex++)
             {
-                if (!map.EditorConfig.TriggerActionTypes.ContainsKey(triggerAction.ActionIndex))
+                var action = otherTrigger.Actions[actionListIndex];
+                var actionType = GetTriggerActionType(action.ActionIndex);
+                if (actionType == null)
                     continue;
 
-                var actionType = map.EditorConfig.TriggerActionTypes[triggerAction.ActionIndex];
-
-                for (int i = 0; i < triggerAction.Parameters.Length && i < actionType.Parameters.Length; i++)
+                bool referencesTrigger = false;
+                bool referencesTag = false;
+                int parameterCount = Math.Min(action.Parameters.Length, actionType.Parameters.Length);
+                for (int i = 0; i < parameterCount; i++)
                 {
-                    string paramValue = triggerAction.Parameters[i];
-                    if (!addedTriggerReference && actionType.Parameters[i].TriggerParamType == TriggerParamType.Trigger && paramValue == editedTrigger.ID)
-                    {
-                        if (trig == editedTrigger)
-                        {
-                            selfReference = true;
-                            addedTriggerReference = true;
-                            break;
-                        }
-
-                        triggersReferringToThisTrigger.Add(trig);
-                        addedTriggerReference = true;
-                    }
-                    else if (!addedTagReference && tag != null && actionType.Parameters[i].TriggerParamType == TriggerParamType.Tag && paramValue == tag.ID)
-                    {
-                        if (trig == editedTrigger)
-                        {
-                            selfTagReference = true;
-                            addedTagReference = true;
-                            break;
-                        }
-
-                        triggersReferringToTag.Add(trig);
-                        addedTagReference = true;
-                    }
+                    var parameterType = actionType.Parameters[i].TriggerParamType;
+                    if (parameterType == TriggerParamType.Trigger && action.Parameters[i] == trigger.ID)
+                        referencesTrigger = true;
+                    else if (parameterType == TriggerParamType.Tag && tagIds.Contains(action.Parameters[i]))
+                        referencesTag = true;
                 }
+
+                if (referencesTrigger)
+                    yield return (string.Format(triggerReferenceFormat, otherTrigger.Name, otherTrigger.ID, actionListIndex + 1, actionType.Name), otherTrigger);
+
+                if (referencesTag)
+                    yield return (string.Format(tagReferenceFormat, otherTrigger.Name, otherTrigger.ID, actionListIndex + 1, actionType.Name), otherTrigger);
             }
 
-            if (!addedTriggerReference && trig.LinkedTrigger == editedTrigger)
-                triggersReferringToThisTrigger.Add(trig);
+            if (otherTrigger.LinkedTrigger == trigger)
+            {
+                yield return (string.Format(Translate(this, "IncomingTriggerLink", "Trigger \"{0}\" ({1}) is attached to this trigger"),
+                    otherTrigger.Name, otherTrigger.ID), otherTrigger);
+            }
         }
 
-        if (triggersReferringToThisTrigger.Count > 0)
+        var visited = new HashSet<Trigger>();
+        for (var linked = trigger.LinkedTrigger; linked != null && visited.Add(linked); linked = linked.LinkedTrigger)
         {
-            stringBuilder.Append(Translate(this, "TriggerReferences", "The trigger is referenced by the following other triggers:"));
-            triggersReferringToThisTrigger.ForEach(trig => stringBuilder.Append(Environment.NewLine + string.Format(Translate(this, "TriggerReference", "    - {0} ({1})"), trig.Name, trig.ID)));
-            stringBuilder.Append(Environment.NewLine);
-            stringBuilder.Append(Environment.NewLine);
+            if (map.Triggers.Contains(linked))
+            {
+                yield return (string.Format(Translate(this, "OutgoingTriggerLink", "Trigger \"{0}\" ({1}) is in this trigger's linked chain"),
+                    linked.Name, linked.ID), linked);
+            }
         }
 
-        if (triggersReferringToTag.Count > 0)
-        {
-            stringBuilder.Append(Translate(this, "TagReferences", "The trigger's tag is referenced by the following other triggers:"));
-            triggersReferringToTag.ForEach(trig => stringBuilder.Append(Environment.NewLine + string.Format(Translate(this, "TagReference", "    - {0} ({1})"), trig.Name, trig.ID)));
-            stringBuilder.Append(Environment.NewLine);
-            stringBuilder.Append(Environment.NewLine);
-        }
+        if (tags.Count == 0)
+            yield break;
 
-        if (selfReference)
-        {
-            stringBuilder.Append(Translate(this, "SelfReference", "The trigger is referenced by one or more of its own actions."));
-            stringBuilder.Append(Environment.NewLine);
-        }
-
-        if (selfTagReference)
-        {
-            stringBuilder.Append(Translate(this, "SelfTagReference", "The trigger's tag is referenced by one or more of its own actions."));
-            stringBuilder.Append(Environment.NewLine);
-        }
-
-        // Gather all triggers linked to this trigger
-        List<Trigger> linkedTriggers = new List<Trigger>();
-        var linked = editedTrigger.LinkedTrigger;
-        while (linked != null)
-        {
-            // Prevent infinite loop if there's a loop of linked triggers
-            if (linkedTriggers.Contains(linked))
-                break;
-
-            linkedTriggers.Add(linked);
-
-            linked = linked.LinkedTrigger;
-        }
-
-        var triggersReferencingTag = map.Triggers.FindAll(linkedTriggers.Contains);
-
-        if (triggersReferencingTag.Count > 0)
-        {
-            stringBuilder.Append(Translate(this, "TriggersLinkedToSelectedTrigger", "The following other triggers are linked to the trigger:"));
-            triggersReferencingTag.ForEach(trig => stringBuilder.Append(Environment.NewLine + string.Format(Translate(this, "TriggerReference", "    - {0} ({1})"), trig.Name, trig.ID)));
-            stringBuilder.Append(Environment.NewLine);
-        }
-
-        if (stringBuilder.Length == 0)
-        {
-            EditorMessageBox.Show(WindowManager,
-                Translate(this, "LinkedObjects.Title", "Linked Objects"),
-                string.Format(Translate(this, "NoLinkedObjects.Description", "The selected trigger '{0}' is not linked to any objects, CellTags or other triggers."), editedTrigger.Name),
-                MessageBoxButtons.OK);
-        }
-        else
-        {
-            if (stringBuilder[0] == Environment.NewLine[0])
-                stringBuilder.Remove(0, Environment.NewLine.Length);
-
-            EditorMessageBox.Show(WindowManager, Translate(this, "LinkedObjects.Title", "Linked Objects"), stringBuilder.ToString(), MessageBoxButtons.OK);
-        }
-
-        return;
-    }
-
-    private void AppendToStringBuilder<T>(Techno<T> techno, StringBuilder stringBuilder) where T : TechnoType
-    {
-        string rtti = techno.WhatAmI().ToString();
-        string name = techno.ObjectType.Name;
-        string position = techno.Position.ToString();
-
-        stringBuilder.Append($"    - {rtti}: {name} at {position}{Environment.NewLine}");
-    }
-
-    private void AddObjectToListIfLinkedToTag(TechnoBase techno, List<TechnoBase> technoList, Tag tag)
-    {
-        if (techno.AttachedTag == tag)
-            technoList.Add(techno);
+        foreach (var cellTag in map.CellTags.Where(cellTag => tags.Contains(cellTag.Tag)))
+            yield return (string.Format(Translate(this, "CellTagReference", "CellTag at {0}"), cellTag.Position), cellTag);
     }
 
     private void WrapInEVADisableAndEnableActions()
@@ -1873,9 +1779,16 @@ public class TriggersWindow : INItializableWindow
         map.TriggersChanged += Map_TriggersChanged;
     }
 
-    public void SelectTrigger(Trigger trigger)
+    public void SelectTrigger(Trigger trigger, bool reveal = false)
     {
-        lbTriggers.SelectedIndex = lbTriggers.Items.FindIndex(item => item.Tag == trigger);
+        int index = lbTriggers.Items.FindIndex(item => item.Tag == trigger);
+        if (index < 0 && reveal && trigger != null)
+        {
+            tbFilter.Text = string.Empty;
+            index = lbTriggers.Items.FindIndex(item => item.Tag == trigger);
+        }
+
+        lbTriggers.SelectedIndex = index;
         if (lbTriggers.SelectedItem != null)
             lbTriggers.ScrollToSelectedElement();
     }

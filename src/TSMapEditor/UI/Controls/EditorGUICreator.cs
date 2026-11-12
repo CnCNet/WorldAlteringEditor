@@ -23,6 +23,7 @@ public class EditorGUICreator : GUICreator
         AddControl(typeof(ScriptActionListBox));
         AddControl(typeof(XNAScrollPanel));
         AddControl(typeof(TriggerParameterPanel));
+        AddControl(typeof(ReferenceListPanel));
     }
 
     private static EditorGUICreator _instance;
