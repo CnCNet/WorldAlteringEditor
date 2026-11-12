@@ -341,14 +341,18 @@ public class AITriggersWindow : INItializableWindow
         SelectAITrigger(clone);
     }
 
-    private void SelectAITrigger(AITriggerType aiTrigger)
+    public void SelectAITrigger(AITriggerType aiTrigger, bool reveal = false)
     {
-        lbAITriggers.SelectedIndex = lbAITriggers.Items.FindIndex(item => item.Tag == aiTrigger);
+        int index = lbAITriggers.Items.FindIndex(item => item.Tag == aiTrigger);
+        if (index < 0 && reveal && aiTrigger != null)
+        {
+            tbFilter.Text = string.Empty;
+            index = lbAITriggers.Items.FindIndex(item => item.Tag == aiTrigger);
+        }
 
-        if (lbAITriggers.LastIndex < lbAITriggers.SelectedIndex)
-            lbAITriggers.ScrollToBottom(); // TODO we don't actually have a good way to scroll the listbox into a specific place right now
-        else if (lbAITriggers.TopIndex > lbAITriggers.SelectedIndex)
-            lbAITriggers.TopIndex = lbAITriggers.SelectedIndex;
+        lbAITriggers.SelectedIndex = index;
+        if (index >= 0)
+            lbAITriggers.ScrollToSelectedElement();
     }
 
     private void TeamTypeWindowDarkeningPanel_Hidden(object sender, EventArgs e)

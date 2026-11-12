@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text;
 using TSMapEditor.UI.Controls;
 
 namespace TSMapEditor.UI.Windows;
@@ -26,12 +25,14 @@ public enum TaskForceSortMode
 /// </summary>
 public class TaskforcesWindow : INItializableWindow
 {
-    public TaskforcesWindow(WindowManager windowManager, Map map) : base(windowManager)
+    public TaskforcesWindow(WindowManager windowManager, Map map, ReferenceListWindow referenceListWindow) : base(windowManager)
     {
         this.map = map;
+        this.referenceListWindow = referenceListWindow;
     }
 
     private readonly Map map;
+    private readonly ReferenceListWindow referenceListWindow;
 
     private EditorSuggestionTextBox tbFilter;
     private EditorListBox lbTaskForces;
@@ -357,26 +358,26 @@ public class TaskforcesWindow : INItializableWindow
 
         if (referringLocalTeamTypes.Count == 0 && referringGlobalTeamTypes.Count == 0)
         {
-            EditorMessageBox.Show(WindowManager, 
+            EditorMessageBox.Show(WindowManager,
                 Translate(this, "NoReferencesFound.Title", "No references found"),
-                string.Format(Translate(this, "NoReferencesFound.Description", "The selected TaskForce \"{0}\" ({1}) is not used by any TeamTypes, either local (map) or global (AI.ini)."), 
-                    editedTaskForce.Name, editedTaskForce.ININame), 
+                string.Format(Translate(this, "NoReferencesFound.Description",
+                    "The selected TaskForce \"{0}\" ({1}) is not used by any TeamTypes, either local (map) or global (AI.ini)."),
+                    editedTaskForce.Name, editedTaskForce.ININame),
                 MessageBoxButtons.OK);
-        }
-        else
-        {
-            var stringBuilder = new StringBuilder();
-            referringLocalTeamTypes.ForEach(tt => stringBuilder.AppendLine(
-                string.Format(Translate(this, "LocalTeamType", "- Local TeamType \"{0}\" ({1})"), tt.Name, tt.ININame)));
-            referringGlobalTeamTypes.ForEach(tt => stringBuilder.AppendLine(
-                string.Format(Translate(this, "GlobalTeamType", "- Global TeamType \"{0}\" ({1})"), tt.Name, tt.ININame)));
 
-            EditorMessageBox.Show(WindowManager, 
-                Translate(this, "ReferencesFound.Title", "TaskForce References"),
-                string.Format(Translate(this, "ReferencesFound.Description", "The selected TaskForce \"{0}\" ({1}) is used by the following TeamTypes:" + Environment.NewLine + Environment.NewLine + "{2}"),
-                    editedTaskForce.Name, editedTaskForce.ININame, stringBuilder.ToString()), 
-                MessageBoxButtons.OK);
+            return;
         }
+
+        string localTeamTypeFormat = Translate("ReferenceListWindow.LocalTeamType", "Local TeamType \"{0}\" ({1})");
+        string globalTeamTypeFormat = Translate("ReferenceListWindow.GlobalTeamType", "Global TeamType \"{0}\" ({1})");
+        var references = new List<(string Text, object Target)>();
+        foreach (var teamType in referringLocalTeamTypes)
+            references.Add((string.Format(localTeamTypeFormat, teamType.Name, teamType.ININame), teamType));
+
+        foreach (var teamType in referringGlobalTeamTypes)
+            references.Add((string.Format(globalTeamTypeFormat, teamType.Name, teamType.ININame), null));
+
+        referenceListWindow.Open(Translate("ReferenceListWindow.SourceType.TaskForce", "TaskForce"), editedTaskForce.Name, references);
     }
 
     private void TbGroup_TextChanged(object sender, System.EventArgs e)

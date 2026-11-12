@@ -13,12 +13,14 @@ namespace TSMapEditor.UI.Windows;
 
 public class LocalVariablesWindow : INItializableWindow
 {
-    public LocalVariablesWindow(WindowManager windowManager, Map map) : base(windowManager)
+    public LocalVariablesWindow(WindowManager windowManager, Map map, ReferenceListWindow referenceListWindow) : base(windowManager)
     {
         this.map = map;
+        this.referenceListWindow = referenceListWindow;
     }
 
     private readonly Map map;
+    private readonly ReferenceListWindow referenceListWindow;
 
     private EditorListBox lbLocalVariables;
     private EditorTextBox tbName;
@@ -87,90 +89,89 @@ public class LocalVariablesWindow : INItializableWindow
     {
         if (editedLocalVariable == null)
         {
-            EditorMessageBox.Show(WindowManager, 
+            EditorMessageBox.Show(WindowManager,
                 Translate(this, "SelectVariableError.Title", "Select a variable"),
                 Translate(this, "SelectVariableError.Description", "Please select a variable first."),
                 MessageBoxButtons.OK);
+
             return;
         }
 
-        var list = new List<string>();
-
-        map.Triggers.ForEach(trigger =>
-        {
-            foreach (var action in trigger.Actions)
-            {
-                var actionType = map.EditorConfig.TriggerActionTypes.GetValueOrDefault(action.ActionIndex);
-                if (actionType == null)
-                    continue;
-
-                for (int i = 0; i < actionType.Parameters.Length; i++)
-                {
-                    var parameter = actionType.Parameters[i];
-                    if (parameter.TriggerParamType == TriggerParamType.LocalVariable)
-                    {
-                        if (Conversions.IntFromString(action.Parameters[i], -1) == editedLocalVariable.Index)
-                        {
-                            list.Add(string.Format(Translate(this, "TriggerActionOf", "Trigger action of '{0}' ({1})"), trigger.Name, trigger.ID));
-                            break;
-                        }
-                    }
-                }
-            }
-
-            foreach (var triggerEvent in trigger.Conditions)
-            {
-                var eventType = map.EditorConfig.TriggerEventTypes.GetValueOrDefault(triggerEvent.ConditionIndex);
-                if (eventType == null)
-                    continue;
-
-                for (int i = 0; i < eventType.Parameters.Length; i++)
-                {
-                    var parameter = eventType.Parameters[i];
-                    if (parameter.TriggerParamType == TriggerParamType.LocalVariable)
-                    {
-                        if (Conversions.IntFromString(triggerEvent.Parameters[i], -1) == editedLocalVariable.Index)
-                        {
-                            list.Add(string.Format(Translate(this, "TriggerEventOf", "Trigger event of '{0}' ({1})"), trigger.Name, trigger.ID));
-                            break;
-                        }
-                    }
-                }
-            }
-        });
-
-        map.Scripts.ForEach(script =>
-        {
-            foreach (var scriptAction in script.Actions)
-            {
-                var scriptActionType = map.EditorConfig.ScriptActions.GetValueOrDefault(scriptAction.Action);
-
-                if (scriptActionType == null)
-                    continue;
-
-                if (scriptActionType.ParamType == TriggerParamType.LocalVariable &&
-                    scriptAction.Argument == editedLocalVariable.Index)
-                {
-                    list.Add(string.Format(Translate(this, "ScriptActionOf", "Script action of '{0}' ({1})"), script.Name, script.ININame));
-                }
-            }
-        });
-
-
-        if (list.Count == 0)
+        var references = GetReferences(editedLocalVariable).ToList();
+        if (references.Count == 0)
         {
             EditorMessageBox.Show(WindowManager,
                 Translate(this, "NoUsagesFound.Title", "No usages found"),
-                string.Format(Translate(this, "NoUsagesFound.Description", "No triggers or scripts make use of the selected local variable '{0}'"), editedLocalVariable.Name),
+                string.Format(Translate(this, "NoUsagesFound.Description",
+                    "No triggers or scripts make use of the selected local variable '{0}'"), editedLocalVariable.Name),
                 MessageBoxButtons.OK);
+
+            return;
         }
-        else
+
+        referenceListWindow.Open(Translate("ReferenceListWindow.SourceType.LocalVariable", "Local Variable"), editedLocalVariable.Name, references);
+    }
+
+    private IEnumerable<(string Text, object Target)> GetReferences(LocalVariable localVariable)
+    {
+        string actionFormat = Translate("ReferenceListWindow.TriggerAction", "Trigger \"{0}\" ({1}), action #{2} \"{3}\"");
+        string eventFormat = Translate("ReferenceListWindow.TriggerEvent", "Trigger \"{0}\" ({1}), event #{2} \"{3}\"");
+
+        foreach (var trigger in map.Triggers)
         {
-            EditorMessageBox.Show(WindowManager,
-                Translate(this, "LocalVariableUsages.Title", "Local Variable Usages"),
-                string.Format(Translate(this, "LocalVariableUsages.Description", "The following usages were found for the selected local variable '{0}':"), editedLocalVariable.Name) + Environment.NewLine + Environment.NewLine +
-                string.Join(Environment.NewLine, list.Select(e => "- " + e)),
-                MessageBoxButtons.OK);
+            for (int actionIndex = 0; actionIndex < trigger.Actions.Count; actionIndex++)
+            {
+                var action = trigger.Actions[actionIndex];
+                if (!map.EditorConfig.TriggerActionTypes.TryGetValue(action.ActionIndex, out var actionType))
+                    continue;
+
+                int parameterCount = Math.Min(action.Parameters.Length, actionType.Parameters.Length);
+                for (int i = 0; i < parameterCount; i++)
+                {
+                    if (actionType.Parameters[i].TriggerParamType != TriggerParamType.LocalVariable ||
+                        Conversions.IntFromString(action.Parameters[i], -1) != localVariable.Index)
+                    {
+                        continue;
+                    }
+
+                    yield return (string.Format(actionFormat, trigger.Name, trigger.ID, actionIndex + 1, actionType.Name), trigger);
+                    break;
+                }
+            }
+
+            for (int eventIndex = 0; eventIndex < trigger.Conditions.Count; eventIndex++)
+            {
+                var condition = trigger.Conditions[eventIndex];
+                if (!map.EditorConfig.TriggerEventTypes.TryGetValue(condition.ConditionIndex, out var eventType))
+                    continue;
+
+                int parameterCount = Math.Min(condition.Parameters.Length, eventType.Parameters.Length);
+                for (int i = 0; i < parameterCount; i++)
+                {
+                    if (eventType.Parameters[i].TriggerParamType != TriggerParamType.LocalVariable ||
+                        Conversions.IntFromString(condition.Parameters[i], -1) != localVariable.Index)
+                    {
+                        continue;
+                    }
+
+                    yield return (string.Format(eventFormat, trigger.Name, trigger.ID, eventIndex + 1, eventType.Name), trigger);
+                    break;
+                }
+            }
+        }
+
+        string scriptActionFormat = Translate("ReferenceListWindow.ScriptAction", "Script \"{0}\" ({1}), action #{2} \"{3}\"");
+        foreach (var script in map.Scripts)
+        {
+            for (int actionIndex = 0; actionIndex < script.Actions.Count; actionIndex++)
+            {
+                var action = script.Actions[actionIndex];
+                if (!map.EditorConfig.ScriptActions.TryGetValue(action.Action, out var actionType))
+                    continue;
+
+                if (actionType.ParamType == TriggerParamType.LocalVariable && action.Argument == localVariable.Index)
+                    yield return (string.Format(scriptActionFormat, script.Name, script.ININame, actionIndex + 1, actionType.Name), script);
+            }
         }
     }
 

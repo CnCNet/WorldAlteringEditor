@@ -59,18 +59,18 @@ public class WindowController : XNAWindowController
         BasicSectionConfigWindow = new BasicSectionConfigWindow(WindowParentControl.WindowManager, map);
         RegisterWindow(BasicSectionConfigWindow);
 
-        TaskForcesWindow = new TaskforcesWindow(WindowParentControl.WindowManager, map);
-        RegisterWindow(TaskForcesWindow);
-
-        ScriptsWindow = new ScriptsWindow(WindowParentControl.WindowManager, map, editorState, notificationManager, cursorActionTarget);
-        RegisterWindow(ScriptsWindow);
-
-        TeamTypesWindow = new TeamTypesWindow(WindowParentControl.WindowManager, map);
-        RegisterWindow(TeamTypesWindow);
-
         var referenceListWindow = new ReferenceListWindow(WindowParentControl.WindowManager,
             target => NavigateToReference(target, map, cursorActionTarget, notificationManager));
         RegisterWindow(referenceListWindow);
+
+        TaskForcesWindow = new TaskforcesWindow(WindowParentControl.WindowManager, map, referenceListWindow);
+        RegisterWindow(TaskForcesWindow);
+
+        ScriptsWindow = new ScriptsWindow(WindowParentControl.WindowManager, map, editorState, notificationManager, cursorActionTarget, referenceListWindow);
+        RegisterWindow(ScriptsWindow);
+
+        TeamTypesWindow = new TeamTypesWindow(WindowParentControl.WindowManager, map, referenceListWindow);
+        RegisterWindow(TeamTypesWindow);
 
         TriggersWindow = new TriggersWindow(WindowParentControl.WindowManager, map, editorState, cursorActionTarget, referenceListWindow);
         RegisterWindow(TriggersWindow);
@@ -84,7 +84,7 @@ public class WindowController : XNAWindowController
         PlaceWaypointWindow = new PlaceWaypointWindow(WindowParentControl.WindowManager, map, cursorActionTarget.MutationManager, cursorActionTarget.MutationTarget);
         RegisterWindow(PlaceWaypointWindow);
 
-        LocalVariablesWindow = new LocalVariablesWindow(WindowParentControl.WindowManager, map);
+        LocalVariablesWindow = new LocalVariablesWindow(WindowParentControl.WindowManager, map, referenceListWindow);
         RegisterWindow(LocalVariablesWindow);
 
         StructureOptionsWindow = new StructureOptionsWindow(WindowParentControl.WindowManager, map, editorState);
@@ -198,6 +198,16 @@ public class WindowController : XNAWindowController
             case TeamType teamType when map.TeamTypes.Contains(teamType):
                 TeamTypesWindow.Open();
                 TeamTypesWindow.SelectTeamType(teamType, reveal: true);
+                break;
+
+            case Script script when map.Scripts.Contains(script):
+                ScriptsWindow.Open();
+                ScriptsWindow.SelectScript(script, reveal: true);
+                break;
+
+            case AITriggerType aiTrigger when map.AITriggerTypes.Contains(aiTrigger):
+                AITriggersWindow.Open();
+                AITriggersWindow.SelectAITrigger(aiTrigger, reveal: true);
                 break;
 
             case TechnoBase techno when map.GetTile(techno.Position)?.ContainsObject(techno) == true:

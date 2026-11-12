@@ -1,5 +1,4 @@
 ﻿using MapEditorLibrary;
-using MapEditorLibrary.Models;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
@@ -31,9 +30,9 @@ public class ReferenceListWindow : INItializableWindow
         CenterOnParent();
     }
 
-    public void Open(Trigger trigger, IReadOnlyList<(string Text, object Target)> references, string notice)
+    public void Open(string sourceType, string sourceName, IReadOnlyList<(string Text, object Target)> references, string notice = null)
     {
-        string header = string.Format(Translate(this, "Header", "References for \"{0}\""), trigger.Name);
+        string header = string.Format(Translate(this, "Header.v3", "References for {0} \"{1}\""), sourceType, sourceName);
         lblHeader.Text = Renderer.GetStringWithLimitedWidth(header, lblHeader.FontIndex, btnClose.X - lblHeader.X - Constants.UIHorizontalSpacing);
         panelReferences.SetReferences(references, notice, navigateToReference);
 
@@ -95,9 +94,11 @@ public class ReferenceListPanel : XNAScrollPanel
 
         foreach (var reference in references)
         {
-            var link = new ReferenceLinkLabel(WindowManager, navigateToReference);
-            link.Tag = reference.Target;
-            y = AddRow(link, reference.Text, y, width);
+            XNALabel label = reference.Target == null
+                ? new XNALabel(WindowManager)
+                : new ReferenceLinkLabel(WindowManager, navigateToReference) { Tag = reference.Target };
+
+            y = AddRow(label, reference.Text, y, width);
         }
 
         ScrollToTop();

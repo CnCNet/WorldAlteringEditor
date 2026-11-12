@@ -11,7 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text;
 using TSMapEditor.Rendering;
 using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
@@ -181,15 +180,17 @@ public enum ScriptSortMode
 public class ScriptsWindow : INItializableWindow
 {
     public ScriptsWindow(WindowManager windowManager, Map map, EditorState editorState,
-        INotificationManager notificationManager, ICursorActionTarget cursorActionTarget) : base(windowManager)
+        INotificationManager notificationManager, ICursorActionTarget cursorActionTarget, ReferenceListWindow referenceListWindow) : base(windowManager)
     {
         this.map = map;
+        this.referenceListWindow = referenceListWindow;
         this.editorState = editorState ?? throw new ArgumentNullException(nameof(editorState));
         this.notificationManager = notificationManager ?? throw new ArgumentNullException(nameof(notificationManager));
         selectCellCursorAction = new SelectCellCursorAction(cursorActionTarget);
     }
 
     private readonly Map map;
+    private readonly ReferenceListWindow referenceListWindow;
     private readonly EditorState editorState;
     private readonly INotificationManager notificationManager;
     private SelectCellCursorAction selectCellCursorAction;
@@ -495,32 +496,30 @@ public class ScriptsWindow : INItializableWindow
             return;
 
         var referringLocalTeamTypes = map.TeamTypes.FindAll(tt => tt.Script == editedScript);
-        var referringGlobalTeamTypes = map.Rules.TeamTypes.FindAll(tt => tt.Script.ININame == editedScript.ININame);
+        var referringGlobalTeamTypes = map.Rules.TeamTypes.FindAll(tt => tt.Script != null && tt.Script.ININame == editedScript.ININame);
 
         if (referringLocalTeamTypes.Count == 0 && referringGlobalTeamTypes.Count == 0)
         {
             EditorMessageBox.Show(WindowManager,
                 Translate(this, "NoReferencesFound.Title", "No references found"),
-                string.Format(Translate(this, "NoReferencesFound.Description", "The selected Script \"{0}\" ({1}) is not used by any TeamTypes, either local (map) or global (AI.ini)."), 
+                string.Format(Translate(this, "NoReferencesFound.Description",
+                    "The selected Script \"{0}\" ({1}) is not used by any TeamTypes, either local (map) or global (AI.ini)."),
                     editedScript.Name, editedScript.ININame),
                 MessageBoxButtons.OK);
-        }
-        else
-        {
-            var stringBuilder = new StringBuilder();
-            referringLocalTeamTypes.ForEach(tt => stringBuilder.AppendLine(
-                string.Format(Translate(this, "ReferringTeamTypes.Local", 
-                    "- Local TeamType \"{0}\" ({1})"), tt.Name, tt.ININame)));
-            referringGlobalTeamTypes.ForEach(tt => stringBuilder.AppendLine(
-                string.Format(Translate(this, "ReferringTeamTypes.Global", 
-                    "- Global TeamType \"{0}\" ({1})"), tt.Name, tt.ININame)));
 
-            EditorMessageBox.Show(WindowManager, 
-                Translate(this, "ScriptReferences.Title", "Script References"),
-                string.Format(Translate(this, "ScriptReferences.Description", "The selected Script \"{0}\" ({1}) is used by the following TeamTypes:" + Environment.NewLine + Environment.NewLine + "{2}"),
-                    editedScript.Name, editedScript.ININame, stringBuilder.ToString()),
-                MessageBoxButtons.OK);
+            return;
         }
+
+        string localTeamTypeFormat = Translate("ReferenceListWindow.LocalTeamType", "Local TeamType \"{0}\" ({1})");
+        string globalTeamTypeFormat = Translate("ReferenceListWindow.GlobalTeamType", "Global TeamType \"{0}\" ({1})");
+        var references = new List<(string Text, object Target)>();
+        foreach (var teamType in referringLocalTeamTypes)
+            references.Add((string.Format(localTeamTypeFormat, teamType.Name, teamType.ININame), teamType));
+
+        foreach (var teamType in referringGlobalTeamTypes)
+            references.Add((string.Format(globalTeamTypeFormat, teamType.Name, teamType.ININame), null));
+
+        referenceListWindow.Open(Translate("ReferenceListWindow.SourceType.Script", "Script"), editedScript.Name, references);
     }
 
     private void BtnAddScript_LeftClick(object sender, EventArgs e)
@@ -1019,9 +1018,14 @@ public class ScriptsWindow : INItializableWindow
         Show();
     }
 
-    public void SelectScript(Script script)
+    public void SelectScript(Script script, bool reveal = false)
     {
         int index = lbScriptTypes.Items.FindIndex(lbi => lbi.Tag == script);
+        if (index < 0 && reveal && script != null)
+        {
+            tbFilter.Text = string.Empty;
+            index = lbScriptTypes.Items.FindIndex(lbi => lbi.Tag == script);
+        }
 
         if (index < 0)
             return;

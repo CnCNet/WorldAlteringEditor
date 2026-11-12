@@ -6,7 +6,6 @@ using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using TSMapEditor.Settings;
 using TSMapEditor.UI.Controls;
 
@@ -42,12 +41,14 @@ public class ScriptEventArgs : EventArgs
 
 public class TeamTypesWindow : INItializableWindow
 {
-    public TeamTypesWindow(WindowManager windowManager, Map map) : base(windowManager)
+    public TeamTypesWindow(WindowManager windowManager, Map map, ReferenceListWindow referenceListWindow) : base(windowManager)
     {
         this.map = map;
+        this.referenceListWindow = referenceListWindow;
     }
 
     private readonly Map map;
+    private readonly ReferenceListWindow referenceListWindow;
 
     public event EventHandler<TaskForceEventArgs> TaskForceOpened;
     public event EventHandler<ScriptEventArgs> ScriptOpened;
@@ -311,99 +312,82 @@ public class TeamTypesWindow : INItializableWindow
         if (editedTeamType == null)
             return;
 
-        var stringBuilder = new StringBuilder();
+        var references = GetReferences(editedTeamType).ToList();
+        if (references.Count == 0)
+        {
+            EditorMessageBox.Show(WindowManager,
+                Translate(this, "NoReferences.Title", "No references found"),
+                string.Format(Translate(this, "NoReferences.Description", "The selected TeamType \"{0}\" ({1}) is not used by any Triggers or AITriggers."),
+                    editedTeamType.Name, editedTeamType.ININame),
+                MessageBoxButtons.OK);
+
+            return;
+        }
+
+        referenceListWindow.Open(Translate("ReferenceListWindow.SourceType.TeamType", "TeamType"), editedTeamType.Name, references);
+    }
+
+    private IEnumerable<(string Text, object Target)> GetReferences(TeamType teamType)
+    {
+        string actionFormat = Translate("ReferenceListWindow.TriggerAction", "Trigger \"{0}\" ({1}), action #{2} \"{3}\"");
+        string eventFormat = Translate("ReferenceListWindow.TriggerEvent", "Trigger \"{0}\" ({1}), event #{2} \"{3}\"");
 
         foreach (var trigger in map.Triggers)
         {
-            int refActionCount = 0;
-
-            foreach (var action in trigger.Actions)
+            for (int actionIndex = 0; actionIndex < trigger.Actions.Count; actionIndex++)
             {
-                if (!map.EditorConfig.TriggerActionTypes.TryGetValue(action.ActionIndex, out var triggerActionType))
+                var action = trigger.Actions[actionIndex];
+                if (!map.EditorConfig.TriggerActionTypes.TryGetValue(action.ActionIndex, out var actionType))
                     continue;
 
-                for (int i = 0; i < triggerActionType.Parameters.Length; i++)
+                int parameterCount = Math.Min(action.Parameters.Length, actionType.Parameters.Length);
+                for (int i = 0; i < parameterCount; i++)
                 {
-                    if (triggerActionType.Parameters[i].TriggerParamType == TriggerParamType.TeamType
-                        && action.Parameters[i] == editedTeamType.ININame)
-                    {
-                        refActionCount++;
-                    }
+                    if (actionType.Parameters[i].TriggerParamType != TriggerParamType.TeamType || action.Parameters[i] != teamType.ININame)
+                        continue;
+
+                    yield return (string.Format(actionFormat, trigger.Name, trigger.ID, actionIndex + 1, actionType.Name), trigger);
+                    break;
                 }
             }
 
-            int refConditionCount = 0;
-
-            foreach (var condition in trigger.Conditions)
+            for (int eventIndex = 0; eventIndex < trigger.Conditions.Count; eventIndex++)
             {
-                if (!map.EditorConfig.TriggerEventTypes.TryGetValue(condition.ConditionIndex, out var triggerEventType))
+                var condition = trigger.Conditions[eventIndex];
+                if (!map.EditorConfig.TriggerEventTypes.TryGetValue(condition.ConditionIndex, out var eventType))
                     continue;
 
-                for (int i = 0; i < triggerEventType.Parameters.Length; i++)
+                int parameterCount = Math.Min(condition.Parameters.Length, eventType.Parameters.Length);
+                for (int i = 0; i < parameterCount; i++)
                 {
-                    if (triggerEventType.Parameters[i].TriggerParamType == TriggerParamType.TeamType
-                        && condition.Parameters[i] == editedTeamType.ININame)
-                    {
-                        refConditionCount++;
-                    }
+                    if (eventType.Parameters[i].TriggerParamType != TriggerParamType.TeamType || condition.Parameters[i] != teamType.ININame)
+                        continue;
+
+                    yield return (string.Format(eventFormat, trigger.Name, trigger.ID, eventIndex + 1, eventType.Name), trigger);
+                    break;
                 }
-            }
-
-            if (refActionCount > 0)
-            {
-                stringBuilder.AppendLine(
-                    string.Format(Translate(this, "RefActions", "- Trigger \"{0}\" ({1}) in {2} action parameter(s)"), 
-                        trigger.Name, trigger.ID, refActionCount));
-            }
-
-            if (refConditionCount > 0)
-            {
-                stringBuilder.AppendLine(
-                    string.Format(Translate(this, "RefEvents", "- Trigger \"{0}\" ({1}) in {2} event parameter(s)"),
-                        trigger.Name, trigger.ID, refConditionCount));
             }
         }
 
         foreach (var aiTrigger in map.AITriggerTypes)
         {
-            if (aiTrigger.PrimaryTeam == editedTeamType)
+            if (aiTrigger.PrimaryTeam == teamType)
             {
-                stringBuilder.AppendLine(
-                    string.Format(Translate(this, "AITriggerPrimaryTeamReference", "- Local AITrigger \"{0}\" ({1}) as primary team"), 
-                        aiTrigger.Name, aiTrigger.ININame));
+                yield return (string.Format(Translate(this, "AITriggerPrimaryTeamReference", "Local AITrigger \"{0}\" ({1}) as primary team"),
+                    aiTrigger.Name, aiTrigger.ININame), aiTrigger);
             }
 
-            if (aiTrigger.SecondaryTeam == editedTeamType)
+            if (aiTrigger.SecondaryTeam == teamType)
             {
-                stringBuilder.AppendLine(
-                    string.Format(Translate(this, "AITriggerSecondaryTeamReference", "- Local AITrigger \"{0}\" ({1}) as secondary team"),
-                        aiTrigger.Name, aiTrigger.ININame));
+                yield return (string.Format(Translate(this, "AITriggerSecondaryTeamReference", "Local AITrigger \"{0}\" ({1}) as secondary team"),
+                    aiTrigger.Name, aiTrigger.ININame), aiTrigger);
             }
         }
 
-        var globalTeamType = map.Rules.TeamTypes.Find(tt => tt.ININame == editedTeamType.ININame);
-        if (globalTeamType != null)
+        if (map.Rules.TeamTypes.Exists(tt => tt.ININame == teamType.ININame))
         {
-            stringBuilder.AppendLine(
-                string.Format(Translate(this, "GlobalTeamTypeOverridden", "- This TeamType overrides a global TeamType {0}. As such, it may be used by global AI Triggers."),
-                    globalTeamType.ININame));
-        }
-
-        if (stringBuilder.Length == 0)
-        {
-            EditorMessageBox.Show(WindowManager, 
-                Translate(this, "NoReferences.Title", "No references found"),
-                string.Format(Translate(this, "NoReferences.Description", "The selected TeamType \"{0}\" ({1}) is not used by any Triggers or AITriggers."),
-                    editedTeamType.Name, editedTeamType.ININame),
-                MessageBoxButtons.OK);
-        }
-        else
-        {
-            EditorMessageBox.Show(WindowManager, 
-                Translate(this, "TeamTypeReferences.Title", "TeamType References"),
-                string.Format(Translate(this, "TeamTypeReferences.Description", "The selected TeamType \"{0}\" ({1}) is used by the following scripting elements:" + Environment.NewLine + Environment.NewLine + "{2}"),
-                    editedTeamType.Name, editedTeamType.ININame, stringBuilder.ToString()),
-                MessageBoxButtons.OK);
+            yield return (string.Format(Translate(this, "GlobalTeamTypeOverridden",
+                "This TeamType overrides a global TeamType {0}. As such, it may be used by global AI Triggers."), teamType.ININame), null);
         }
     }
 

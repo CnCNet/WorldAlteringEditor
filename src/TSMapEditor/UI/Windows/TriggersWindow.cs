@@ -744,7 +744,7 @@ public class TriggersWindow : INItializableWindow
             return;
         }
 
-        referenceListWindow.Open(editedTrigger, references, notice);
+        referenceListWindow.Open(Translate("ReferenceListWindow.SourceType.Trigger", "Trigger"), editedTrigger.Name, references, notice);
     }
 
     private IEnumerable<(string Text, object Target)> GetReferences(Trigger trigger, IReadOnlySet<Tag> tags)
