@@ -102,7 +102,7 @@ class UIManager : XNAControl, IWindowParentControl
 
     private NotificationManager notificationManager;
 
-    private int loadMapStage;
+    private bool mapLoadDialogDrawn;
     private string loadMapFilePath;
     private CreateNewMapEventArgs newMapInfo;
     private DarkeningPanel mapLoadDarkeningPanel;
@@ -497,15 +497,12 @@ class UIManager : XNAControl, IWindowParentControl
 
     private void CreateNewMapWindow_OnCreateNewMap(object sender, CreateNewMapEventArgs e)
     {
-        loadMapFilePath = null;
-        newMapInfo = e;
-        StartLoadingMap();
+        StartLoadingMap(null, e);
     }
 
     private void OpenMapWindow_OnFileSelected(object sender, FileSelectedEventArgs e)
     {
-        loadMapFilePath = e.FilePath;
-        StartLoadingMap();
+        StartLoadingMap(e.FilePath);
     }
 
     private void TopBarMenu_MapWideOverlayLoadRequested(object sender, EventArgs e)
@@ -521,12 +518,18 @@ class UIManager : XNAControl, IWindowParentControl
         if (string.IsNullOrWhiteSpace(map.LoadedINI.FilePath))
             return;
 
-        loadMapFilePath = map.LoadedINI.FilePath;
-        StartLoadingMap();
+        StartLoadingMap(map.LoadedINI.FilePath);
     }
 
-    private void StartLoadingMap()
+    private void StartLoadingMap(string filePath, CreateNewMapEventArgs newMapInfo = null)
     {
+        if (mapLoadDarkeningPanel != null)
+            return;
+
+        loadMapFilePath = filePath;
+        this.newMapInfo = newMapInfo;
+        mapLoadDialogDrawn = false;
+
         var messageBox = new EditorMessageBox(WindowManager, 
             Translate(this, "Loading.Title", "Loading"),
             Translate(this, "Loading.Description", "Please wait, loading map..."),
@@ -537,7 +540,7 @@ class UIManager : XNAControl, IWindowParentControl
         AddChild(mapLoadDarkeningPanel);
         mapLoadDarkeningPanel.AddChild(messageBox);
 
-        loadMapStage = 1;
+        WindowManager.RequestRedraw();
     }
 
     private void LoadMap()
@@ -559,10 +562,10 @@ class UIManager : XNAControl, IWindowParentControl
                error,
                MessageBoxButtons.OK);
 
-            loadMapStage = 0;
             RemoveChild(mapLoadDarkeningPanel);
             mapLoadDarkeningPanel.Kill();
             mapLoadDarkeningPanel = null;
+            WindowManager.RequestRedraw();
             return;
         }
 
@@ -837,12 +840,13 @@ class UIManager : XNAControl, IWindowParentControl
     {
         base.Update(gameTime);
 
-        if (loadMapStage > 0)
+        if (mapLoadDarkeningPanel != null)
         {
-            loadMapStage++;
-
-            if (loadMapStage > 3)
+            if (mapLoadDialogDrawn)
+            {
+                mapLoadDialogDrawn = false;
                 LoadMap();
+            }
         }
         else
         {
@@ -866,5 +870,13 @@ class UIManager : XNAControl, IWindowParentControl
             if (Alpha != previousAlpha)
                 WindowManager.RequestRedraw();
         }
+    }
+
+    public override void Draw(GameTime gameTime)
+    {
+        base.Draw(gameTime);
+
+        if (mapLoadDarkeningPanel is { Visible: true })
+            mapLoadDialogDrawn = true;
     }
 }
