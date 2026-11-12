@@ -860,7 +860,11 @@ class UIManager : XNAControl, IWindowParentControl
 
         if (Alpha < 1.0f)
         {
-            Alpha += (float)(gameTime.ElapsedGameTime.TotalSeconds * 1.0f);
+            float previousAlpha = Alpha;
+            Alpha += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            if (Alpha != previousAlpha)
+                WindowManager.RequestRedraw();
         }
     }
 }

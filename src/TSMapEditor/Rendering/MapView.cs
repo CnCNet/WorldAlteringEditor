@@ -132,10 +132,13 @@ public class MapView : IMapView, IMapScreenCropper
         EditorGraphics = editorGraphics;
 
         Camera = new Camera(windowManager, Map);
-        Camera.CameraUpdated += (s, e) => 
-        { 
-            cameraMoved = true; 
-            if (UserSettings.Instance.GraphicsLevel > 0) InvalidateMap(); 
+        Camera.CameraUpdated += (s, e) =>
+        {
+            cameraMoved = true;
+            if (UserSettings.Instance.GraphicsLevel > 0)
+                InvalidateMap();
+            else
+                this.windowManager.RequestRedraw();
         };
     }
 
@@ -166,6 +169,8 @@ public class MapView : IMapView, IMapScreenCropper
     public Camera Camera { get; private set; }
 
     public MapWideOverlay MapWideOverlay { get; private set; }
+
+    public bool IsDrawing { get; set; }
 
     private RenderTarget2D mapRenderTarget;                      // Render target for terrain
     private RenderTarget2D transparencyRenderTarget;             // Render target for map UI elements (celltags etc.) that are only refreshed if something in the map changes (due to performance reasons)
@@ -300,6 +305,10 @@ public class MapView : IMapView, IMapScreenCropper
 
         staleCanceledRequest?.Dispose();
         canceledRequest?.Dispose();
+
+        if (canceledRequest == null)
+            windowManager.AddCallback(windowManager.RequestRedraw);
+
         return true;
     }
 
@@ -509,6 +518,11 @@ public class MapView : IMapView, IMapScreenCropper
             refreshIndex++;
 
         mapInvalidated = true;
+
+        // Cursor previews invalidate the map as they add and remove temporary objects during a draw.
+        // Without this check, such a cursor action could effectively disable the editor's power-saving feature.
+        if (!IsDrawing)
+            windowManager.RequestRedraw();
     }
 
     /// <summary>

@@ -114,38 +114,31 @@ public class ToolTip : XNAControl
 
     public override void Update(GameTime gameTime)
     {
+        float previousAlpha = Alpha;
+        bool wasVisible = Visible;
+
+        if (!Blocked && IsMasterControlOnCursor)
+            cursorTime += gameTime.ElapsedGameTime;
+
+        float alphaChange = AlphaRate * (float)gameTime.ElapsedGameTime.TotalSeconds;
         if (Blocked)
         {
             HideToolTip();
-            return;
         }
-
-        float oldAlpha = Alpha;
-
-        if (IsMasterControlOnCursor)
+        else if (IsMasterControlOnCursor && cursorTime > TimeSpan.FromMilliseconds(ToolTipDelay))
         {
-            cursorTime += gameTime.ElapsedGameTime;
-
-            if (cursorTime > TimeSpan.FromMilliseconds(ToolTipDelay))
-            {
-                Alpha += AlphaRate * (float)gameTime.ElapsedGameTime.TotalSeconds;
-                ShowToolTip();
-
-                if (Alpha != oldAlpha)
-                    WindowManager.RequestRedraw();
-
-                return;
-            }
+            Alpha += alphaChange;
+            ShowToolTip();
+        }
+        else
+        {
+            Alpha -= alphaChange;
+            if (Alpha <= 0f)
+                HideToolTip();
         }
 
-        Alpha -= AlphaRate * (float)gameTime.ElapsedGameTime.TotalSeconds;
-        if (Alpha != oldAlpha)
+        if (Alpha != previousAlpha || Visible != wasVisible)
             WindowManager.RequestRedraw();
-
-        if (Alpha < 0f)
-        {
-            HideToolTip();
-        }
     }
 
     private void ShowToolTip()

@@ -181,6 +181,10 @@ public class GameClass : Microsoft.Xna.Framework.Game
 
         powerSaveManager = new PowerSaveManager(this);
         windowManager.PowerSaveManager = powerSaveManager;
+        windowManager.WindowSizeChangedByUser += RequestRedrawOnDisplayChange;
+        windowManager.RenderResolutionChanged += RequestRedrawOnDisplayChange;
+        graphics.DeviceCreated += RequestRedrawOnDisplayChange;
+        graphics.DeviceReset += RequestRedrawOnDisplayChange;
 
         EditorThemes.Initialize();
         UISettings.ActiveSettings = new CustomUISettings()
@@ -197,6 +201,15 @@ public class GameClass : Microsoft.Xna.Framework.Game
         InitMainMenu();
     }
 
+    protected override void UnloadContent()
+    {
+        windowManager.WindowSizeChangedByUser -= RequestRedrawOnDisplayChange;
+        windowManager.RenderResolutionChanged -= RequestRedrawOnDisplayChange;
+        graphics.DeviceCreated -= RequestRedrawOnDisplayChange;
+        graphics.DeviceReset -= RequestRedrawOnDisplayChange;
+        base.UnloadContent();
+    }
+
     private void InitMainMenu()
     {
         var mainMenuWrapper = new MainMenuWrapper(windowManager);
@@ -210,6 +223,8 @@ public class GameClass : Microsoft.Xna.Framework.Game
 
         base.Update(gameTime);
     }
+
+    private void RequestRedrawOnDisplayChange(object sender, EventArgs e) => powerSaveManager.RequestRedraw();
 
     protected override bool BeginDraw()
     {
