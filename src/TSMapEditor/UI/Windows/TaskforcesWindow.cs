@@ -353,7 +353,7 @@ public class TaskforcesWindow : INItializableWindow
             return;
 
         var referringLocalTeamTypes = map.TeamTypes.FindAll(tt => tt.TaskForce == editedTaskForce);
-        var referringGlobalTeamTypes = map.Rules.TeamTypes.FindAll(tt => tt.Script.ININame == editedTaskForce.ININame);
+        var referringGlobalTeamTypes = map.Rules.TeamTypes.FindAll(tt => tt.TaskForce != null && tt.TaskForce.ININame == editedTaskForce.ININame);
 
         if (referringLocalTeamTypes.Count == 0 && referringGlobalTeamTypes.Count == 0)
         {
