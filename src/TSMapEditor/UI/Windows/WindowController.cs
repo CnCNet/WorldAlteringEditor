@@ -18,6 +18,7 @@ public class WindowController : XNAWindowController
     public ScriptsWindow ScriptsWindow { get; private set; }
     public TeamTypesWindow TeamTypesWindow { get; private set; }
     public TriggersWindow TriggersWindow { get; private set; }
+    public TriggerGraphWindow TriggerGraphWindow { get; private set; }
     public TagsWindow TagsWindow { get; private set; }
     public AITriggersWindow AITriggersWindow { get; private set; }
     public PlaceWaypointWindow PlaceWaypointWindow { get; private set; }
@@ -86,6 +87,10 @@ public class WindowController : XNAWindowController
 
         LocalVariablesWindow = new LocalVariablesWindow(WindowParentControl.WindowManager, map, referenceListWindow);
         RegisterWindow(LocalVariablesWindow);
+
+        TriggerGraphWindow = new TriggerGraphWindow(WindowParentControl.WindowManager, map, referenceListWindow,
+            target => NavigateToReference(target, map, cursorActionTarget, notificationManager));
+        RegisterWindow(TriggerGraphWindow);
 
         StructureOptionsWindow = new StructureOptionsWindow(WindowParentControl.WindowManager, map, editorState);
         RegisterWindow(StructureOptionsWindow);
@@ -193,6 +198,11 @@ public class WindowController : XNAWindowController
             case Trigger trigger when map.Triggers.Contains(trigger):
                 TriggersWindow.Open();
                 TriggersWindow.SelectTrigger(trigger, reveal: true);
+                break;
+
+            case LocalVariable localVariable when map.LocalVariables.Contains(localVariable):
+                LocalVariablesWindow.Open();
+                LocalVariablesWindow.SelectLocalVariable(localVariable);
                 break;
 
             case TeamType teamType when map.TeamTypes.Contains(teamType):

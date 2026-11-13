@@ -55,7 +55,6 @@ public class LocalVariablesWindow : INItializableWindow
         FindChild<EditorButton>("btnDeleteLocalVariable").LeftClick += BtnDeleteLocalVariable_LeftClick;
         FindChild<EditorButton>("btnViewVariableUsages").LeftClick += BtnViewVariableUsages_LeftClick;
 
-
         lbLocalVariables.SelectedIndexChanged += LbLocalVariables_SelectedIndexChanged;
         map.ScriptingChanged += Map_ScriptingChanged;
     }
@@ -227,11 +226,18 @@ public class LocalVariablesWindow : INItializableWindow
             localVariable = null;
 
         ListLocalVariables();
-        lbLocalVariables.SelectedIndex = lbLocalVariables.Items.FindIndex(item => item.Tag == localVariable);
+        SelectLocalVariable(localVariable);
+    }
 
-        if (lbLocalVariables.SelectedItem == null)
+    public void SelectLocalVariable(LocalVariable localVariable)
+    {
+        int index = lbLocalVariables.Items.FindIndex(item => item.Tag == localVariable);
+        if (index == lbLocalVariables.SelectedIndex)
             LbLocalVariables_SelectedIndexChanged(this, EventArgs.Empty);
         else
+            lbLocalVariables.SelectedIndex = index;
+
+        if (index >= 0)
             lbLocalVariables.ScrollToSelectedElement();
     }
 

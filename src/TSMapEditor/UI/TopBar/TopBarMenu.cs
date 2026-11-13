@@ -243,6 +243,7 @@ class TopBarMenu : EditorPanel
         scriptingContextMenu.Name = nameof(scriptingContextMenu);
         scriptingContextMenu.AddItem(Translate(this, "Scipting.Houses", "Houses"), () => windowController.HousesWindow.Open(), null, null, null);
         scriptingContextMenu.AddItem(Translate(this, "Scripting.Triggers", "Triggers"), () => windowController.TriggersWindow.Open(), null, null, null);
+        scriptingContextMenu.AddItem(Translate(this, "Scripting.TriggerGraph", "Trigger Graph"), () => windowController.TriggerGraphWindow.Open(), null, null, null);
         scriptingContextMenu.AddItem(Translate(this, "Scripting.Tags", "Tags"), () => windowController.TagsWindow.Open(), null, null, null);
         scriptingContextMenu.AddItem(Translate(this, "Scripting.TaskForces", "TaskForces"), () => windowController.TaskForcesWindow.Open(), null, null, null);
         scriptingContextMenu.AddItem(Translate(this, "Scripting.Scripts", "Scripts"), () => windowController.ScriptsWindow.Open(), null, null, null);

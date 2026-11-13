@@ -4,20 +4,30 @@ using System.Globalization;
 
 namespace MapEditorLibrary.CCEngine;
 
+public enum TriggerVariableAccess
+{
+    Reference,
+    Read,
+    Write
+}
+
 public class TriggerActionParam
 {
-    public TriggerActionParam(TriggerParamType triggerParamType, string nameOverride, List<string> presetOptions = null, bool reverseNegative = true)
+    public TriggerActionParam(TriggerParamType triggerParamType, string nameOverride, List<string> presetOptions = null, bool reverseNegative = true,
+        TriggerVariableAccess variableAccess = TriggerVariableAccess.Reference)
     {
         TriggerParamType = triggerParamType;
         NameOverride = nameOverride;
         PresetOptions = presetOptions;
         ReverseNegativeHardcodedParam = reverseNegative;
+        VariableAccess = variableAccess;
     }
 
     public TriggerParamType TriggerParamType { get; }
     public string NameOverride { get; }
     public List<string> PresetOptions { get; }
     public bool ReverseNegativeHardcodedParam { get; }
+    public TriggerVariableAccess VariableAccess { get; }
 
     public bool HasPresetOptions() => PresetOptions != null && PresetOptions.Count > 0;
 }
@@ -77,7 +87,11 @@ public class TriggerActionType
 
             bool reverseNegativeHardcodedParam = iniSection.GetBooleanValue(reverseNegativeKey, true);
 
-            Parameters[i] = new TriggerActionParam(triggerParamType, nameOverride, presetOptions, reverseNegativeHardcodedParam);
+            TriggerVariableAccess variableAccess = triggerParamType == TriggerParamType.LocalVariable
+                ? Enum.Parse<TriggerVariableAccess>(iniSection.GetStringValue($"P{i + 1}VariableAccess", nameof(TriggerVariableAccess.Reference)), true)
+                : TriggerVariableAccess.Reference;
+
+            Parameters[i] = new TriggerActionParam(triggerParamType, nameOverride, presetOptions, reverseNegativeHardcodedParam, variableAccess);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
+using TSMapEditor.UI.TriggerGraph;
 using TSMapEditor.UI.Windows;
 
 namespace TSMapEditor.UI.Controls;
@@ -24,6 +25,7 @@ public class EditorGUICreator : GUICreator
         AddControl(typeof(XNAScrollPanel));
         AddControl(typeof(TriggerParameterPanel));
         AddControl(typeof(ReferenceListPanel));
+        AddControl(typeof(TriggerGraphPanel));
     }
 
     private static EditorGUICreator _instance;

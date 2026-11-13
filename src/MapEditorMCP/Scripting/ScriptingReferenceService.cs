@@ -1,3 +1,4 @@
+using MapEditorLibrary.CCEngine;
 using MapEditorLibrary.Models;
 using MapEditorLibrary.Models.Enums;
 using System.Globalization;
@@ -127,56 +128,14 @@ internal sealed class ScriptingReferenceService
 
     private void AddTriggerParameterEdges(List<ReferenceEdge> edges, Trigger trigger)
     {
-        for (int eventIndex = 0; eventIndex < trigger.Conditions.Count; eventIndex++)
+        foreach (var reference in TriggerParameterReferences.Enumerate(trigger, map.EditorConfig))
         {
-            TriggerCondition condition = trigger.Conditions[eventIndex];
-            if (condition == null ||
-                !map.EditorConfig.TriggerEventTypes.TryGetValue(condition.ConditionIndex, out var eventDefinition))
-            {
-                continue;
-            }
+            object target = ResolveConfiguredParameterTarget(reference.ParameterType, reference.Value, isIntegerScriptArgument: false);
+            string entryType = reference.IsEvent ? "events" : "actions";
+            string parameterPath = $"triggers[{trigger.ID}].{entryType}[{reference.EntryIndex.ToString(CultureInfo.InvariantCulture)}]." +
+                $"parameters[{reference.ParameterIndex.ToString(CultureInfo.InvariantCulture)}]";
 
-            int parameterCount = Math.Min(condition.Parameters.Length, eventDefinition.Parameters.Length);
-            for (int parameterIndex = 0; parameterIndex < parameterCount; parameterIndex++)
-            {
-                if (eventDefinition.Parameters[parameterIndex] == null)
-                    continue;
-
-                object target = ResolveConfiguredParameterTarget(
-                    eventDefinition.Parameters[parameterIndex].TriggerParamType,
-                    condition.Parameters[parameterIndex],
-                    isIntegerScriptArgument: false);
-                string parameterPath = $"triggers[{trigger.ID}].events[{eventIndex.ToString(CultureInfo.InvariantCulture)}]." +
-                    $"parameters[{parameterIndex.ToString(CultureInfo.InvariantCulture)}]";
-
-                AddEdge(edges, trigger, target, parameterPath);
-            }
-        }
-
-        for (int actionIndex = 0; actionIndex < trigger.Actions.Count; actionIndex++)
-        {
-            TriggerAction action = trigger.Actions[actionIndex];
-            if (action == null ||
-                !map.EditorConfig.TriggerActionTypes.TryGetValue(action.ActionIndex, out var actionDefinition))
-            {
-                continue;
-            }
-
-            int parameterCount = Math.Min(action.Parameters.Length, actionDefinition.Parameters.Length);
-            for (int parameterIndex = 0; parameterIndex < parameterCount; parameterIndex++)
-            {
-                if (actionDefinition.Parameters[parameterIndex] == null)
-                    continue;
-
-                object target = ResolveConfiguredParameterTarget(
-                    actionDefinition.Parameters[parameterIndex].TriggerParamType,
-                    action.Parameters[parameterIndex],
-                    isIntegerScriptArgument: false);
-                string parameterPath = $"triggers[{trigger.ID}].actions[{actionIndex.ToString(CultureInfo.InvariantCulture)}]." +
-                    $"parameters[{parameterIndex.ToString(CultureInfo.InvariantCulture)}]";
-
-                AddEdge(edges, trigger, target, parameterPath);
-            }
+            AddEdge(edges, trigger, target, parameterPath);
         }
     }
 
