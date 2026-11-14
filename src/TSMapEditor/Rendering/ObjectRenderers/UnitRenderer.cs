@@ -17,17 +17,7 @@ public sealed class UnitRenderer : ObjectRenderer<Unit>
 
     protected override Color ReplacementColor => Color.Red;
 
-    protected override CommonDrawParams GetDrawParams(Unit gameObject)
-    {
-        return new CommonDrawParams()
-        {
-            IniName = gameObject.ObjectType.ININame,
-            ShapeImage = TheaterGraphics.UnitTextures[gameObject.ObjectType.Index],
-            MainVoxel = TheaterGraphics.UnitModels[gameObject.ObjectType.Index],
-            TurretVoxel = TheaterGraphics.UnitTurretModels[gameObject.ObjectType.Index],
-            BarrelVoxel = TheaterGraphics.UnitBarrelModels[gameObject.ObjectType.Index]
-        };
-    }
+    protected override CommonDrawParams GetDrawParams(Unit gameObject) => TheaterGraphics.GetUnitDrawParams(gameObject.UnitType);
 
     private DepthRectangle cachedDepth;
 
@@ -82,57 +72,52 @@ public sealed class UnitRenderer : ObjectRenderer<Unit>
 
     protected override double GetExtraLight(Unit gameObject) => Map.Rules.ExtraUnitLight;
 
+    public readonly record struct Layer(ShapeImage Shape, int FrameIndex, VoxelModel Voxel, Point2D Offset);
+
+    public static (Layer Body, Layer Middle, Layer Top) GetLayers(Unit gameObject, in CommonDrawParams drawParams)
+    {
+        bool isVoxel = gameObject.UnitType.ArtConfig.Voxel;
+        ShapeImage shape = drawParams.ShapeImage;
+        var body = isVoxel
+            ? new Layer(null, 0, drawParams.MainVoxel, Point2D.Zero)
+            : new Layer(shape, shape == null ? 0 : gameObject.GetFrameIndex(shape.GetFrameCount()), null, Point2D.Zero);
+
+        if (!gameObject.UnitType.Turret)
+            return (body, default, default);
+
+        const byte facingStartDrawAbove = (byte)Direction.E * 32;
+        const byte facingEndDrawAbove = (byte)Direction.W * 32;
+
+        byte facing = Convert.ToByte(Math.Clamp(
+            Math.Round((float)gameObject.Facing / 8, MidpointRounding.AwayFromZero) * 8,
+            byte.MinValue,
+            byte.MaxValue));
+
+        float rotationFromFacing = 2 * (float)Math.PI * ((float)facing / Constants.FacingMax);
+        Vector2 leptonTurretOffset = new Vector2(0, -gameObject.UnitType.ArtConfig.TurretOffset);
+        leptonTurretOffset = Vector2.Transform(leptonTurretOffset, Matrix.CreateRotationZ(rotationFromFacing));
+
+        Point2D turretOffset = Helpers.ScreenCoordsFromWorldLeptons(leptonTurretOffset);
+        var turret = isVoxel || shape == null
+            ? new Layer(null, 0, drawParams.TurretVoxel, turretOffset)
+            : new Layer(shape, gameObject.GetTurretFrameIndex(), null, Point2D.Zero);
+        var barrel = new Layer(null, 0, drawParams.BarrelVoxel, turretOffset);
+
+        return gameObject.Facing is > facingStartDrawAbove and <= facingEndDrawAbove
+            ? (body, turret, barrel)
+            : (body, barrel, turret);
+    }
+
     protected override void Render(Unit gameObject, Point2D drawPoint, in CommonDrawParams drawParams)
     {
-        bool affectedByLighting = RenderDependencies.EditorState.IsLighting;
+        var (body, middle, top) = GetLayers(gameObject, drawParams);
 
-        bool isVoxel = gameObject.UnitType.ArtConfig.Voxel;
-        if (isVoxel)
-        {
-            RenderVoxelModel(gameObject, drawPoint, drawParams.MainVoxel, affectedByLighting, 0);
-        }
-        else if (drawParams.ShapeImage != null)
-        {
-            RenderMainShape(gameObject, drawPoint, drawParams, 0);
-        }
+        if (body.Shape != null && !gameObject.ObjectType.NoShadow)
+            DrawShadow(gameObject);
 
-        if (gameObject.UnitType.Turret)
-        {
-            const byte facingStartDrawAbove = (byte)Direction.E * 32;
-            const byte facingEndDrawAbove = (byte)Direction.W * 32;
-
-            byte facing = Convert.ToByte(Math.Clamp(
-                Math.Round((float)gameObject.Facing / 8, MidpointRounding.AwayFromZero) * 8,
-                byte.MinValue,
-                byte.MaxValue));
-
-            float rotationFromFacing = 2 * (float)Math.PI * ((float)facing / Constants.FacingMax);
-
-            Vector2 leptonTurretOffset = new Vector2(0, -gameObject.UnitType.ArtConfig.TurretOffset);
-            leptonTurretOffset = Vector2.Transform(leptonTurretOffset, Matrix.CreateRotationZ(rotationFromFacing));
-
-            Point2D turretOffset = Helpers.ScreenCoordsFromWorldLeptons(leptonTurretOffset);
-            bool useVoxelTurret = isVoxel || drawParams.ShapeImage == null;
-
-            if (gameObject.Facing is > facingStartDrawAbove and <= facingEndDrawAbove)
-            {
-                if (useVoxelTurret)
-                    RenderVoxelModel(gameObject, drawPoint + turretOffset, drawParams.TurretVoxel, affectedByLighting, Constants.DepthEpsilon);
-                else
-                    RenderTurretShape(gameObject, drawPoint, drawParams, Constants.DepthEpsilon);
-
-                RenderVoxelModel(gameObject, drawPoint + turretOffset, drawParams.BarrelVoxel, affectedByLighting, Constants.DepthEpsilon * ObjectDepthAdjustments.Turret);
-            }
-            else
-            {
-                RenderVoxelModel(gameObject, drawPoint + turretOffset, drawParams.BarrelVoxel, affectedByLighting, Constants.DepthEpsilon);
-
-                if (useVoxelTurret)
-                    RenderVoxelModel(gameObject, drawPoint + turretOffset, drawParams.TurretVoxel, affectedByLighting, Constants.DepthEpsilon * ObjectDepthAdjustments.Turret);
-                else
-                    RenderTurretShape(gameObject,  drawPoint, drawParams, Constants.DepthEpsilon * ObjectDepthAdjustments.Turret);
-            }
-        }
+        DrawLayer(gameObject, drawPoint, body, 0);
+        DrawLayer(gameObject, drawPoint, middle, Constants.DepthEpsilon);
+        DrawLayer(gameObject, drawPoint, top, Constants.DepthEpsilon * ObjectDepthAdjustments.Turret);
 
         if (gameObject.Veterancy > 0)
         {
@@ -143,32 +128,17 @@ public sealed class UnitRenderer : ObjectRenderer<Unit>
         }
     }
 
-    private void RenderMainShape(Unit gameObject, Point2D drawPoint, CommonDrawParams drawParams, float depthAddition)
+    private void DrawLayer(Unit gameObject, Point2D drawPoint, in Layer layer, float depthAddition)
     {
-        if (!gameObject.ObjectType.NoShadow)
-            DrawShadow(gameObject);
-
-        DrawShapeImage(gameObject, drawParams.ShapeImage, 
-            gameObject.GetFrameIndex(drawParams.ShapeImage.GetFrameCount()),
-            Color.White, true, gameObject.GetRemapColor(),
-            false, true, drawPoint, depthAddition);
-    }
-
-    private void RenderTurretShape(Unit gameObject, Point2D drawPoint,
-        CommonDrawParams drawParams, float depthAddition)
-    {
-        int turretFrameIndex = gameObject.GetTurretFrameIndex();
-
-        if (turretFrameIndex > -1 && turretFrameIndex < drawParams.ShapeImage.GetFrameCount())
+        Point2D layerDrawPoint = drawPoint + layer.Offset;
+        if (layer.Shape != null)
         {
-            PositionedTexture frame = drawParams.ShapeImage.GetFrame(turretFrameIndex);
-
-            if (frame == null)
-                return;
-
-            DrawShapeImage(gameObject, drawParams.ShapeImage,
-                turretFrameIndex, Color.White, true, gameObject.GetRemapColor(),
-                false, true, drawPoint, depthAddition);
+            DrawShapeImage(gameObject, layer.Shape, layer.FrameIndex, Color.White, true, gameObject.GetRemapColor(),
+                false, true, layerDrawPoint, depthAddition);
+        }
+        else if (layer.Voxel != null)
+        {
+            RenderVoxelModel(gameObject, layerDrawPoint, layer.Voxel, RenderDependencies.EditorState.IsLighting, depthAddition);
         }
     }
 

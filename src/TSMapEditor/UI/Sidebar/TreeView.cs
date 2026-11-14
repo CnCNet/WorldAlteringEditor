@@ -330,10 +330,8 @@ public class TreeView : EditorPanel
             for (int n = 0; n < category.Nodes.Count; n++)
             {
                 var node = category.Nodes[n];
-                if (node.Texture != null)
-                {
-                    node.Texture.Dispose();
-                }
+                node.Texture?.Dispose();
+                node.RemapTexture?.Dispose();
             }
         }
 

@@ -195,6 +195,20 @@ public class TheaterGraphics : ITheater, ITheaterTileData
 
     public ShapeImage PipTextures { get; set; }
 
+    public CommonDrawParams GetUnitDrawParams(UnitType unitType)
+    {
+        int index = unitType.Index;
+
+        return new CommonDrawParams()
+        {
+            IniName = unitType.ININame,
+            ShapeImage = UnitTextures[index],
+            MainVoxel = UnitModels[index],
+            TurretVoxel = UnitTurretModels[index],
+            BarrelVoxel = UnitBarrelModels[index]
+        };
+    }
+
     private readonly object graphicsPreparationObjectLocker = new object();
 
     public TheaterGraphics(GraphicsDevice graphicsDevice, Theater theater, CCFileManager fileManager, Rules rules)

@@ -258,7 +258,7 @@ public abstract class ObjectRenderer<T> where T : GameObject
         return null;
     }
 
-    protected Rectangle GetTextureDrawCoords(GameObject gameObject,
+    public static Rectangle GetTextureDrawCoords(GameObject gameObject,
         PositionedTexture frame,
         Point2D initialDrawPoint)
     {
