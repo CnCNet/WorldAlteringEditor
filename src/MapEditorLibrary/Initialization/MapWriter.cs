@@ -48,7 +48,8 @@ public static class MapWriter
 
         if (string.IsNullOrWhiteSpace(map.Basic.Player))
         {
-            map.Basic.MaxPlayer = map.Waypoints.Count(wp => wp.Identifier < Constants.MultiplayerMaxPlayers);
+            int startCount = map.Basic.GetMultiplayerStartCount();
+            map.Basic.MaxPlayer = map.Waypoints.Count(wp => wp.Identifier < startCount);
         }
 
         map.Basic.WritePropertiesToIniSection(section);

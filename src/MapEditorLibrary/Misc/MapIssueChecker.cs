@@ -516,6 +516,30 @@ public static class MapIssueChecker
                     Constants.TS_WAYPT_SPECIAL));
         }
 
+        // A map for more than 8 players needs a starting waypoint for every player.
+        // Waypoints that were ordinary waypoints on an 8-player map become starting waypoints.
+        int startCount = map.Basic.GetMultiplayerStartCount();
+        if (startCount > Constants.OriginalMultiplayerMaxPlayers)
+        {
+            var missingStarts = Enumerable.Range(0, startCount).Where(i => !map.Waypoints.Exists(wp => wp.Identifier == i)).ToList();
+            if (missingStarts.Count > 0)
+            {
+                issueList.Add(string.Format(Translate(map, "CheckForIssues.MissingStartingWaypoints",
+                    "The map sets MaxPlayers to {0}, but starting waypoints {1} are missing. Every player needs a starting waypoint from #0 to #{2}, or the game treats the map as a map for up to 8 players."),
+                        startCount, string.Join(", ", missingStarts.Select(i => "#" + i)), startCount - 1));
+            }
+
+            foreach (var waypoint in map.Waypoints.Where(wp => wp.Identifier >= Constants.OriginalMultiplayerMaxPlayers && wp.Identifier < startCount))
+            {
+                if (map.IsWaypointInUse(waypoint))
+                {
+                    issueList.Add(string.Format(Translate(map, "CheckForIssues.TriggerWaypointIsStartingWaypoint",
+                        "Waypoint #{0} is used by triggers, scripts or TeamTypes, and it is also a starting waypoint because MaxPlayers is {1}. If it is meant as an ordinary waypoint, move it to #{1} or higher."),
+                            waypoint.Identifier, startCount));
+                }
+            }
+        }
+
         // Check for scripts that have more than 50 Script Actions. This is unsupported by the game.
         const int maxScriptActionCount = 50;
         foreach (var script in map.Scripts)

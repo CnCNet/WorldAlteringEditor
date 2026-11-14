@@ -67,7 +67,7 @@ internal class CellInfo
         var vehicleInfos = mapTile.Vehicles.Select(v => (MapFootInfo)FromTechno(map, v));
         var infantryInfos = mapTile.Infantry.Where(i => i != null).Select(i => (MapFootInfo)FromTechno(map, i));
         var aircraftInfos = mapTile.Aircraft.Select(a => (MapFootInfo)FromTechno(map, a));
-        var waypointInfos = mapTile.Waypoints.OrderBy(waypoint => waypoint.Identifier).Select(FromWaypoint).ToList();
+        var waypointInfos = mapTile.Waypoints.OrderBy(waypoint => waypoint.Identifier).Select(waypoint => FromWaypoint(map, waypoint)).ToList();
 
         var tileInfo = theater.GetTile(mapTile.TileIndex);
         var subTileInfo = tileInfo.GetSubTile(mapTile.SubTileIndex);
@@ -80,14 +80,14 @@ internal class CellInfo
             vehicleInfos.Concat(infantryInfos).Concat(aircraftInfos).ToList(), waypointInfos);
     }
 
-    public static MapWaypointInfo FromWaypoint(Waypoint waypoint)
+    public static MapWaypointInfo FromWaypoint(Map map, Waypoint waypoint)
     {
         return new MapWaypointInfo(
             waypoint.Identifier,
             waypoint.Position.X,
             waypoint.Position.Y,
             waypoint.EditorColor,
-            waypoint.Identifier >= 0 && waypoint.Identifier < Constants.MultiplayerMaxPlayers);
+            waypoint.Identifier >= 0 && waypoint.Identifier < map.Basic.GetMultiplayerStartCount());
     }
 
     public static MapTechnoInfo FromTechno(Map map, TechnoBase techno)

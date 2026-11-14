@@ -42,6 +42,7 @@ public class BasicSectionConfigWindow : INItializableWindow
     private XNACheckBox chkTiberiumDeathToVisceroid;
     private XNACheckBox chkFreeRadar;
     private XNACheckBox chkRequiredAddOn;        
+    private EditorNumberTextBox tbMaxPlayers;
 
     private SelectThemeWindow selectThemeWindow;
 
@@ -75,6 +76,13 @@ public class BasicSectionConfigWindow : INItializableWindow
         chkTiberiumDeathToVisceroid = FindChild<XNACheckBox>(nameof(chkTiberiumDeathToVisceroid));
         chkFreeRadar = FindChild<XNACheckBox>(nameof(chkFreeRadar));
         chkRequiredAddOn = FindChild<XNACheckBox>(nameof(chkRequiredAddOn));            
+
+        // Only games that support more than 8 players need the player count set by hand
+        tbMaxPlayers = FindChild<EditorNumberTextBox>(nameof(tbMaxPlayers));
+        tbMaxPlayers.MaximumTextLength = Constants.MultiplayerMaxPlayers.ToString(CultureInfo.InvariantCulture).Length;
+        bool supportsMorePlayers = Constants.MultiplayerMaxPlayers > Constants.OriginalMultiplayerMaxPlayers;
+        tbMaxPlayers.Visible = supportsMorePlayers;
+        FindChild<XNALabel>("lblMaxPlayers").Visible = supportsMorePlayers;
 
         selectThemeWindow = new SelectThemeWindow(WindowManager, map, true);
         var themeDarkeningPanel = DarkeningPanel.InitializeAndAddToParentControlWithChild(WindowManager, Parent, selectThemeWindow);
@@ -114,6 +122,7 @@ public class BasicSectionConfigWindow : INItializableWindow
         chkTiberiumDeathToVisceroid.Checked = map.Basic.TiberiumDeathToVisceroid;
         chkFreeRadar.Checked = map.Basic.FreeRadar;
         chkRequiredAddOn.Checked = map.Basic.RequiredAddOn > 0;
+        tbMaxPlayers.Text = map.Basic.MaxPlayers?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
     }
 
     private void BtnApply_LeftClick(object sender, System.EventArgs e)
@@ -144,6 +153,14 @@ public class BasicSectionConfigWindow : INItializableWindow
         if (!Constants.IsRA2YR)
         {
             map.Basic.RequiredAddOn = chkRequiredAddOn.Checked ? 1 : 0;
+        }
+
+        if (tbMaxPlayers.Visible)
+        {
+            if (string.IsNullOrWhiteSpace(tbMaxPlayers.Text))
+                map.Basic.MaxPlayers = null;
+            else
+                map.Basic.MaxPlayers = Math.Clamp(tbMaxPlayers.Value, 0, Constants.MultiplayerMaxPlayers);
         }
     }
 

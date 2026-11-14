@@ -119,7 +119,16 @@ public static class Constants
     public const string VeinholeMonsterTypeName = "VEINHOLE";
     public const string VeinholeDummyTypeName = "VEINHOLEDUMMY";
 
-    public const int MultiplayerMaxPlayers = 8;
+    /// <summary>
+    /// The number of starting waypoints the original games support.
+    /// </summary>
+    public const int OriginalMultiplayerMaxPlayers = 8;
+
+    /// <summary>
+    /// The most players the target game supports on one map.
+    /// Above 8, a map can set [Basic] MaxPlayers= to use more starting waypoints.
+    /// </summary>
+    public static int MultiplayerMaxPlayers = OriginalMultiplayerMaxPlayers;
 
     public const int TS_WAYPT_SPECIAL = 100;
 
@@ -175,6 +184,8 @@ public static class Constants
         IntegerVariables = constantsIni.GetBooleanValue(ConstantsSectionName, nameof(IntegerVariables), IntegerVariables);
 
         MaxWaypoint = constantsIni.GetIntValue(ConstantsSectionName, nameof(MaxWaypoint), MaxWaypoint);
+        MultiplayerMaxPlayers = Math.Clamp(constantsIni.GetIntValue(ConstantsSectionName, nameof(MultiplayerMaxPlayers), MultiplayerMaxPlayers),
+            OriginalMultiplayerMaxPlayers, MaxWaypoint);
 
         MapPreviewMaxWidth = constantsIni.GetIntValue(ConstantsSectionName, nameof(MapPreviewMaxWidth), MapPreviewMaxWidth);
         MapPreviewMaxHeight = constantsIni.GetIntValue(ConstantsSectionName, nameof(MapPreviewMaxHeight), MapPreviewMaxHeight);

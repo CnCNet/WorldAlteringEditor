@@ -2280,7 +2280,9 @@ public class MapView : IMapView, IMapScreenCropper
         {
             Renderer.PushRenderTarget(compositeRenderTarget);
 
-            for (int i = 0; i < Constants.MultiplayerMaxPlayers; i++)
+            int startCount = Map.Basic.GetMultiplayerStartCount();
+
+            for (int i = 0; i < startCount; i++)
             {
                 var wp = Map.Waypoints.Find(wp => wp.Identifier == i);
                 if (wp != null)

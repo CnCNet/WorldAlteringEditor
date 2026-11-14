@@ -133,7 +133,7 @@ public class PlaceWaypointWindow : INItializableWindow
             return -1;
         }
 
-        for (int i = chkDoNotSuggestMPStartingWaypoints.Checked ? Constants.MultiplayerMaxPlayers : 0; i < Constants.MaxWaypoint; i++)
+        for (int i = chkDoNotSuggestMPStartingWaypoints.Checked ? map.Basic.GetMultiplayerStartCount() : 0; i < Constants.MaxWaypoint; i++)
         {
             if (!map.Waypoints.Exists(w => w.Identifier == i) && (Constants.IsRA2YR || i != Constants.TS_WAYPT_SPECIAL))
             {

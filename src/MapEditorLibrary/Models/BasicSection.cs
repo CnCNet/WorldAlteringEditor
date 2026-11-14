@@ -19,6 +19,7 @@ public class BasicSection : INIDefineable
     public bool EndOfGame { get; set; }
     public bool FreeRadar { get; set; }
     public int MaxPlayer { get; set; } = 8;
+    public int? MaxPlayers { get; set; }
     public int MinPlayer { get; set; } = 2;
     public bool SkipScore { get; set; }
     public bool TrainCrate { get; set; }
@@ -37,4 +38,17 @@ public class BasicSection : INIDefineable
     public bool TiberiumGrowthEnabled { get; set; } = true;
     public bool IgnoreGlobalAITriggers { get; set; }
     public bool TiberiumDeathToVisceroid { get; set; }
+
+    /// <summary>
+    /// Returns how many waypoints, counting from 0, are multiplayer starting waypoints.
+    /// That is 8, unless the target game supports more players
+    /// and the map asks for more with MaxPlayers.
+    /// </summary>
+    public int GetMultiplayerStartCount()
+    {
+        if (MaxPlayers > Constants.OriginalMultiplayerMaxPlayers && MaxPlayers <= Constants.MultiplayerMaxPlayers)
+            return MaxPlayers.Value;
+
+        return Constants.OriginalMultiplayerMaxPlayers;
+    }
 }

@@ -430,7 +430,7 @@ internal class MapFacade
         return map.Waypoints
             .Where(waypoint => !identifier.HasValue || waypoint.Identifier == identifier.Value)
             .OrderBy(waypoint => waypoint.Identifier)
-            .Select(CellInfo.FromWaypoint)
+            .Select(waypoint => CellInfo.FromWaypoint(map, waypoint))
             .ToList();
     }
 
