@@ -1,6 +1,7 @@
 using MapEditorLibrary;
 using MapEditorLibrary.CCEngine;
 using Microsoft.Xna.Framework;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
@@ -43,6 +44,48 @@ public sealed class TriggerGraphPanel : XNAScrollPanel
 
     private float Zoom => ZoomPercent / 100f;
     private Point ViewCenter => new Point(ViewSize.X / 2, ViewSize.Y / 2);
+
+    private Color TriggerColor { get; set; } = new Color(135, 192, 232);
+    private Color VariableColor { get; set; } = new Color(255, 0, 200);
+    private Color LinkColor { get; set; } = new Color(181, 154, 220);
+    private Color ReadColor { get; set; } = new Color(115, 211, 196);
+    private Color WriteColor { get; set; } = new Color(229, 162, 112);
+    private Color CardBackground { get; set; } = new Color(24, 31, 39);
+    private Color HoveredCardBackground { get; set; } = new Color(41, 52, 63);
+    private Color SelectedCardBackground { get; set; } = new Color(93, 120, 147);
+
+    protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
+    {
+        switch (key)
+        {
+            case nameof(TriggerColor):
+                TriggerColor = AssetLoader.GetColorFromString(value);
+                return;
+            case nameof(VariableColor):
+                VariableColor = AssetLoader.GetColorFromString(value);
+                return;
+            case nameof(LinkColor):
+                LinkColor = AssetLoader.GetColorFromString(value);
+                return;
+            case nameof(ReadColor):
+                ReadColor = AssetLoader.GetColorFromString(value);
+                return;
+            case nameof(WriteColor):
+                WriteColor = AssetLoader.GetColorFromString(value);
+                return;
+            case nameof(CardBackground):
+                CardBackground = AssetLoader.GetColorFromString(value);
+                return;
+            case nameof(HoveredCardBackground):
+                HoveredCardBackground = AssetLoader.GetColorFromString(value);
+                return;
+            case nameof(SelectedCardBackground):
+                SelectedCardBackground = AssetLoader.GetColorFromString(value);
+                return;
+        }
+
+        base.ParseControlINIAttribute(iniFile, key, value);
+    }
 
     public override void Initialize()
     {
@@ -212,15 +255,6 @@ public sealed class TriggerGraphPanel : XNAScrollPanel
 
     private sealed class GraphCanvas : XNAControl
     {
-        private static readonly Color TriggerColor = new Color(135, 192, 232);
-        private static readonly Color VariableColor = new Color(255, 0, 200);
-        private static readonly Color LinkColor = new Color(181, 154, 220);
-        private static readonly Color ReadColor = new Color(115, 211, 196);
-        private static readonly Color WriteColor = new Color(229, 162, 112);
-        private static readonly Color CardBackground = new Color(24, 31, 39);
-        private static readonly Color HoveredCardBackground = new Color(41, 52, 63);
-        private static readonly Color SelectedCardBackground = new Color(62, 80, 98);
-
         public GraphCanvas(WindowManager windowManager, TriggerGraphPanel panel) : base(windowManager)
         {
             this.panel = panel;
@@ -402,8 +436,9 @@ public sealed class TriggerGraphPanel : XNAScrollPanel
             var card = GetCardBounds(bounds);
             var scaledBounds = panel.Scale(card);
             bool isSelected = node == SelectedNode;
-            Color accent = node.EditorColor ?? (node.IsVariable ? VariableColor : TriggerColor);
-            Color background = isSelected ? SelectedCardBackground : node == HoveredNode ? HoveredCardBackground : CardBackground;
+            Color accent = node.EditorColor ?? (node.IsVariable ? panel.VariableColor : panel.TriggerColor);
+            Color background = isSelected ? panel.SelectedCardBackground :
+                node == HoveredNode ? panel.HoveredCardBackground : panel.CardBackground;
             DrawPortRail(incomingPorts, node, card, card.Left, accent);
             DrawPortRail(outgoingPorts, node, card, card.Right, accent);
 
@@ -426,7 +461,7 @@ public sealed class TriggerGraphPanel : XNAScrollPanel
 
             if (panel.ZoomPercent >= 80)
             {
-                Color captionColor = node.IsVariable ? VariableColor : TriggerColor;
+                Color captionColor = node.IsVariable ? panel.VariableColor : panel.TriggerColor;
                 DrawStringWithShadow(caption, Constants.UIDefaultFont, new Vector2(bounds.X + 10, bounds.Center.Y + 2) * panel.Zoom,
                     captionColor, panel.Zoom);
             }
@@ -446,16 +481,16 @@ public sealed class TriggerGraphPanel : XNAScrollPanel
                 DrawLine(new Vector2(x, card.Bottom) * panel.Zoom, new Vector2(x, extent.Bottom) * panel.Zoom, color);
         }
 
-        private static Color GetReferenceColor(TriggerParameterReference? reference)
+        private Color GetReferenceColor(TriggerParameterReference? reference)
         {
             if (!reference.HasValue)
-                return LinkColor;
+                return panel.LinkColor;
 
             return reference.Value.VariableAccess switch
             {
-                TriggerVariableAccess.Read => ReadColor,
-                TriggerVariableAccess.Write => WriteColor,
-                _ => TriggerColor
+                TriggerVariableAccess.Read => panel.ReadColor,
+                TriggerVariableAccess.Write => panel.WriteColor,
+                _ => panel.TriggerColor
             };
         }
     }
