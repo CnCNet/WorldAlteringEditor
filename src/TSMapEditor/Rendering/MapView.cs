@@ -176,7 +176,6 @@ public class MapView : IMapView, IMapScreenCropper
     private RenderTarget2D transparencyRenderTarget;             // Render target for map UI elements (celltags etc.) that are only refreshed if something in the map changes (due to performance reasons)
     private RenderTarget2D transparencyPerFrameRenderTarget;     // Render target for map UI elements that are redrawn each frame
     private RenderTarget2D compositeRenderTarget;                // Render target where all the above is combined
-    private RenderTarget2D compositeRenderTargetCopy;
     private RenderTarget2D alphaRenderTarget;                    // Render target for alpha map
     private RenderTarget2D minimapRenderTarget;                  // For minimap and megamap rendering
 
@@ -631,7 +630,6 @@ public class MapView : IMapView, IMapScreenCropper
         transparencyRenderTarget?.Dispose();
         transparencyPerFrameRenderTarget?.Dispose();
         compositeRenderTarget?.Dispose();
-        compositeRenderTargetCopy?.Dispose();
         alphaRenderTarget?.Dispose();
         minimapRenderTarget?.Dispose();
     }
@@ -644,7 +642,6 @@ public class MapView : IMapView, IMapScreenCropper
         transparencyRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Color);
         transparencyPerFrameRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Color);
         compositeRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Color, DepthFormat.Depth24);
-        compositeRenderTargetCopy = CreateFullMapRenderTarget(SurfaceFormat.Color);
         alphaRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Alpha8);
         minimapRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Color);
 
@@ -2084,20 +2081,12 @@ public class MapView : IMapView, IMapScreenCropper
 
         GraphicsDevice.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Color.Black, 0f, 0);
 
-        // Draw the map to the composite render target.
-        Renderer.DrawTexture(mapRenderTarget,
-            sourceRectangle,
-            destinationRectangle,
-            Color.White);
-
         // Rendering alpha images is a relatively expensive operation. Only do it if necessary.
         if (IsRenderFlagEnabled(RenderObjectFlags.AlphaLights) && alphaImagesToRender.Count > 0)
         {
-            // Then draw alpha effects. First, render all alpha effects into the alpha surface. Then,
-            // render the alpha surface on the composite render target using a special shader.
-
-            Renderer.PushSettings(new SpriteBatchSettings(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, alphaImageToAlphaMapEffect));
-            GraphicsDevice.SetRenderTarget(alphaRenderTarget);
+            // Accumulate the alpha lights, then combine them with the map in the composite render target.
+            Renderer.PushRenderTarget(alphaRenderTarget,
+                new SpriteBatchSettings(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, alphaImageToAlphaMapEffect));
             GraphicsDevice.Clear(new Color(0.5f, 0f, 0f, 0f));
 
             for (int i = 0; i < alphaImagesToRender.Count; i++)
@@ -2128,19 +2117,16 @@ public class MapView : IMapView, IMapScreenCropper
                 Renderer.DrawTexture(alphaTexture.Texture, alphaDrawRectangle, Color.White);
             }
 
-            Renderer.PopSettings();
+            Renderer.PopRenderTarget();
 
-            // Copy of the composite render target so we can sample it while rendering to it
-            Renderer.PushSettings(new SpriteBatchSettings(SpriteSortMode.Deferred, BlendState.Opaque, SamplerState.PointClamp, null, null, null));
-            GraphicsDevice.SetRenderTarget(compositeRenderTargetCopy);
-            Renderer.DrawTexture(compositeRenderTarget, new Rectangle(0, 0, compositeRenderTarget.Width, compositeRenderTarget.Height), Color.White);
-            Renderer.PopSettings();
-
-            GraphicsDevice.SetRenderTarget(compositeRenderTarget);
-            alphaMapDrawEffect.Parameters["RenderSurface"].SetValue(compositeRenderTargetCopy);
+            alphaMapDrawEffect.Parameters["RenderSurface"].SetValue(mapRenderTarget);
             Renderer.PushSettings(new SpriteBatchSettings(SpriteSortMode.Deferred, BlendState.Opaque, SamplerState.PointClamp, null, null, alphaMapDrawEffect));
-            Renderer.DrawTexture(alphaRenderTarget, new Rectangle(0, 0, alphaRenderTarget.Width, alphaRenderTarget.Height), Color.White);
+            Renderer.DrawTexture(alphaRenderTarget, destinationRectangle, Color.White);
             Renderer.PopSettings();
+        }
+        else
+        {
+            Renderer.DrawTexture(mapRenderTarget, sourceRectangle, destinationRectangle, Color.White);
         }
 
         // Then draw transparency layers.
