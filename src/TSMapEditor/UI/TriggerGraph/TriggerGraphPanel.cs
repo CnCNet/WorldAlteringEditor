@@ -255,6 +255,12 @@ public sealed class TriggerGraphPanel : XNAScrollPanel
 
     private sealed class GraphCanvas : XNAControl
     {
+        private const int LabelPadding = 10;
+        private const int LabelWidth = TriggerGraphLayout.NodeWidth - LabelPadding * 2;
+        private const int MinimumNameZoomPercent = 60;
+        private const int CaptionZoomPercent = 80;
+        private const int NameOffsetAboveCenterWithCaption = 18;
+
         public GraphCanvas(WindowManager windowManager, TriggerGraphPanel panel) : base(windowManager)
         {
             this.panel = panel;
@@ -266,6 +272,9 @@ public sealed class TriggerGraphPanel : XNAScrollPanel
         private readonly Dictionary<TriggerGraphNode, (int Top, int Bottom)> incomingPorts = new();
         private readonly Dictionary<TriggerGraphNode, (int Top, int Bottom)> outgoingPorts = new();
         private TriggerGraphPath hoveredPath;
+        private int nameLabelWidth;
+
+        private int NameZoomPercent => Math.Max(panel.ZoomPercent, MinimumNameZoomPercent);
 
         public TriggerGraphLayout Layout { get; private set; }
         public TriggerGraphNode SelectedNode { get; set; }
@@ -275,19 +284,11 @@ public sealed class TriggerGraphPanel : XNAScrollPanel
         public void SetLayout(TriggerGraphLayout layout)
         {
             Layout = layout;
-            ResizeForZoom();
             labels.Clear();
+            ResizeForZoom();
             edgeColors.Clear();
             incomingPorts.Clear();
             outgoingPorts.Clear();
-
-            foreach (var node in layout.Bounds.Keys)
-            {
-                const int LabelWidth = TriggerGraphLayout.NodeWidth - 20;
-                labels.Add(node, (
-                    Renderer.GetStringWithLimitedWidth(node.Name ?? string.Empty, Constants.UIBoldFont, LabelWidth),
-                    Renderer.GetStringWithLimitedWidth(GetNodeCaption(node), Constants.UIDefaultFont, LabelWidth)));
-            }
 
             foreach (var path in layout.Paths)
             {
@@ -315,6 +316,24 @@ public sealed class TriggerGraphPanel : XNAScrollPanel
 
             var size = Layout.Size.ToVector2() * panel.Zoom;
             ClientRectangle = new Rectangle(0, 0, (int)MathF.Ceiling(size.X), (int)MathF.Ceiling(size.Y));
+            UpdateLabels();
+        }
+
+        private void UpdateLabels()
+        {
+            int width = LabelWidth * panel.ZoomPercent / NameZoomPercent;
+            if (width == nameLabelWidth && labels.Count == Layout.Bounds.Count)
+                return;
+
+            labels.Clear();
+            foreach (var node in Layout.Bounds.Keys)
+            {
+                labels.Add(node, (
+                    Renderer.GetStringWithLimitedWidth(node.Name ?? string.Empty, Constants.UIBoldFont, width),
+                    Renderer.GetStringWithLimitedWidth(GetNodeCaption(node), Constants.UIDefaultFont, LabelWidth)));
+            }
+
+            nameLabelWidth = width;
         }
 
         public void ClearHover() => SetHover(null, null);
@@ -448,22 +467,30 @@ public sealed class TriggerGraphPanel : XNAScrollPanel
             int accentWidth = Math.Max(1, (int)MathF.Round(3 * panel.Zoom));
             FillRectangle(new Rectangle(scaledBounds.X + 1, scaledBounds.Y + 1, accentWidth, scaledBounds.Height - 2), accent);
 
-            if (panel.ZoomPercent < 67)
-                return;
+            DrawNodeLabels(node, card);
+        }
 
+        private void DrawNodeLabels(TriggerGraphNode node, Rectangle card)
+        {
             var (name, caption) = labels[node];
-            int nameOffset = panel.ZoomPercent >= 80 ? -18 : -8;
+            bool showCaption = panel.ZoomPercent >= CaptionZoomPercent;
+            float nameScale = NameZoomPercent / 100f;
+            float x = (card.X + LabelPadding) * panel.Zoom;
+            float nameY = (card.Center.Y - NameOffsetAboveCenterWithCaption) * panel.Zoom;
+            if (!showCaption)
+            {
+                int height = (int)(card.Height * panel.Zoom / nameScale);
+                nameY = card.Y * panel.Zoom + Renderer.GetSingleLineTextYPadding(Constants.UIBoldFont, height) * nameScale;
+            }
 
             // Keep the configured color on the card accent and lighten dark palette colors for text.
             Color nameColor = node.EditorColor is Color editorColor ? Color.Lerp(editorColor, Color.White, 0.65f) : UISettings.ActiveSettings.TextColor;
-            DrawStringWithShadow(name, Constants.UIBoldFont, new Vector2(bounds.X + 10, bounds.Center.Y + nameOffset) * panel.Zoom,
-                nameColor, panel.Zoom);
+            DrawStringWithShadow(name, Constants.UIBoldFont, new Vector2(x, nameY), nameColor, nameScale);
 
-            if (panel.ZoomPercent >= 80)
+            if (showCaption)
             {
                 Color captionColor = node.IsVariable ? panel.VariableColor : panel.TriggerColor;
-                DrawStringWithShadow(caption, Constants.UIDefaultFont, new Vector2(bounds.X + 10, bounds.Center.Y + 2) * panel.Zoom,
-                    captionColor, panel.Zoom);
+                DrawStringWithShadow(caption, Constants.UIDefaultFont, new Vector2(x, (card.Center.Y + 2) * panel.Zoom), captionColor, panel.Zoom);
             }
         }
 
