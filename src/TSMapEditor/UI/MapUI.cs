@@ -290,8 +290,8 @@ public class MapUI : XNAControl, ICursorActionTarget, IMutationTarget, IMapScree
 
         const int step = 32;
 
-        if (selectedObject.Facing + step > byte.MaxValue)
-            selectedObject.Facing = (byte)(selectedObject.Facing + step - byte.MaxValue);
+        if (selectedObject.Facing + step > Constants.FacingMax)
+            selectedObject.Facing = (byte)(selectedObject.Facing + step - (Constants.FacingMax + 1));
         else
             selectedObject.Facing += step;
 

@@ -1,4 +1,5 @@
-﻿using MapEditorLibrary.Models.Enums;
+﻿using MapEditorLibrary.GameMath;
+using MapEditorLibrary.Models.Enums;
 
 namespace MapEditorLibrary.Models;
 
@@ -29,86 +30,22 @@ public class Unit : Foot<UnitType>
 
     public override int GetFrameIndex(int frameCount)
     {
-        return GetStandingFrame(frameCount);
+        var (startFrame, framesPerFacing, facingCount) = UnitType.GetIdleFrameLayout();
+        return startFrame + GetFacingIndex(facingCount) * framesPerFacing;
     }
 
-    public int GetTurretFrameIndex() => UnitType.GetTurretStartFrame() + GetTurretFacingIndex();
+    public int GetTurretFrameIndex() => UnitType.GetTurretStartFrame() + GetFacingIndex(UnitType.ArtConfig.TurretFacings);
 
-    private int GetTurretFacingIndex()
+    private int GetFacingIndex(int facingCount)
     {
-        // Seems that there is no standard way of doing things with this engine...
-        int facingIndex = GetFacingIndexWithOffset();
-        double turretFramesPerFacing = Constants.TurretFrameCount / (double)UnitType.ArtConfig.Facings;
-        return (int)(facingIndex * turretFramesPerFacing);
-    }
+        if (facingCount <= 1)
+            return 0;
 
-    private int GetFacingIndex()
-    {
-        int facingIndex = 0;
-        if (UnitType.ArtConfig.Facings == 8)
-        {
-            facingIndex = Facing / 32;
-        }
-        else if (UnitType.ArtConfig.Facings > 1)
-        {
-            facingIndex = Facing / (256 / UnitType.ArtConfig.Facings);
+        const int unitsPerTurn = Constants.FacingMax + 1;
+        int facingIndex = (Facing * facingCount + unitsPerTurn / 2) / unitsPerTurn;
 
-            if (facingIndex >= UnitType.ArtConfig.Facings)
-                facingIndex = 0;
-        }
-
-        return facingIndex;
-    }
-
-    private int GetFacingIndexWithOffset()
-    {
-        int facingIndex = GetFacingIndex();
-
-        // Facings start to the north instead of north-east, we need to offset the facing index accordingly
-        // by one "full facing" (one-eight of 256). How many frames this means depends on how many facings the unit has.
-
-        facingIndex += (UnitType.ArtConfig.Facings / 8);
-
-        // If the facing index turned out-of-bounds, spin it around
-        if (facingIndex >= UnitType.ArtConfig.Facings)
-            facingIndex -= UnitType.ArtConfig.Facings;
-
-        return facingIndex;
-    }
-
-    private int GetStandingFrame(int frameCount)
-    {
-        int facingIndex = GetFacingIndexWithOffset();
-
-        // Units with firing frames by default have their frames
-        // in a different sequence compared to units without firing frames
-        if (UnitType.ArtConfig.FiringFrames > 0)
-        {
-            int startStandFrame;
-
-            if (UnitType.ArtConfig.StartStandFrame > -1)
-                startStandFrame = UnitType.ArtConfig.StartStandFrame;
-            else
-                startStandFrame = UnitType.ArtConfig.WalkFrames * UnitType.ArtConfig.Facings;
-
-            return startStandFrame + (facingIndex * UnitType.ArtConfig.StandingFrames);
-        }
-        else
-        {
-            if (UnitType.ArtConfig.StartStandFrame < 0)
-            {
-                if (UnitType.ArtConfig.StartWalkFrame < 0)
-                {
-                    return facingIndex * UnitType.ArtConfig.StandingFrames;
-                }
-
-                // If FiringFrames=0, StartStandFrame matches StartWalkFrame by default
-                return UnitType.ArtConfig.StartWalkFrame + (UnitType.ArtConfig.WalkFrames * facingIndex);
-            }
-
-            // Use stand frames
-            return UnitType.ArtConfig.StartStandFrame + (facingIndex * UnitType.ArtConfig.StandingFrames);
-        }
+        // SHP frames start at visual north, while map facings start at northeast.
+        return (facingIndex + facingCount / (int)Direction.Count) % facingCount;
     }
 
     public override bool Remapable() => ObjectType.ArtConfig.Remapable;
