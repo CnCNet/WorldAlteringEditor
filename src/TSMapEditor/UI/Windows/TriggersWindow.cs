@@ -27,6 +27,10 @@ public enum TriggerSortMode
 
 public class TriggersWindow : INItializableWindow
 {
+    private const string DifficultyHardGlobalName = "Difficulty Hard";
+    private const string DifficultyMediumGlobalName = "Difficulty Medium";
+    private const string DifficultyEasyGlobalName = "Difficulty Easy";
+
     public TriggersWindow(WindowManager windowManager, Map map, EditorState editorState, ICursorActionTarget cursorActionTarget,
         ReferenceListWindow referenceListWindow) : base(windowManager)
     {
@@ -986,8 +990,8 @@ public class TriggersWindow : INItializableWindow
             Repeating = originalTag == null ? 0 : originalTag.Repeating
         });
 
-        int mediumDiffGlobalVariableIndex = map.Rules.GlobalVariables.FindIndex(gv => gv.Name == "Difficulty Medium");
-        int easyDiffGlobalVariableIndex = map.Rules.GlobalVariables.FindIndex(gv => gv.Name == "Difficulty Easy");
+        int mediumDiffGlobalVariableIndex = map.Rules.GlobalVariables.FindIndex(gv => gv.Name == DifficultyMediumGlobalName);
+        int easyDiffGlobalVariableIndex = map.Rules.GlobalVariables.FindIndex(gv => gv.Name == DifficultyEasyGlobalName);
 
         if (mediumDiffGlobalVariableIndex < 0)
         {
@@ -1012,7 +1016,7 @@ public class TriggersWindow : INItializableWindow
                 if (!map.Rules.GlobalVariables.Exists(gv => gv.Index == paramValue))
                     continue;
 
-                if (map.Rules.GlobalVariables.Find(gv => gv.Index == paramValue).Name == "Difficulty Hard")
+                if (map.Rules.GlobalVariables.Find(gv => gv.Index == paramValue).Name == DifficultyHardGlobalName)
                 {
                     if (mediumDiffGlobalVariableIndex > -1)
                     {
@@ -1820,6 +1824,39 @@ public class TriggersWindow : INItializableWindow
                         LocalVariable localVariable = map.LocalVariables.Find(lv => editedTrigger.Name.Contains(lv.Name, StringComparison.OrdinalIgnoreCase));
                         if (localVariable != null)
                             condition.Parameters[parameterIndex] = localVariable.Index.ToString(CultureInfo.InvariantCulture);
+                        break;
+                    case TriggerParamType.GlobalVariable:
+                        const int GlobalSetConditionIndex = 27;
+                        GlobalVariable globalVariable = map.Rules.GlobalVariables.Find(gv => editedTrigger.Name.Contains(gv.Name, StringComparison.OrdinalIgnoreCase));
+
+                        if (globalVariable != null)
+                        {
+                            condition.Parameters[parameterIndex] = globalVariable.Index.ToString(CultureInfo.InvariantCulture);
+                        }
+                        else if (condition.ConditionIndex == GlobalSetConditionIndex)
+                        {
+                            // If the trigger's name contains a difficulty identifier, the global is most
+                            // likely intended for enabling the trigger on that specific difficulty.
+                            Difficulty assumedDifficulty = Helpers.AssumedDifficultyFromTriggerName(editedTrigger.Name);
+                            switch (assumedDifficulty)
+                            {
+                                case Difficulty.Hard:
+                                    globalVariable = map.Rules.GlobalVariables.Find(gv => gv.Name == DifficultyHardGlobalName);
+                                    break;
+                                case Difficulty.Medium:
+                                    globalVariable = map.Rules.GlobalVariables.Find(gv => gv.Name == DifficultyMediumGlobalName);
+                                    break;
+                                case Difficulty.Easy:
+                                    globalVariable = map.Rules.GlobalVariables.Find(gv => gv.Name == DifficultyEasyGlobalName);
+                                    break;
+                                default:
+                                    break;
+                            }
+
+                            if (globalVariable != null)
+                                condition.Parameters[parameterIndex] = globalVariable.Index.ToString(CultureInfo.InvariantCulture);
+                        }
+
                         break;
                 }
             }

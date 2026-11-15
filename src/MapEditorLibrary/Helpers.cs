@@ -846,6 +846,39 @@ public static class Helpers
         }
     }
 
+
+    /// <summary>
+    /// Makes a best guess to determine the intended difficulty level of a trigger based on its name.
+    /// </summary>
+    public static Difficulty AssumedDifficultyFromTriggerName(string triggerName)
+    {
+        if (triggerName.StartsWith("Hard ", StringComparison.OrdinalIgnoreCase) ||
+            triggerName.StartsWith("H ", StringComparison.OrdinalIgnoreCase) ||
+            triggerName.EndsWith(" Hard", StringComparison.OrdinalIgnoreCase) ||
+            triggerName.EndsWith(" H", StringComparison.OrdinalIgnoreCase))
+        {
+            return Difficulty.Hard;
+        }
+
+        if (triggerName.StartsWith("Medium ", StringComparison.OrdinalIgnoreCase) ||
+            triggerName.StartsWith("M ", StringComparison.OrdinalIgnoreCase) ||
+            triggerName.EndsWith(" Medium", StringComparison.OrdinalIgnoreCase) ||
+            triggerName.EndsWith(" M", StringComparison.OrdinalIgnoreCase))
+        {
+            return Difficulty.Medium;
+        }
+
+        if (triggerName.StartsWith("Easy ", StringComparison.OrdinalIgnoreCase) ||
+            triggerName.StartsWith("E ", StringComparison.OrdinalIgnoreCase) ||
+            triggerName.EndsWith(" Easy", StringComparison.OrdinalIgnoreCase) ||
+            triggerName.EndsWith(" E", StringComparison.OrdinalIgnoreCase))
+        {
+            return Difficulty.Easy;
+        }
+
+        return Difficulty.None;
+    }
+
     public static string SubCellToTranslatedString(SubCell subCell)
     {
         return Translate("SubCell." + subCell.ToString(), subCell.ToString());
