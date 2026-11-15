@@ -1,4 +1,5 @@
-﻿using Rampastring.Tools;
+﻿using MapEditorLibrary.GameMath;
+using Rampastring.Tools;
 using System.Reflection;
 
 namespace MapEditorLibrary;
@@ -61,6 +62,7 @@ public static class Constants
 
     public const int ObjectHealthMax = 256;
     public const int FacingMax = 255;
+    public const int FacingUnitsPerDirection = (FacingMax + 1) / (int)Direction.Count;
 
     public const int TurretFrameCount = 32;
 

@@ -195,6 +195,19 @@ public class TheaterGraphics : ITheater, ITheaterTileData
 
     public ShapeImage PipTextures { get; set; }
 
+    public CommonDrawParams GetBuildingDrawParams(BuildingType buildingType)
+    {
+        int index = buildingType.Index;
+
+        return new CommonDrawParams()
+        {
+            IniName = buildingType.ININame,
+            ShapeImage = BuildingTextures[index],
+            TurretVoxel = BuildingTurretModels[index],
+            BarrelVoxel = BuildingBarrelModels[index]
+        };
+    }
+
     public CommonDrawParams GetUnitDrawParams(UnitType unitType)
     {
         int index = unitType.Index;

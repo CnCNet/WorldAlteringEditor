@@ -1,5 +1,4 @@
 ﻿using MapEditorLibrary;
-using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Graphics;
 using MapEditorLibrary.Models;
 using Microsoft.Xna.Framework.Graphics;
@@ -31,13 +30,11 @@ public class UnitListPanel : ObjectListPanel
     private readonly bool isNaval;
     private readonly UnitPlacementAction unitPlacementAction;
 
-    private UnitPreviewRenderer previewRenderer;
+    private ObjectPreviewRenderer previewRenderer;
 
     protected override (Texture2D regular, Texture2D remap) GetObjectTextures<T>(T objectType, ShapeImage[] textures)
     {
-        const int facingUnitsPerDirection = (Constants.FacingMax + 1) / (int)Direction.Count;
-        var unit = new Unit(objectType as UnitType) { Facing = (byte)((int)Direction.SE * facingUnitsPerDirection) };
-        return previewRenderer.Render(unit);
+        return previewRenderer.Render(objectType as UnitType);
     }
 
     protected override void InitObjects()
@@ -54,7 +51,7 @@ public class UnitListPanel : ObjectListPanel
         }
 
         int previewWidth = Math.Max(1, Constants.UITreeViewLineIndentation - Constants.UIEmptySideSpace);
-        using var renderer = new UnitPreviewRenderer(GraphicsDevice, TheaterGraphics, previewWidth, ObjectTreeView.LineHeight);
+        using var renderer = new ObjectPreviewRenderer(GraphicsDevice, TheaterGraphics, previewWidth, ObjectTreeView.LineHeight);
         previewRenderer = renderer;
         InitObjectsBase(Map.Rules.UnitTypes, null, filterFunction);
         previewRenderer = null;

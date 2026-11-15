@@ -16,7 +16,7 @@ public sealed class BuildingRenderer : ObjectRenderer<Structure>
 
     protected override Color ReplacementColor => Color.Yellow;
 
-    private List<Animation> animationList = new List<Animation>();
+    private readonly List<Animation> animationList = new List<Animation>();
 
     private DepthRectangle cachedDepth;
 
@@ -80,18 +80,7 @@ public sealed class BuildingRenderer : ObjectRenderer<Structure>
         return CellMath.GetDepthForPixel(lowerPoint.Y, gameObject.Position, Map);
     }
 
-    protected override CommonDrawParams GetDrawParams(Structure gameObject)
-    {
-        string iniName = gameObject.ObjectType.ININame;
-
-        return new CommonDrawParams()
-        {
-            IniName = iniName,
-            ShapeImage = RenderDependencies.TheaterGraphics.BuildingTextures[gameObject.ObjectType.Index],
-            TurretVoxel = RenderDependencies.TheaterGraphics.BuildingTurretModels[gameObject.ObjectType.Index],
-            BarrelVoxel = RenderDependencies.TheaterGraphics.BuildingBarrelModels[gameObject.ObjectType.Index]
-        };
-    }
+    protected override CommonDrawParams GetDrawParams(Structure gameObject) => TheaterGraphics.GetBuildingDrawParams(gameObject.ObjectType);
 
     protected override bool ShouldRenderReplacementText(Structure gameObject)
     {
@@ -311,6 +300,28 @@ public sealed class BuildingRenderer : ObjectRenderer<Structure>
         isDrawingBib = false;
     }
 
+    /// <summary>
+    /// Collects animations in draw order and returns the index where layers above the building begin.
+    /// </summary>
+    public static int GetOrderedAnimations(Structure building, List<Animation> animations)
+    {
+        animations.Clear();
+        animations.AddRange(building.Anims);
+        animations.AddRange(building.PowerUpAnims);
+        if (building.TurretAnim != null)
+            animations.Add(building.TurretAnim);
+
+        animations.Sort((first, second) => GetAnimationSortValue(first).CompareTo(GetAnimationSortValue(second)));
+
+        int aboveBuildingIndex = 0;
+        while (aboveBuildingIndex < animations.Count && GetAnimationSortValue(animations[aboveBuildingIndex]) < 0)
+            aboveBuildingIndex++;
+
+        return aboveBuildingIndex;
+    }
+
+    private static int GetAnimationSortValue(Animation animation) => animation.BuildingAnimDrawConfig.SortValue(animation.AnimType.ArtConfig);
+
     protected override void Render(Structure gameObject, Point2D drawPoint, in CommonDrawParams drawParams)
     {
         bool affectedByLighting = RenderDependencies.EditorState.IsLighting && (drawParams.ShapeImage != null && drawParams.ShapeImage.SubjectToLighting);
@@ -325,45 +336,16 @@ public sealed class BuildingRenderer : ObjectRenderer<Structure>
         int frameCount = drawParams.ShapeImage == null ? 0 : drawParams.ShapeImage.GetFrameCount();
         int frameIndex = gameObject.GetFrameIndex(frameCount);
 
-        // Form the anims list
-        animationList.Clear();
-        animationList.AddRange(gameObject.Anims);
-        animationList.AddRange(gameObject.PowerUpAnims);
-        if (gameObject.TurretAnim != null)
-            animationList.Add(gameObject.TurretAnim);
-
-        // Sort the anims according to their settings
-        animationList.Sort((anim1, anim2) =>
-            anim1.BuildingAnimDrawConfig.SortValue(anim1.AnimType.ArtConfig).CompareTo(anim2.BuildingAnimDrawConfig.SortValue(anim2.AnimType.ArtConfig)));
-
         bool affectedByAmbient = !affectedByLighting;
+        int aboveBuildingIndex = GetOrderedAnimations(gameObject, animationList);
 
-        // The building itself has an offset of 0, so first draw all anims with sort values < 0
-        for (int i = 0; i < animationList.Count; i++)
-        {
-            var anim = animationList[i];
-
-            if (anim.BuildingAnimDrawConfig.SortValue(anim.AnimType.ArtConfig) < 0)
-            {
-                var animShape = TheaterGraphics.AnimTextures[anim.AnimType.Index];
-                if (animShape != null)
-                {
-                    DrawAnimationImage(gameObject, anim, animShape, anim.GetFrameIndex(animShape.GetFrameCount()),
-                        nonRemapColor, true, gameObject.GetRemapColor(), affectedByLighting, affectedByAmbient,
-                        drawPoint, Constants.DepthEpsilon, true);
-                }
-            }
-        }
+        DrawBuildingAnimations(gameObject, drawPoint, nonRemapColor, affectedByLighting, 0, aboveBuildingIndex, true);
 
         // Then the building itself
         if (!gameObject.ObjectType.NoShadow)
             DrawShadow(gameObject);
 
-        var foundation = gameObject.ObjectType.ArtConfig.Foundation;
-        float foundationCenterXPoint = (float)foundation.Width / (foundation.Width + foundation.Height);
-
-        DrawBuildingImage(gameObject, drawParams.ShapeImage,
-            gameObject.GetFrameIndex(frameCount),
+        DrawBuildingImage(gameObject, drawParams.ShapeImage, frameIndex,
             nonRemapColor, true, gameObject.GetRemapColor(),
             affectedByLighting, affectedByAmbient, drawPoint, 0);
 
@@ -371,27 +353,7 @@ public sealed class BuildingRenderer : ObjectRenderer<Structure>
         if (RenderDependencies.EditorState.RenderInvisibleInGameObjects)
             DrawFoundationLines(gameObject);
 
-        // Then draw all anims with sort values >= 0
-        for (int i = 0; i < animationList.Count; i++)
-        {
-            var anim = animationList[i];
-
-            if (anim.BuildingAnimDrawConfig.SortValue(anim.AnimType.ArtConfig) >= 0)
-            {
-                // It gets challenging to handle depth if the anim renderer draws anims that are "above" the building, 
-                // as it does not have proper context of the building it's drawing on.
-                // Draw the anim here instead, like it was a part of the building.
-                var animShape = TheaterGraphics.AnimTextures[anim.AnimType.Index];
-
-                if (animShape != null)
-                {
-                    DrawAnimationImage(gameObject, anim, animShape, anim.GetFrameIndex(animShape.GetFrameCount()),
-                        nonRemapColor, true, gameObject.GetRemapColor(), affectedByLighting, affectedByAmbient,
-                        drawPoint, 0, false);
-                }
-            }
-        }
-
+        DrawBuildingAnimations(gameObject, drawPoint, nonRemapColor, affectedByLighting, aboveBuildingIndex, animationList.Count, false);
         DrawVoxelTurret(gameObject, drawPoint, drawParams, nonRemapColor, affectedByLighting);
 
         if (gameObject.ObjectType.HasSpotlight)
@@ -401,6 +363,23 @@ public sealed class BuildingRenderer : ObjectRenderer<Structure>
                 CellMath.CellTopLeftPointFromCellCoords_3D(gameObject.Position, Map);
 
             DrawObjectFacingArrow(gameObject.Facing, cellCenter);
+        }
+    }
+
+    private void DrawBuildingAnimations(Structure building, Point2D drawPoint, Color color, bool affectedByLighting,
+        int startIndex, int endIndex, bool isBelowBuilding)
+    {
+        float depthAddition = isBelowBuilding ? Constants.DepthEpsilon : 0;
+
+        for (int i = startIndex; i < endIndex; i++)
+        {
+            var animation = animationList[i];
+            var shape = TheaterGraphics.AnimTextures[animation.AnimType.Index];
+            if (shape != null)
+            {
+                DrawAnimationImage(building, animation, shape, animation.GetFrameIndex(shape.GetFrameCount()),
+                    color, true, building.GetRemapColor(), affectedByLighting, !affectedByLighting, drawPoint, depthAddition, isBelowBuilding);
+            }
         }
     }
 
@@ -522,64 +501,67 @@ public sealed class BuildingRenderer : ObjectRenderer<Structure>
         if (!isBelowBuilding)
             depthRectangle += GetDepthAddition(gameObject);
 
-        switch (animation.AnimType.ArtConfig.Translucency)
-        {
-            default:
-            case 0:
-                break;
-            case 25:
-                color = color with { A = 192 };
-                break;
-            case 50:
-                color = color with { A = 128 };
-                break;
-            case 75:
-                color = color with { A = 64 };
-                break;
-        }
+        color.A = GetAnimationOpacity(animation, color.A);
 
         RenderFrame(gameObject, frame, remapFrame, color, drawRemap, remapColor,
             drawingBounds, image.GetPaletteTexture(), lighting, depthRectangle);
     }
 
+    public static byte GetAnimationOpacity(Animation animation, byte defaultOpacity = byte.MaxValue)
+    {
+        return animation.AnimType.ArtConfig.Translucency switch
+        {
+            25 => 192,
+            50 => 128,
+            75 => 64,
+            _ => defaultOpacity
+        };
+    }
+
+    public readonly record struct VoxelTurretLayer(VoxelModel Model, Point2D Offset, float DepthAddition);
+
+    public static (VoxelTurretLayer Lower, VoxelTurretLayer Upper) GetVoxelTurretLayers(Structure gameObject, in CommonDrawParams drawParams)
+    {
+        var buildingType = gameObject.ObjectType;
+        if (!buildingType.Turret)
+            return default;
+
+        const float topDepthAddition = Constants.DepthEpsilon * ObjectDepthAdjustments.Turret;
+        if (!buildingType.TurretAnimIsVoxel)
+        {
+            return buildingType.BarrelAnimIsVoxel
+                ? (default, new VoxelTurretLayer(drawParams.BarrelVoxel, Point2D.Zero, topDepthAddition))
+                : default;
+        }
+
+        var offset = new Point2D(buildingType.TurretAnimX, buildingType.TurretAnimY);
+
+        const byte facingStartDrawAbove = (byte)Direction.E * Constants.FacingUnitsPerDirection;
+        const byte facingEndDrawAbove = (byte)Direction.W * Constants.FacingUnitsPerDirection;
+        if (gameObject.Facing is > facingStartDrawAbove and <= facingEndDrawAbove)
+        {
+            return (new VoxelTurretLayer(drawParams.TurretVoxel, offset, Constants.DepthEpsilon),
+                new VoxelTurretLayer(drawParams.BarrelVoxel, offset, topDepthAddition));
+        }
+
+        return (new VoxelTurretLayer(drawParams.BarrelVoxel, offset, -Constants.DepthEpsilon),
+            new VoxelTurretLayer(drawParams.TurretVoxel, offset, topDepthAddition));
+    }
+
     private void DrawVoxelTurret(Structure gameObject, Point2D drawPoint, in CommonDrawParams drawParams, Color nonRemapColor, bool affectedByLighting)
     {
-        if (gameObject.ObjectType.Turret && gameObject.ObjectType.TurretAnimIsVoxel)
-        {
-            var turretOffset = new Point2D(gameObject.ObjectType.TurretAnimX, gameObject.ObjectType.TurretAnimY);
-            var turretDrawPoint = drawPoint + turretOffset;
+        var (lower, upper) = GetVoxelTurretLayers(gameObject, drawParams);
+        DrawVoxelTurretLayer(gameObject, drawPoint, lower, nonRemapColor, affectedByLighting);
+        DrawVoxelTurretLayer(gameObject, drawPoint, upper, nonRemapColor, affectedByLighting);
+    }
 
-            const byte facingStartDrawAbove = (byte)Direction.E * 32;
-            const byte facingEndDrawAbove = (byte)Direction.W * 32;
+    private void DrawVoxelTurretLayer(Structure gameObject, Point2D drawPoint, VoxelTurretLayer layer, Color color, bool affectedByLighting)
+    {
+        if (layer.Model == null)
+            return;
 
-            if (gameObject.Facing is > facingStartDrawAbove and <= facingEndDrawAbove)
-            {
-                DrawVoxelModel(gameObject, drawParams.TurretVoxel,
-                    gameObject.Facing, RampType.None, nonRemapColor, true, gameObject.GetRemapColor(),
-                    affectedByLighting, turretDrawPoint, Constants.DepthEpsilon);
-
-                DrawVoxelModel(gameObject, drawParams.BarrelVoxel,
-                    gameObject.Facing, RampType.None, nonRemapColor, true, gameObject.GetRemapColor(),
-                    affectedByLighting, turretDrawPoint, Constants.DepthEpsilon * ObjectDepthAdjustments.Turret);
-            }
-            else
-            {
-                DrawVoxelModel(gameObject, drawParams.BarrelVoxel,
-                    gameObject.Facing, RampType.None, nonRemapColor, true, gameObject.GetRemapColor(),
-                    affectedByLighting, turretDrawPoint, -Constants.DepthEpsilon);
-
-                DrawVoxelModel(gameObject, drawParams.TurretVoxel,
-                    gameObject.Facing, RampType.None, nonRemapColor, true, gameObject.GetRemapColor(),
-                    affectedByLighting, turretDrawPoint, Constants.DepthEpsilon * ObjectDepthAdjustments.Turret); // Turret is always drawn above building
-            }
-        }
-        else if (gameObject.ObjectType.Turret && !gameObject.ObjectType.TurretAnimIsVoxel &&
-                 gameObject.ObjectType.BarrelAnimIsVoxel)
-        {
-            DrawVoxelModel(gameObject, drawParams.BarrelVoxel,
-                gameObject.Facing, RampType.None, nonRemapColor, true, gameObject.GetRemapColor(),
-                affectedByLighting, drawPoint, Constants.DepthEpsilon * ObjectDepthAdjustments.Turret);
-        }
+        DrawVoxelModel(gameObject, layer.Model, gameObject.Facing, RampType.None, color, true, gameObject.GetRemapColor(),
+            affectedByLighting, drawPoint + layer.Offset, layer.DepthAddition);
     }
 
     protected override void DrawObjectReplacementText(Structure gameObject, string text, Point2D drawPoint)

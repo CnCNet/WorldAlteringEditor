@@ -85,11 +85,11 @@ public sealed class UnitRenderer : ObjectRenderer<Unit>
         if (!gameObject.UnitType.Turret)
             return (body, default, default);
 
-        const byte facingStartDrawAbove = (byte)Direction.E * 32;
-        const byte facingEndDrawAbove = (byte)Direction.W * 32;
+        const byte facingStartDrawAbove = (byte)Direction.E * Constants.FacingUnitsPerDirection;
+        const byte facingEndDrawAbove = (byte)Direction.W * Constants.FacingUnitsPerDirection;
 
         byte facing = Convert.ToByte(Math.Clamp(
-            Math.Round((float)gameObject.Facing / 8, MidpointRounding.AwayFromZero) * 8,
+            Math.Round((float)gameObject.Facing / (int)Direction.Count, MidpointRounding.AwayFromZero) * (int)Direction.Count,
             byte.MinValue,
             byte.MaxValue));
 
