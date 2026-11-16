@@ -21,6 +21,8 @@ using TSMapEditor.Rendering.ObjectRenderers;
 using TSMapEditor.Settings;
 using TSMapEditor.UI;
 using TSMapEditor.UI.Windows;
+using D3D11 = SharpDX.Direct3D11;
+using DXGI = SharpDX.DXGI;
 
 namespace TSMapEditor.Rendering;
 
@@ -220,6 +222,12 @@ public class MapView : IMapView, IMapScreenCropper
 
     private Rectangle mapRenderSourceRectangle;
     private Rectangle mapRenderDestinationRectangle;
+
+    private readonly BlendState alphaLightBlendState = new BlendState
+    {
+        AlphaSourceBlend = Blend.One,
+        AlphaDestinationBlend = Blend.One
+    };
 
     private DepthStencilState depthRenderStencilState;  // Depth stencil state for rendering terrain. Reads and writes depth information.
     private DepthStencilState depthReadStencilState;    // Depth stencil state for rendering smudges and flat overlays. Reads depth information, but does not write it.
@@ -580,6 +588,7 @@ public class MapView : IMapView, IMapScreenCropper
         depthReadStencilState?.Dispose();
         objectRenderStencilState?.Dispose();
         shadowRenderStencilState?.Dispose();
+        alphaLightBlendState.Dispose();
         Map = null;
 
         ClearRenderTargets();
@@ -642,8 +651,12 @@ public class MapView : IMapView, IMapScreenCropper
         transparencyRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Color);
         transparencyPerFrameRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Color);
         compositeRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Color, DepthFormat.Depth24);
-        alphaRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Alpha8);
+        alphaRenderTarget = CreateAlphaLightRenderTarget();
         minimapRenderTarget = CreateFullMapRenderTarget(SurfaceFormat.Color);
+
+        bool useAlphaChannel = alphaRenderTarget.Format == SurfaceFormat.Alpha8;
+        alphaImageToAlphaMapEffect.Parameters["UseAlphaChannel"].SetValue(useAlphaChannel);
+        alphaMapDrawEffect.Parameters["UseAlphaChannel"].SetValue(useAlphaChannel);
 
         Constants.DepthRenderStep = Constants.CellSizeY / Map.DepthRenderRange;
     }
@@ -728,10 +741,43 @@ public class MapView : IMapView, IMapScreenCropper
 
     private RenderTarget2D CreateFullMapRenderTarget(SurfaceFormat surfaceFormat, DepthFormat depthFormat = DepthFormat.None)
     {
-       return new RenderTarget2D(GraphicsDevice,
-           Map.WidthInPixels,
-           Map.HeightInPixels + (Constants.CellHeight * Constants.MaxMapHeightLevel), false, surfaceFormat,
-           depthFormat, 0, RenderTargetUsage.PreserveContents);
+        return new RenderTarget2D(GraphicsDevice, Map.WidthInPixels, Map.HeightInPixelsWithCellHeight, false, surfaceFormat,
+            depthFormat, 0, RenderTargetUsage.PreserveContents);
+    }
+
+    private RenderTarget2D CreateAlphaLightRenderTarget()
+    {
+        // The standard MonoGame constructor promotes Alpha8 to Color, even when the device supports A8,
+        // causing the alpha light to take more memory than is necessary.
+        // On Windows we can work around this by calling SharpDX APIs directly.
+
+#if !WINDOWS
+        return CreateFullMapRenderTarget(SurfaceFormat.Alpha8);
+#else
+        const DXGI.Format format = DXGI.Format.A8_UNorm;
+        const D3D11.FormatSupport requiredSupport = D3D11.FormatSupport.Texture2D | D3D11.FormatSupport.RenderTarget |
+            D3D11.FormatSupport.ShaderSample | D3D11.FormatSupport.Blendable;
+
+        var nativeDevice = (D3D11.Device)GraphicsDevice.Handle;
+        if ((nativeDevice.CheckFormatSupport(format) & requiredSupport) != requiredSupport)
+            return CreateFullMapRenderTarget(SurfaceFormat.Color);
+
+        var description = new D3D11.Texture2DDescription
+        {
+            Width = Map.WidthInPixels,
+            Height = Map.HeightInPixelsWithCellHeight,
+            MipLevels = 1,
+            ArraySize = 1,
+            Format = format,
+            SampleDescription = new DXGI.SampleDescription(1, 0),
+            BindFlags = D3D11.BindFlags.RenderTarget | D3D11.BindFlags.ShaderResource
+        };
+
+        using var texture = new D3D11.Texture2D(nativeDevice, description);
+
+        // FromNativeHandle retains its own reference. The light pass clears the target before each use.
+        return RenderTarget2D.FromNativeHandle(GraphicsDevice, texture.NativePointer, description.Width, description.Height, SurfaceFormat.Alpha8);
+#endif
     }
 
     public void DrawVisibleMapPortion()
@@ -2085,9 +2131,12 @@ public class MapView : IMapView, IMapScreenCropper
         if (IsRenderFlagEnabled(RenderObjectFlags.AlphaLights) && alphaImagesToRender.Count > 0)
         {
             // Accumulate the alpha lights, then combine them with the map in the composite render target.
+            bool useAlphaChannel = alphaRenderTarget.Format == SurfaceFormat.Alpha8;
+            var lightBlendState = useAlphaChannel ? alphaLightBlendState : BlendState.AlphaBlend;
+
             Renderer.PushRenderTarget(alphaRenderTarget,
-                new SpriteBatchSettings(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null, alphaImageToAlphaMapEffect));
-            GraphicsDevice.Clear(new Color(0.5f, 0f, 0f, 0f));
+                new SpriteBatchSettings(SpriteSortMode.Deferred, lightBlendState, SamplerState.PointClamp, null, null, alphaImageToAlphaMapEffect));
+            GraphicsDevice.Clear(useAlphaChannel ? new Color(0f, 0f, 0f, 0.5f) : new Color(0.5f, 0f, 0f, 0f));
 
             for (int i = 0; i < alphaImagesToRender.Count; i++)
             {

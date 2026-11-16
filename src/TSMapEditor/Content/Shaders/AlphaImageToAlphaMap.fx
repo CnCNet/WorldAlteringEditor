@@ -11,6 +11,8 @@
 
 // Shader for rendering Tiberian Sun alpha images to an alpha map.
 
+bool UseAlphaChannel;
+
 Texture2D SpriteTexture;
 sampler2D SpriteTextureSampler : register(s0)
 {
@@ -33,9 +35,9 @@ float4 MainPS(VertexShaderOutput input) : COLOR
 {
     // We need to read from the main texture first,
     // otherwise the output will be black!
-    float alphaTex = tex2D(SpriteTextureSampler, input.TextureCoordinates).a;
-    
-    return float4(alphaTex - 0.5, 0, 0, 0.0);
+    float lightDelta = tex2D(SpriteTextureSampler, input.TextureCoordinates).a - 0.5;
+
+    return UseAlphaChannel ? float4(0, 0, 0, lightDelta) : float4(lightDelta, 0, 0, 0);
 }
 
 technique SpriteDrawing

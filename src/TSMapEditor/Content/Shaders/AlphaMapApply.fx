@@ -11,6 +11,8 @@
 
 // Shader for rendering an alpha light map on a full map texture.
 
+bool UseAlphaChannel;
+
 Texture2D SpriteTexture;
 sampler2D SpriteTextureSampler : register(s0)
 {
@@ -44,7 +46,9 @@ float4 MainPS(VertexShaderOutput input) : COLOR
 {
     // We need to read from the main texture first,
     // otherwise the output will be black!
-    float alphaTex = tex2D(SpriteTextureSampler, input.TextureCoordinates).r;
+    float4 lightMap = tex2D(SpriteTextureSampler, input.TextureCoordinates);
+    float alphaTex = UseAlphaChannel ? lightMap.a : lightMap.r;
+
     float4 surfaceColor = tex2D(RenderSurfaceTextureSampler, input.TextureCoordinates);
     // Compositing the premultiplied map over opaque black preserves RGB and sets alpha to one.
     surfaceColor.a = 1.0;
