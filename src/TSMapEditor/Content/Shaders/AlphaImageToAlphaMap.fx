@@ -33,11 +33,14 @@ struct VertexShaderOutput
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-    // We need to read from the main texture first,
-    // otherwise the output will be black!
-    float lightDelta = tex2D(SpriteTextureSampler, input.TextureCoordinates).a - 0.5;
+    float lightIndex = round(tex2D(SpriteTextureSampler, input.TextureCoordinates).a * 255.0);
 
-    return UseAlphaChannel ? float4(0, 0, 0, lightDelta) : float4(lightDelta, 0, 0, 0);
+    // Skip neutral pixels so blend rounding can never change the destination.
+    clip(abs(lightIndex - 127.0) - 0.5);
+
+    // The blend state scales the destination by twice this value.
+    float halfMultiplier = lightIndex / (2.0 * 127.0);
+    return UseAlphaChannel ? float4(0, 0, 0, halfMultiplier) : float4(halfMultiplier, 0, 0, 0);
 }
 
 technique SpriteDrawing

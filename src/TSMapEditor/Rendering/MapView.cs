@@ -223,10 +223,13 @@ public class MapView : IMapView, IMapScreenCropper
     private Rectangle mapRenderSourceRectangle;
     private Rectangle mapRenderDestinationRectangle;
 
+    // The two blend terms multiply the current light by twice the shader output.
     private readonly BlendState alphaLightBlendState = new BlendState
     {
-        AlphaSourceBlend = Blend.One,
-        AlphaDestinationBlend = Blend.One
+        ColorSourceBlend = Blend.DestinationColor,
+        ColorDestinationBlend = Blend.SourceColor,
+        AlphaSourceBlend = Blend.DestinationAlpha,
+        AlphaDestinationBlend = Blend.SourceAlpha
     };
 
     private DepthStencilState depthRenderStencilState;  // Depth stencil state for rendering terrain. Reads and writes depth information.
@@ -2132,11 +2135,12 @@ public class MapView : IMapView, IMapScreenCropper
         {
             // Accumulate the alpha lights, then combine them with the map in the composite render target.
             bool useAlphaChannel = alphaRenderTarget.Format == SurfaceFormat.Alpha8;
-            var lightBlendState = useAlphaChannel ? alphaLightBlendState : BlendState.AlphaBlend;
+
+            const int NeutralAlphaLight = 127;
 
             Renderer.PushRenderTarget(alphaRenderTarget,
-                new SpriteBatchSettings(SpriteSortMode.Deferred, lightBlendState, SamplerState.PointClamp, null, null, alphaImageToAlphaMapEffect));
-            GraphicsDevice.Clear(useAlphaChannel ? new Color(0f, 0f, 0f, 0.5f) : new Color(0.5f, 0f, 0f, 0f));
+                new SpriteBatchSettings(SpriteSortMode.Deferred, alphaLightBlendState, SamplerState.PointClamp, null, null, alphaImageToAlphaMapEffect));
+            GraphicsDevice.Clear(useAlphaChannel ? new Color(0, 0, 0, NeutralAlphaLight) : new Color(NeutralAlphaLight, 0, 0, 0));
 
             for (int i = 0; i < alphaImagesToRender.Count; i++)
             {

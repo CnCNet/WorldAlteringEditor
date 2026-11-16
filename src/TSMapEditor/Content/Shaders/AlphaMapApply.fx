@@ -47,12 +47,11 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     // We need to read from the main texture first,
     // otherwise the output will be black!
     float4 lightMap = tex2D(SpriteTextureSampler, input.TextureCoordinates);
-    float alphaTex = UseAlphaChannel ? lightMap.a : lightMap.r;
+    float lightValue = UseAlphaChannel ? lightMap.a : lightMap.r;
+    float brightness = lightValue * (255.0 / 127.0);
 
-    float4 surfaceColor = tex2D(RenderSurfaceTextureSampler, input.TextureCoordinates);
-    // Compositing the premultiplied map over opaque black preserves RGB and sets alpha to one.
-    surfaceColor.a = 1.0;
-    return surfaceColor * (alphaTex * 2.0);
+    float3 surfaceColor = tex2D(RenderSurfaceTextureSampler, input.TextureCoordinates).rgb;
+    return float4(surfaceColor * brightness, 1.0);
 }
 
 technique SpriteDrawing
