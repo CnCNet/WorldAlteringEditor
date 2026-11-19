@@ -92,13 +92,10 @@ public class TerrainGeneratorConfigWindow : EditorWindow
         const int tabWidth = 150;
         const int tabHeight = 24;
 
-        var idleTexture = Helpers.CreateUITexture(GraphicsDevice, tabWidth, tabHeight,
-            customUISettings.ButtonMainBackgroundColor,
-            customUISettings.ButtonSecondaryBackgroundColor,
-            customUISettings.ButtonTertiaryBackgroundColor);
+        var idleTexture = EditorThemes.GetButtonTexture(tabWidth, tabHeight, customUISettings.ButtonMainBackgroundColor,
+            customUISettings.ButtonSecondaryBackgroundColor, customUISettings.ButtonTertiaryBackgroundColor);
 
-        var selectedTexture = Helpers.CreateUITexture(GraphicsDevice, tabWidth, tabHeight,
-            new Color(128, 128, 128, 196),
+        var selectedTexture = EditorThemes.GetButtonTexture(tabWidth, tabHeight, new Color(128, 128, 128, 196),
             new Color(128, 128, 128, 255), Color.White);
 
         var tabControl = new XNATabControl(WindowManager);

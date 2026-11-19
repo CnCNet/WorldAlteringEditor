@@ -28,7 +28,7 @@ public class ShapeImage
             RemapFrames = new PositionedTexture[Frames.Length];
     }
 
-    public ShapeImage(GraphicsDevice graphicsDevice, ShpFile shp, byte[] shpFileData, XNAPalette palette, bool subjectToLighting, bool remapable, GraphicsPreparationClass graphicsPreparationClass, List<int> framesToInclude = null)
+    public ShapeImage(GraphicsDevice graphicsDevice, ShpFile shp, byte[] shpFileData, XNAPalette palette, bool subjectToLighting, bool remapable, SpriteSheetPreparation spriteSheetPreparation, List<int> framesToInclude = null)
     {
         shpFile = shp;
         this.shpFileData = shpFileData;
@@ -41,7 +41,7 @@ public class ShapeImage
         if (remapable)
             RemapFrames = new PositionedTexture[Frames.Length];
 
-        RenderToGraphicsPreparationObject(graphicsPreparationClass, framesToInclude);
+        QueueSpriteSheetFrames(spriteSheetPreparation, framesToInclude);
     }
 
 
@@ -62,20 +62,10 @@ public class ShapeImage
 
     public void Dispose()
     {
-        Array.ForEach(Frames, tx =>
-        {
-            if (tx != null)
-                tx.Texture.Dispose();
-        });
+        Array.ForEach(Frames, frame => frame?.Dispose());
 
         if (RemapFrames != null)
-        {
-            Array.ForEach(RemapFrames, tx =>
-            {
-                if (tx != null)
-                    tx.Texture.Dispose();
-            });
-        }
+            Array.ForEach(RemapFrames, frame => frame?.Dispose());
     }
 
     /// <summary>
@@ -116,7 +106,7 @@ public class ShapeImage
         frameData = shpFile.GetUncompressedFrameData(frameIndex, shpFileData);
     }
 
-    public void RenderToGraphicsPreparationObject(GraphicsPreparationClass graphicsPreparationObject, List<int> framesToInclude)
+    private void QueueSpriteSheetFrames(SpriteSheetPreparation spriteSheetPreparation, List<int> framesToInclude)
     {
         for (int i = 0; i < Frames.Length; i++)
         {
@@ -160,16 +150,14 @@ public class ShapeImage
 
             var positionedTexture = new PositionedTexture(shpFile.Width, shpFile.Height, frameInfo.XOffset, frameInfo.YOffset, null, Rectangle.Empty);
 
-            Point offset = graphicsPreparationObject.AddImage(frameInfo.Width, frameInfo.Height, frameData, positionedTexture);
-            positionedTexture.SourceRectangle = new Rectangle(offset.X, offset.Y, frameInfo.Width, frameInfo.Height);
+            spriteSheetPreparation.AddImage(frameData, frameInfo.Width, frameInfo.Height, positionedTexture.SetSpriteSheetRegion);
             Frames[i] = positionedTexture;
 
             if (hasRemap)
             {
                 var remapTexture = new PositionedTexture(shpFile.Width, shpFile.Height, frameInfo.XOffset, frameInfo.YOffset, null, Rectangle.Empty);
 
-                offset = graphicsPreparationObject.AddImage(frameInfo.Width, frameInfo.Height, remapColorArray, remapTexture);
-                remapTexture.SourceRectangle = new Rectangle(offset.X, offset.Y, frameInfo.Width, frameInfo.Height);
+                spriteSheetPreparation.AddImage(remapColorArray, frameInfo.Width, frameInfo.Height, remapTexture.SetSpriteSheetRegion);
                 RemapFrames[i] = remapTexture;
             }
         }

@@ -48,9 +48,4 @@ public class RecentFilesPanel : EditorPanel
         base.Initialize();
     }
 
-    public override void Kill()
-    {
-        BackgroundTexture?.Dispose();
-        base.Kill();
-    }
 }

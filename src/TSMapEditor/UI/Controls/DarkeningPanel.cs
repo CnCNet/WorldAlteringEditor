@@ -23,7 +23,7 @@ public class DarkeningPanel : XNAPanel
         SetPositionAndSize();
 
         PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
-        BackgroundTexture = AssetLoader.CreateTexture(new Color(0, 0, 0, 128), 1, 1);
+        BackgroundTexture = AssetLoader.GetSolidUITexture(new Color(0, 0, 0, 128));
         DrawBorders = false;
 
         WindowManager.RenderResolutionChanged += WindowManager_RenderResolutionChanged;
@@ -38,12 +38,6 @@ public class DarkeningPanel : XNAPanel
 
     public override void Kill()
     {
-        if (BackgroundTexture != null)
-        {
-            BackgroundTexture.Dispose();
-            BackgroundTexture = null;
-        }
-
         WindowManager.RenderResolutionChanged -= WindowManager_RenderResolutionChanged;
 
         base.Kill();

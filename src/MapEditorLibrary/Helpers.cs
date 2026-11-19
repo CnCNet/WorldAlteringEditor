@@ -295,8 +295,14 @@ public static class Helpers
     /// <returns></returns>
     public static Texture2D CreateUITexture(GraphicsDevice gd, int width, int height, Color mainColor, Color secondaryColor, Color tertiaryColor)
     {
-        Texture2D Texture = new Texture2D(gd, width, height, false, SurfaceFormat.Color);
+        var texture = new Texture2D(gd, width, height, false, SurfaceFormat.Color);
+        texture.SetData(CreateUITexturePixels(width, height, mainColor, secondaryColor, tertiaryColor));
 
+        return texture;
+    }
+
+    public static Color[] CreateUITexturePixels(int width, int height, Color mainColor, Color secondaryColor, Color tertiaryColor)
+    {
         Color[] color = new Color[width * height];
 
         // background color
@@ -349,9 +355,7 @@ public static class Helpers
         for (int i = width - 1; i < color.Length; i = i + width)
             color[i] = tertiaryColor;
 
-        Texture.SetData(color);
-
-        return Texture;
+        return color;
     }
 
     public static float AngleFromVector(Vector2 vector)
@@ -467,30 +471,33 @@ public static class Helpers
             .ToUpperInvariant();
     }
 
-    public static Texture2D RenderTextureAsSmaller(Texture2D existingTexture, RenderTarget2D renderTarget, GraphicsDevice graphicsDevice)
+    public static Texture2D RenderTextureAsSmaller(Texture2D existingTexture, RenderTarget2D renderTarget, GraphicsDevice graphicsDevice) =>
+        RenderTextureAsSmaller(existingTexture, existingTexture.Bounds, renderTarget, graphicsDevice);
+
+    public static Texture2D RenderTextureAsSmaller(Texture2D existingTexture, Rectangle sourceRectangle, RenderTarget2D renderTarget,
+        GraphicsDevice graphicsDevice)
     {
         Renderer.BeginDraw();
         Renderer.PushRenderTarget(renderTarget);
         graphicsDevice.Clear(Color.Transparent);
 
-        Point maxNewTextureSize = new Point(Math.Min(renderTarget.Width, existingTexture.Width), Math.Min(renderTarget.Height, existingTexture.Height));
+        Point maxNewTextureSize = new Point(Math.Min(renderTarget.Width, sourceRectangle.Width), Math.Min(renderTarget.Height, sourceRectangle.Height));
 
-        double ratioX = (double)existingTexture.Width / maxNewTextureSize.X;
-        double ratioY = (double)existingTexture.Height / maxNewTextureSize.Y;
+        double ratioX = (double)sourceRectangle.Width / maxNewTextureSize.X;
+        double ratioY = (double)sourceRectangle.Height / maxNewTextureSize.Y;
         double ratio = Math.Max(ratioX, ratioY);
-        Point newSize = new Point((int)(existingTexture.Width / ratio), (int)(existingTexture.Height / ratio));
+        Point newSize = new Point((int)(sourceRectangle.Width / ratio), (int)(sourceRectangle.Height / ratio));
 
         // Workaround to avoid crashing for too small textures, hopefully it's also better for visibility
-        if (newSize.X < 1 && existingTexture.Width > 0)
+        if (newSize.X < 1 && sourceRectangle.Width > 0)
             newSize.X = 1;
 
-        if (newSize.Y < 1 && existingTexture.Height > 0)
+        if (newSize.Y < 1 && sourceRectangle.Height > 0)
             newSize.Y = 1;
 
         Rectangle destinationRectangle = new Rectangle(0, 0, newSize.X, newSize.Y);
 
-        Renderer.DrawTexture(existingTexture, new Rectangle(0, 0, existingTexture.Width, existingTexture.Height),
-            destinationRectangle, Color.White);
+        Renderer.DrawTexture(existingTexture, sourceRectangle, destinationRectangle, Color.White);
         Renderer.PopRenderTarget();
         Renderer.EndDraw();
 
@@ -502,6 +509,15 @@ public static class Helpers
     }
 
     public static (Texture2D texture, Point2D positionOffset) CropTextureToVisiblePortion(Texture2D existingTexture, GraphicsDevice graphicsDevice)
+    {
+        var (pixels, width, height, offset) = ReadCroppedTexturePixels(existingTexture);
+        var texture = new Texture2D(graphicsDevice, width, height, false, SurfaceFormat.Color);
+        texture.SetData(pixels);
+
+        return (texture, offset);
+    }
+
+    public static (Color[] Pixels, int Width, int Height, Point2D Offset) ReadCroppedTexturePixels(Texture2D existingTexture)
     {
         var textureData = new Color[existingTexture.Width * existingTexture.Height];
         existingTexture.GetData(textureData);
@@ -537,37 +553,24 @@ public static class Helpers
             }
         }
 
-        int width = lastNonTransparentX - firstNonTransparentX;
-        int height = lastNonTransparentY - firstNonTransparentY;
+        if (lastNonTransparentX < 0)
+            return (new Color[1], 1, 1, Point2D.Zero);
 
-        // If there are no visible pixels then set the texture size to 1 to avoid crashes.
-        if (width <= 0)
-            width = 1;
+        int width = Math.Max(1, lastNonTransparentX - firstNonTransparentX);
+        int height = Math.Max(1, lastNonTransparentY - firstNonTransparentY);
+        var pixels = new Color[width * height];
 
-        if (height <= 0)
-            height = 1;
-
-        // Now we know the exact rectangle of the texture that is visible.
-        // Create a new texture and render only the visible portion into it.
-        var renderTarget = new RenderTarget2D(graphicsDevice, width, height, false, SurfaceFormat.Color, DepthFormat.None);
-
-        Renderer.PushRenderTarget(renderTarget);
-        graphicsDevice.Clear(Color.Transparent);
-        Renderer.DrawTexture(existingTexture, new Rectangle(firstNonTransparentX, firstNonTransparentY, width, height),
-            new Rectangle(0, 0, width, height), Color.White);
-        Renderer.PopRenderTarget();
-
-        var texture = new Texture2D(graphicsDevice, width, height, false, SurfaceFormat.Color);
-        var colorData = new Color[width * height];
-        renderTarget.GetData(colorData);
-        texture.SetData(colorData);
-        renderTarget.Dispose();
+        for (int y = 0; y < height; y++)
+        {
+            int sourceIndex = (firstNonTransparentY + y) * existingTexture.Width + firstNonTransparentX;
+            Array.Copy(textureData, sourceIndex, pixels, y * width, width);
+        }
 
         // Calculate offset
         Point2D oldcenter = new Point2D(existingTexture.Width / 2, existingTexture.Height / 2);
         Point2D newcenter = new Point2D(firstNonTransparentX + width / 2, firstNonTransparentY + height / 2);
 
-        return (texture, new Point2D(newcenter.X - oldcenter.X, newcenter.Y - oldcenter.Y));
+        return (pixels, width, height, new Point2D(newcenter.X - oldcenter.X, newcenter.Y - oldcenter.Y));
     }
 
     /// <summary>

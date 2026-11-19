@@ -75,7 +75,7 @@ public class SettingsPanel : INItializableWindow
     public SettingsPanel(WindowManager windowManager) : base(windowManager)
     {
         CenterByDefault = false;
-        BackgroundTexture = AssetLoader.CreateTexture(UISettings.ActiveSettings.BackgroundColor, 2, 2);
+        BackgroundTexture = AssetLoader.GetSolidUITexture(UISettings.ActiveSettings.BackgroundColor);
     }
 
     private XNADropDown ddLanguage;
@@ -98,7 +98,6 @@ public class SettingsPanel : INItializableWindow
     public override void Kill()
     {
         ddTheme.SelectedIndexChanged -= DdTheme_SelectedIndexChanged;
-        BackgroundTexture?.Dispose();
         base.Kill();
     }
 

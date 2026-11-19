@@ -347,7 +347,7 @@ public class TileDisplay : XNAPanel
 
                 if (image.TmpImage.HasExtraData())
                 {
-                    DrawTexture(image.Texture, image.ExtraSourceRectangle,
+                    DrawTexture(image.ExtraTexture, image.ExtraSourceRectangle,
                         new Rectangle(tile.Location.X + image.TmpImage.XExtra + tile.Offset.X,
                         (int)ViewY + tile.Location.Y + image.TmpImage.YExtra + tile.Offset.Y - subTileHeightOffset,
                         image.ExtraSourceRectangle.Width, image.ExtraSourceRectangle.Height), Color.White);

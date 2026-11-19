@@ -116,7 +116,6 @@ public class TriggerParameterPanel : XNAScrollPanel
 
     public override void Kill()
     {
-        BackgroundTexture?.Dispose();
         ClearParameters();
         base.Kill();
     }

@@ -1,7 +1,7 @@
 ﻿using MapEditorLibrary.CCEngine;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using Rampastring.XNAUI;
+using Rampastring.XNAUI.Graphics;
 using Rampastring.XNAUI.XNAControls;
 using TSMapEditor.Settings;
 
@@ -12,12 +12,12 @@ public class TileSetListBox : XNAListBox
     public TileSetListBox(WindowManager windowManager, int tileSetCount) : base(windowManager)
     {
         tileSetIsFavourite = new bool[tileSetCount];
-        favouriteTileSetTexture = AssetLoader.LoadTexture("star.png");
+        favouriteTileSetTexture = AssetLoader.LoadUITexture("star.png");
     }
 
     private readonly bool[] tileSetIsFavourite;
 
-    private Texture2D favouriteTileSetTexture;
+    private readonly TextureReference favouriteTileSetTexture;
 
     public bool IsTileSetFavourite(TileSet tileSet) => tileSetIsFavourite[tileSet.Index];
 

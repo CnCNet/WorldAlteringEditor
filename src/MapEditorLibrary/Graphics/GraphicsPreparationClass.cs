@@ -1,58 +1,60 @@
-﻿using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework.Graphics;
+using Rampastring.XNAUI.Graphics;
 
-namespace MapEditorLibrary.Graphics
+namespace MapEditorLibrary.Graphics;
+
+/// <summary>
+/// Collects batches of paletted sprites from the theater graphics and owns the resulting texture atlas.
+/// </summary>
+public class GraphicsPreparationClass : IDisposable
 {
-    /// <summary>
-    /// Class for preparing an arbitrary number of sprite sheets.
-    /// </summary>
-    public class GraphicsPreparationClass
+    private readonly List<SpriteSheetPreparation> batches = new();
+    private SpriteSheet<int> spriteSheet;
+
+    public int PageCount => spriteSheet?.PageCount ?? 0;
+
+    public SpriteSheetPreparation CreateBatch()
     {
-        public GraphicsPreparationClass(int width = RenderingConstants.MaximumDX11TextureSize, int height = RenderingConstants.MaximumDX11TextureSize)
+        var batch = new SpriteSheetPreparation();
+
+        lock (batches)
+            batches.Add(batch);
+
+        return batch;
+    }
+
+    public void Process(GraphicsDevice graphicsDevice)
+    {
+        if (spriteSheet != null)
+            throw new InvalidOperationException("The theater sprite sheet has already been built.");
+
+        var sheet = new SpriteSheet<int>(graphicsDevice, SurfaceFormat.Alpha8);
+
+        try
         {
-            SheetWidth = width;
-            SheetHeight = height;
+            foreach (var batch in batches)
+                batch.RegisterImages(sheet);
+
+            sheet.Process(graphicsDevice);
+
+            int index = 0;
+            foreach (var batch in batches)
+                batch.AssignRegions(sheet, ref index);
+
+            spriteSheet = sheet;
+            batches.Clear();
         }
-
-        public int SheetWidth { get; }
-        public int SheetHeight { get; }
-
-        public List<SpriteSheetPreparation> SpriteSheetPreparationObjects { get; } = new List<SpriteSheetPreparation>();
-
-        public SpriteSheetPreparation CurrentSpriteSheetPreparationObject;
-
-        public Action<object, SpriteSheetPreparation> PostProcessAction { get; set; }
-
-        private readonly object locker = new object();
-
-        public SpriteSheetPreparation GenerateNewSpriteSheetWorkingObject()
+        catch
         {
-            var spriteSheetPreparation = new SpriteSheetPreparation(SheetWidth, SheetHeight);
-
-            lock (locker)
-            {
-                SpriteSheetPreparationObjects.Add(spriteSheetPreparation);
-                CurrentSpriteSheetPreparationObject = spriteSheetPreparation;
-            }
-
-            return spriteSheetPreparation;
+            sheet.Dispose();
+            throw;
         }
+    }
 
-        public SpriteSheetPreparation GetCurrent()
-        {
-            if (CurrentSpriteSheetPreparationObject == null)
-                CurrentSpriteSheetPreparationObject = GenerateNewSpriteSheetWorkingObject();
-
-            return CurrentSpriteSheetPreparationObject;
-        }
-
-        public Point AddImage(int width, int height, byte[] data, object meta)
-        {
-            if (!CanFitTexture(width, height))
-                GenerateNewSpriteSheetWorkingObject();
-
-            return GetCurrent().AddImage(width, height, data, meta);
-        }
-
-        public bool CanFitTexture(int width, int height) => GetCurrent().CanFitTexture(width, height);
+    public void Dispose()
+    {
+        spriteSheet?.Dispose();
+        spriteSheet = null;
+        batches.Clear();
     }
 }

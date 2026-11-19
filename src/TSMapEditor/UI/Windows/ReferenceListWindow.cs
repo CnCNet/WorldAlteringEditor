@@ -53,21 +53,13 @@ public class ReferenceListPanel : XNAScrollPanel
 
     public override void Initialize()
     {
-        if (BackgroundTexture == null)
+        if (BackgroundTexture.IsEmpty)
         {
-            BackgroundTexture = AssetLoader.CreateTexture(Color.White, 2, 2);
+            BackgroundTexture = AssetLoader.GetSolidUITexture(Color.White);
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
         }
 
         base.Initialize();
-    }
-
-    public override void Kill()
-    {
-        BackgroundTexture?.Dispose();
-        BackgroundTexture = null;
-
-        base.Kill();
     }
 
     public override void Draw(GameTime gameTime)

@@ -1,8 +1,8 @@
 ﻿using MapEditorLibrary;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
+using Rampastring.XNAUI.Graphics;
 using Rampastring.XNAUI.XNAControls;
 
 namespace TSMapEditor.UI.Controls;
@@ -16,7 +16,7 @@ public class EditorButton : XNAButton
         AlphaRate = 0.005f; // Override default animation rate in UISettings
     }
 
-    public Texture2D ExtraTexture { get; set; }
+    public TextureReference ExtraTexture { get; set; }
 
     protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
     {
@@ -24,7 +24,7 @@ public class EditorButton : XNAButton
 
         if (key == "ExtraTexture")
         {
-            ExtraTexture = AssetLoader.LoadTextureUncached(value);
+            ExtraTexture = AssetLoader.LoadUITexture(value);
         }
     }
 
@@ -34,33 +34,18 @@ public class EditorButton : XNAButton
 
         var customUISettings = UISettings.ActiveSettings as CustomUISettings;
 
-        IdleTexture = Helpers.CreateUITexture(GraphicsDevice, Width, Height,
-            customUISettings.ButtonMainBackgroundColor,
-            customUISettings.ButtonSecondaryBackgroundColor,
-            customUISettings.ButtonTertiaryBackgroundColor);
+        IdleTexture = EditorThemes.GetButtonTexture(Width, Height, customUISettings.ButtonMainBackgroundColor,
+            customUISettings.ButtonSecondaryBackgroundColor, customUISettings.ButtonTertiaryBackgroundColor);
 
-        HoverTexture = Helpers.CreateUITexture(GraphicsDevice, Width, Height,
-            customUISettings.ButtonHoverMainBackgroundColor,
-            customUISettings.ButtonHoverSecondaryBackgroundColor,
-            customUISettings.ButtonHoverTertiaryBackgroundColor);
-    }
-
-    public override void Kill()
-    {
-        if (ExtraTexture != null)
-        {
-            ExtraTexture.Dispose();
-            ExtraTexture = null;
-        }
-
-        base.Kill();
+        HoverTexture = EditorThemes.GetButtonTexture(Width, Height, customUISettings.ButtonHoverMainBackgroundColor,
+            customUISettings.ButtonHoverSecondaryBackgroundColor, customUISettings.ButtonHoverTertiaryBackgroundColor);
     }
 
     public override void Draw(GameTime gameTime)
     {
         base.Draw(gameTime);
 
-        if (ExtraTexture != null)
+        if (!ExtraTexture.IsEmpty)
         {
             var rect = new Rectangle((Width - ExtraTexture.Width) / 2,
                 (Height - ExtraTexture.Height) / 2, ExtraTexture.Width, ExtraTexture.Height);

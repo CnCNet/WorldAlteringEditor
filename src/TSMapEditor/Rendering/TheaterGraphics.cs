@@ -20,10 +20,11 @@ namespace TSMapEditor.Rendering;
 
 public class VoxelModel : IDisposable
 {
-    public VoxelModel(GraphicsDevice graphicsDevice, VxlFile vxl, HvaFile hva, XNAPalette palette,
+    internal VoxelModel(GraphicsDevice graphicsDevice, VoxelFrameAtlas frameAtlas, VxlFile vxl, HvaFile hva, XNAPalette palette,
         bool remapable = false, bool subjectToLighting = false, VplFile vpl = null)
     {
         this.graphicsDevice = graphicsDevice;
+        this.frameAtlas = frameAtlas;
         this.vxl = vxl;
         this.hva = hva;
         this.vpl = vpl;
@@ -33,6 +34,7 @@ public class VoxelModel : IDisposable
     }
 
     private readonly GraphicsDevice graphicsDevice;
+    private readonly VoxelFrameAtlas frameAtlas;
     private readonly VxlFile vxl;
     private readonly HvaFile hva;
     private readonly VplFile vpl;
@@ -56,16 +58,11 @@ public class VoxelModel : IDisposable
             return value;
 
         Palette palette = this.palette.GetPalette();
-        (Texture2D texture, Point2D offset) = VxlRenderer.Render(graphicsDevice, facing, ramp, vxl, hva, palette, vpl, forRemap: false);
-        if (texture == null)
-        {
-            Frames[key] = null;
-            return Frames[key];
-        }
+        var (pixels, width, height, offset) = VxlRenderer.Render(graphicsDevice, facing, ramp, vxl, hva, palette, vpl, forRemap: false);
+        var frame = pixels == null ? null : frameAtlas.Add(pixels, width, height, offset);
+        Frames.Add(key, frame);
 
-        var positionedTexture = new PositionedTexture(texture.Width, texture.Height, offset.X, offset.Y, texture, new Rectangle(0, 0, texture.Width, texture.Height));
-        Frames[key] = positionedTexture;
-        return Frames[key];
+        return frame;
     }
 
     public PositionedTexture GetRemapFrame(byte facing, RampType ramp, bool affectedByLighting)
@@ -84,48 +81,37 @@ public class VoxelModel : IDisposable
             return value;
 
         Palette palette = this.palette.GetPalette();
-        (Texture2D texture, Point2D offset) = VxlRenderer.Render(graphicsDevice, facing, ramp, vxl, hva, palette, vpl, forRemap: true);
-        if (texture == null)
+        var (pixels, width, height, offset) = VxlRenderer.Render(graphicsDevice, facing, ramp, vxl, hva, palette, vpl, forRemap: true);
+        if (pixels == null)
         {
-            RemapFrames[key] = null;
-            return RemapFrames[key];
+            RemapFrames.Add(key, null);
+            return null;
         }
 
-        var colorData = new Color[texture.Width * texture.Height];
-        texture.GetData(colorData);
-
-        // The renderer has rendered the rest of the unit as Magenta, now strip it out
-        for (int i = 0; i < colorData.Length; i++)
+        for (int i = 0; i < pixels.Length; i++)
         {
-            if (colorData[i] == Color.Magenta)
-                colorData[i] = Color.Transparent;
-        }
+            Color color = pixels[i];
 
-        Color[] remapColorArray = colorData.Select(color =>
-        {
-            // Convert the color to grayscale
+            if (color == Color.Magenta)
+            {
+                pixels[i] = Color.Transparent;
+                continue;
+            }
+
+            // The other colors form a brightened grayscale remap mask.
             float remapColor = Math.Max(color.R / 255.0f, Math.Max(color.G / 255.0f, color.B / 255.0f));
-
-            // Brighten it up a bit
             remapColor *= Constants.RemapBrightenFactor;
-            return new Color(remapColor, remapColor, remapColor, color.A);
+            pixels[i] = new Color(remapColor, remapColor, remapColor, color.A);
+        }
 
-        }).ToArray();
+        var frame = frameAtlas.Add(pixels, width, height, offset);
+        RemapFrames.Add(key, frame);
 
-        var remapTexture = new Texture2D(graphicsDevice, texture.Width, texture.Height, false, SurfaceFormat.Color);
-        remapTexture.SetData(remapColorArray);
-        RemapFrames[key] = new PositionedTexture(remapTexture.Width, remapTexture.Height, offset.X, offset.Y, remapTexture, new Rectangle(0, 0, remapTexture.Width, remapTexture.Height));
-        return RemapFrames[key];
+        return frame;
     }
 
     public void ClearFrames()
     {
-        foreach (var frame in Frames.Values)
-            frame?.Dispose();
-
-        foreach (var frame in RemapFrames.Values)
-            frame?.Dispose();
-
         Frames.Clear();
         RemapFrames.Clear();
     }
@@ -161,8 +147,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
 
     private readonly List<XNAPalette> palettes = new List<XNAPalette>();
 
-    private List<GraphicsPreparationClass> graphicsPreparationObjects = new List<GraphicsPreparationClass>();
-    private List<Texture2D> spriteSheets = new List<Texture2D>();
+    private readonly GraphicsPreparationClass graphicsPreparation = new();
     private List<MGTileImage[]> terrainGraphicsList = new List<MGTileImage[]>();
     private List<MGTileImage[]> mmTerrainGraphicsList = new List<MGTileImage[]>();
     private List<bool> hasMMGraphics = new List<bool>();
@@ -222,11 +207,12 @@ public class TheaterGraphics : ITheater, ITheaterTileData
         };
     }
 
-    private readonly object graphicsPreparationObjectLocker = new object();
+    private readonly VoxelFrameAtlas voxelFrameAtlas;
 
     public TheaterGraphics(GraphicsDevice graphicsDevice, Theater theater, CCFileManager fileManager, Rules rules)
     {
         this.graphicsDevice = graphicsDevice;
+        voxelFrameAtlas = new VoxelFrameAtlas(graphicsDevice);
         Theater = theater;
         this.fileManager = fileManager;
 
@@ -282,109 +268,9 @@ public class TheaterGraphics : ITheater, ITheaterTileData
             ReadMiscTextures();
         }
 
-        CombineSpriteSheets();
-    }
-
-    private void PostProcessPositionedTexture(object obj, SpriteSheetPreparation spriteSheetPreparationObject)
-    {
-        var positionedTexture = (PositionedTexture)obj;
-        positionedTexture.Texture = spriteSheetPreparationObject.Texture;
-        positionedTexture.SourceRectangle = new Rectangle(positionedTexture.SourceRectangle.X,
-            positionedTexture.SourceRectangle.Y + spriteSheetPreparationObject.YOffset,
-            positionedTexture.SourceRectangle.Width,
-            positionedTexture.SourceRectangle.Height);
-    }
-
-    private Texture2D TextureFromBuffer(int width, int height, byte[] buffer)
-    {
-        // Create texture color buffer and copy the data from the working buffer to the color buffer.
-        byte[] finalColorBuffer = new byte[width * height];
-
-        for (int ty = 0; ty < height; ty++)
-        {
-            Buffer.BlockCopy(buffer, ty * RenderingConstants.MaximumDX11TextureSize, finalColorBuffer, ty * width, width);
-        }
-
-        // Create Texture2D instance and write data from the color buffer to it.
-        var spriteSheet = new Texture2D(graphicsDevice, width, height, false, SurfaceFormat.Alpha8);
-        spriteSheet.SetData(finalColorBuffer);
-        return spriteSheet;
-    }
-
-    private void CombineSpriteSheets()
-    {
-        Logger.Log("Combining loaded sprite sheets into as few larger sprite-sheets as possible.");
-
-        byte[] hugeBuffer = new byte[RenderingConstants.MaximumDX11TextureSize * RenderingConstants.MaximumDX11TextureSize];
-
-        int x = 0;
-        int y = 0;
-
-        var processedSpriteSheets = new List<SpriteSheetPreparation>();
-
-        // Go through the graphics preparation objects and combine their textures as much as possible.
-        // For simplicity, we do this by rendering sprite sheets one after another, each sprite sheet acting as a "row".
-        // This is because most sprite sheets are much wider than they are tall.
-        for (int i = 0; i < graphicsPreparationObjects.Count; i++)
-        {
-            var graphicsPreparationObject = graphicsPreparationObjects[i];
-
-            for (int j = 0; j < graphicsPreparationObject.SpriteSheetPreparationObjects.Count; j++)
-            {
-                var spriteSheetObject = graphicsPreparationObject.SpriteSheetPreparationObjects[j];
-
-                if (y + spriteSheetObject.Height > RenderingConstants.MaximumDX11TextureSize)
-                {
-                    // Overflow - generate a Texture2D out of so-far processed sheets
-                    Logger.Log("Sprite sheet buffer full - converting to Texture2D and making way for another sheet.");
-                    var spriteSheet = TextureFromBuffer(x, y, hugeBuffer);
-                    spriteSheets.Add(spriteSheet);
-                    processedSpriteSheets.ForEach(ss => ss.Texture = spriteSheet);
-                    processedSpriteSheets.Clear();
-
-                    Array.Clear(hugeBuffer);
-
-                    x = 0;
-                    y = 0;
-                }
-
-                // Copy data from sprite sheet to our buffer
-                for (int sy = 0; sy < spriteSheetObject.Height; sy++)
-                {
-                    Buffer.BlockCopy(spriteSheetObject.WorkingBuffer, sy * spriteSheetObject.WorkingBufferWidth, hugeBuffer, (y + sy) * RenderingConstants.MaximumDX11TextureSize, spriteSheetObject.Width);
-                }
-
-                x = Math.Max(x, spriteSheetObject.Width);
-                spriteSheetObject.YOffset = y;
-                y += spriteSheetObject.Height;
-                processedSpriteSheets.Add(spriteSheetObject);
-            }
-        }
-
-        // All sprite sheets have been processed - generate texture from the last ones
-        if (x > 0 && y > 0)
-        {
-            var spriteSheet = TextureFromBuffer(x, y, hugeBuffer);
-            spriteSheets.Add(spriteSheet);
-            processedSpriteSheets.ForEach(ss => ss.Texture = spriteSheet);
-        }
-
-        Logger.Log("All sprite sheets processed. Sprite sheet count: " + spriteSheets.Count);
-
-        // Run post-process actions
-        foreach (var graphicsPreparationObject in graphicsPreparationObjects)
-        {
-            if (graphicsPreparationObject.PostProcessAction == null)
-                continue;
-
-            foreach (var spriteSheetPreparationObject in graphicsPreparationObject.SpriteSheetPreparationObjects)
-            {
-                spriteSheetPreparationObject.objs.ForEach(obj => graphicsPreparationObject.PostProcessAction(obj, spriteSheetPreparationObject));
-            }
-        }
-
-        // Free up some memory - we don't need the graphics preparation objects nor their sprite sheet preparation objects anymore
-        graphicsPreparationObjects.Clear();
+        Logger.Log("Packing and uploading the theater sprite sheets.");
+        graphicsPreparation.Process(graphicsDevice);
+        Logger.Log("All sprite sheets processed. Sprite sheet count: " + graphicsPreparation.PageCount);
     }
 
     private readonly GraphicsDevice graphicsDevice;
@@ -398,10 +284,8 @@ public class TheaterGraphics : ITheater, ITheaterTileData
 
         int currentTileIndex = 0; // Used for setting the starting tile ID of a tileset
 
-        // Create a buffer that can fit as many TMPs as can theoretically fit into a Texture2D.
-        // When converting into an actual texture, a suitable piece will be copied into
-        // finalColorBuffer for assignment as the Texture2D color data.
-        var graphicsPreparationObject = new GraphicsPreparationClass();
+
+        var spriteSheetPreparation = graphicsPreparation.CreateBatch();
 
         for (int tsId = 0; tsId < Theater.TileSets.Count; tsId++)
         {
@@ -465,7 +349,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
                             continue;
                         }
 
-                        var monoGameTmpImage = new MGSubTileImage(tmpImage, graphicsPreparationObject, TheaterPalette, tsId);
+                        var monoGameTmpImage = new MGSubTileImage(tmpImage, spriteSheetPreparation, TheaterPalette, tsId);
                         tmpImages.Add(monoGameTmpImage);
                     }
 
@@ -478,26 +362,6 @@ public class TheaterGraphics : ITheater, ITheaterTileData
                 terrainGraphicsList.Add(tileGraphics.ToArray());
             }
         }
-
-        Logger.Log($"Writing {graphicsPreparationObject.SpriteSheetPreparationObjects.Count} sprite sheet(s) for TMP tiles from system memory to GPU memory.");
-
-        lock (graphicsPreparationObjectLocker)
-            graphicsPreparationObjects.Add(graphicsPreparationObject);
-
-        // Assign this mega-texture to all tiles that were written into the texture.
-        // Afterwards, we are done!
-        graphicsPreparationObject.PostProcessAction = (obj, ssobj) => 
-        {
-            var mgTmpImage = (MGSubTileImage)obj;
-            mgTmpImage.Texture = ssobj.Texture;
-
-            mgTmpImage.SourceRectangle = mgTmpImage.SourceRectangle with { Y = mgTmpImage.SourceRectangle.Y + ssobj.YOffset };
-
-            if (mgTmpImage.TmpImage.HasExtraData())
-            {
-                mgTmpImage.ExtraSourceRectangle = mgTmpImage.ExtraSourceRectangle with { Y = mgTmpImage.ExtraSourceRectangle.Y + ssobj.YOffset };
-            }
-        };
 
         Logger.Log("Assigning marble madness mode tile textures.");
 
@@ -538,7 +402,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
 
         var unitPalette = GetPaletteOrFail(Theater.UnitPaletteName, true);
 
-        var graphicsPreparationObject = new GraphicsPreparationClass();
+        var spriteSheetPreparation = graphicsPreparation.CreateBatch();
 
         TerrainObjectTextures = new ShapeImage[terrainTypes.Count];
         for (int i = 0; i < terrainTypes.Count; i++)
@@ -582,14 +446,9 @@ public class TheaterGraphics : ITheater, ITheaterTileData
                     palette = GetPaletteOrDefault(terrainType.ArtConfig.Palette + Theater.FileExtension[1..] + ".pal", palette, true);
 
                 TerrainObjectTextures[i] = new ShapeImage(graphicsDevice, shpFile, data,
-                    palette, subjectToLighting, false, graphicsPreparationObject, UserSettings.Instance.ConserveVRAM ? [0] : null);
+                    palette, subjectToLighting, false, spriteSheetPreparation, UserSettings.Instance.ConserveVRAM ? [0] : null);
             }
         }
-
-        lock (graphicsPreparationObjectLocker)
-            graphicsPreparationObjects.Add(graphicsPreparationObject);
-
-        graphicsPreparationObject.PostProcessAction = PostProcessPositionedTexture;
 
         Logger.Log("Finished loading terrain object textures.");
     }
@@ -598,7 +457,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
     {
         Logger.Log("Loading building textures.");
 
-        var graphicsPreparationObject = new GraphicsPreparationClass();
+        var spriteSheetPreparation = graphicsPreparation.CreateBatch();
 
         BuildingTextures = new ShapeImage[buildingTypes.Count];
         BuildingBibTextures = new ShapeImage[buildingTypes.Count];
@@ -667,7 +526,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
             bool affectedByLighting = buildingType.ArtConfig.TerrainPalette && Constants.TerrainPaletteBuildingsAffectedByLighting;
 
             BuildingTextures[i] = new ShapeImage(graphicsDevice, shpFile, shpData, palette,
-                affectedByLighting, buildingType.ArtConfig.Remapable, graphicsPreparationObject);
+                affectedByLighting, buildingType.ArtConfig.Remapable, spriteSheetPreparation);
 
             // If this building has a bib, attempt to load it
             if (!string.IsNullOrWhiteSpace(buildingType.ArtConfig.BibShape))
@@ -709,14 +568,9 @@ public class TheaterGraphics : ITheater, ITheaterTileData
                 var bibShpFile = new ShpFile(loadedShpName);
                 bibShpFile.ParseFromBuffer(shpData);
                 BuildingBibTextures[i] = new ShapeImage(graphicsDevice, bibShpFile, shpData, palette,
-                    affectedByLighting, buildingType.ArtConfig.Remapable, graphicsPreparationObject);
+                    affectedByLighting, buildingType.ArtConfig.Remapable, spriteSheetPreparation);
             }
         }
-
-        lock (graphicsPreparationObjectLocker)
-            graphicsPreparationObjects.Add(graphicsPreparationObject);
-
-        graphicsPreparationObject.PostProcessAction = PostProcessPositionedTexture;
 
         Logger.Log("Finished loading building textures.");
     }
@@ -801,7 +655,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
             if (!string.IsNullOrWhiteSpace(buildingType.ArtConfig.Palette))
                 palette = GetPaletteOrFail(buildingType.ArtConfig.Palette + Theater.FileExtension[1..] + ".pal", !buildingType.ArtConfig.TerrainPalette);
 
-            BuildingTurretModels[i] = new VoxelModel(graphicsDevice, vxlFile, hvaFile, palette,
+            BuildingTurretModels[i] = new VoxelModel(graphicsDevice, voxelFrameAtlas, vxlFile, hvaFile, palette,
                 buildingType.ArtConfig.Remapable, Constants.VoxelsAffectedByLighting, vplFile);
             loadedModels[turretModelName] = BuildingTurretModels[i];
         }
@@ -857,7 +711,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
             if (!string.IsNullOrWhiteSpace(buildingType.ArtConfig.Palette))
                 palette = GetPaletteOrFail(buildingType.ArtConfig.Palette + Theater.FileExtension[1..] + ".pal", !buildingType.ArtConfig.TerrainPalette);
 
-            BuildingBarrelModels[i] = new VoxelModel(graphicsDevice, vxlFile, hvaFile, palette,
+            BuildingBarrelModels[i] = new VoxelModel(graphicsDevice, voxelFrameAtlas, vxlFile, hvaFile, palette,
                 buildingType.ArtConfig.Remapable, Constants.VoxelsAffectedByLighting, vplFile);
             loadedModels[barrelModelName] = BuildingBarrelModels[i];
         }
@@ -869,7 +723,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
     {
         Logger.Log("Loading animation textures.");
 
-        var graphicsPreparationObject = new GraphicsPreparationClass();
+        var spriteSheetPreparation = graphicsPreparation.CreateBatch();
 
         AnimTextures = new ShapeImage[animTypes.Count];
 
@@ -946,13 +800,8 @@ public class TheaterGraphics : ITheater, ITheaterTileData
             var shpFile = new ShpFile(loadedShpName);
             shpFile.ParseFromBuffer(shpData);
             AnimTextures[i] = new ShapeImage(graphicsDevice, shpFile, shpData, palette,
-                !animType.ArtConfig.IsBuildingAnim, animType.ArtConfig.Remapable || animType.ArtConfig.IsBuildingAnim, graphicsPreparationObject);
+                !animType.ArtConfig.IsBuildingAnim, animType.ArtConfig.Remapable || animType.ArtConfig.IsBuildingAnim, spriteSheetPreparation);
         }
-
-        lock (graphicsPreparationObjectLocker)
-            graphicsPreparationObjects.Add(graphicsPreparationObject);
-
-        graphicsPreparationObject.PostProcessAction = PostProcessPositionedTexture;
 
         Logger.Log("Finished loading animation textures.");
     }
@@ -961,7 +810,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
     {
         Logger.Log("Loading unit textures.");
 
-        var graphicsPreparationObject = new GraphicsPreparationClass();
+        var spriteSheetPreparation = graphicsPreparation.CreateBatch();
 
         var loadedTextures = new Dictionary<string, ShapeImage>();
         UnitTextures = new ShapeImage[unitTypes.Count];
@@ -995,14 +844,9 @@ public class TheaterGraphics : ITheater, ITheaterTileData
             if (!string.IsNullOrWhiteSpace(unitType.ArtConfig.Palette))
                 palette = GetPaletteOrDefault(unitType.ArtConfig.Palette + Theater.FileExtension[1..] + ".pal", palette, true);
 
-            UnitTextures[i] = new ShapeImage(graphicsDevice, shpFile, shpData, palette, true, unitType.ArtConfig.Remapable, graphicsPreparationObject);
+            UnitTextures[i] = new ShapeImage(graphicsDevice, shpFile, shpData, palette, true, unitType.ArtConfig.Remapable, spriteSheetPreparation);
             loadedTextures[shpFileName] = UnitTextures[i];
         }
-
-        lock (graphicsPreparationObjectLocker)
-            graphicsPreparationObjects.Add(graphicsPreparationObject);
-
-        graphicsPreparationObject.PostProcessAction = PostProcessPositionedTexture;
 
         Logger.Log("Finished loading unit textures.");
     }
@@ -1049,7 +893,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
             if (!string.IsNullOrWhiteSpace(unitType.ArtConfig.Palette))
                 palette = GetPaletteOrDefault(unitType.ArtConfig.Palette + Theater.FileExtension[1..] + ".pal", palette, true);
 
-            UnitModels[i] = new VoxelModel(graphicsDevice, vxlFile, hvaFile, palette, unitType.ArtConfig.Remapable,
+            UnitModels[i] = new VoxelModel(graphicsDevice, voxelFrameAtlas, vxlFile, hvaFile, palette, unitType.ArtConfig.Remapable,
                 Constants.VoxelsAffectedByLighting, vplFile);
             loadedModels[unitImage] = UnitModels[i];
         }
@@ -1100,7 +944,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
             if (!string.IsNullOrWhiteSpace(unitType.ArtConfig.Palette))
                 palette = GetPaletteOrDefault(unitType.ArtConfig.Palette + Theater.FileExtension[1..] + ".pal", palette, true);
 
-            UnitTurretModels[i] = new VoxelModel(graphicsDevice, vxlFile, hvaFile, palette, unitType.ArtConfig.Remapable,
+            UnitTurretModels[i] = new VoxelModel(graphicsDevice, voxelFrameAtlas, vxlFile, hvaFile, palette, unitType.ArtConfig.Remapable,
                 Constants.VoxelsAffectedByLighting, vplFile);
             loadedModels[turretModelName] = UnitTurretModels[i];
         }
@@ -1151,7 +995,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
             if (!string.IsNullOrWhiteSpace(unitType.ArtConfig.Palette))
                 palette = GetPaletteOrDefault(unitType.ArtConfig.Palette + Theater.FileExtension[1..] + ".pal", palette, true);
 
-            UnitBarrelModels[i] = new VoxelModel(graphicsDevice, vxlFile, hvaFile, palette, unitType.ArtConfig.Remapable,
+            UnitBarrelModels[i] = new VoxelModel(graphicsDevice, voxelFrameAtlas, vxlFile, hvaFile, palette, unitType.ArtConfig.Remapable,
                 Constants.VoxelsAffectedByLighting, vplFile);
             loadedModels[barrelModelName] = UnitBarrelModels[i];
         }
@@ -1197,7 +1041,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
             if (!string.IsNullOrWhiteSpace(aircraftType.ArtConfig.Palette))
                 palette = GetPaletteOrDefault(aircraftType.ArtConfig.Palette + Theater.FileExtension[1..] + ".pal", palette, true);
 
-            AircraftModels[i] = new VoxelModel(graphicsDevice, vxlFile, hvaFile, palette, aircraftType.ArtConfig.Remapable,
+            AircraftModels[i] = new VoxelModel(graphicsDevice, voxelFrameAtlas, vxlFile, hvaFile, palette, aircraftType.ArtConfig.Remapable,
                 Constants.VoxelsAffectedByLighting, vplFile);
             loadedModels[aircraftImage] = AircraftModels[i];
         }
@@ -1209,7 +1053,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
     {
         Logger.Log("Loading infantry textures.");
 
-        var graphicsPreparationObject = new GraphicsPreparationClass();
+        var spriteSheetPreparation = graphicsPreparation.CreateBatch();
 
         var loadedTextures = new Dictionary<string, ShapeImage>();
         InfantryTextures = new ShapeImage[infantryTypes.Count];
@@ -1258,14 +1102,9 @@ public class TheaterGraphics : ITheater, ITheaterTileData
             if (!string.IsNullOrWhiteSpace(infantryType.ArtConfig.Palette))
                 palette = GetPaletteOrDefault(infantryType.ArtConfig.Palette + Theater.FileExtension[1..] + ".pal", palette, true);
 
-            InfantryTextures[i] = new ShapeImage(graphicsDevice, shpFile, shpData, palette, true, infantryType.ArtConfig.Remapable, graphicsPreparationObject, framesToLoad);
+            InfantryTextures[i] = new ShapeImage(graphicsDevice, shpFile, shpData, palette, true, infantryType.ArtConfig.Remapable, spriteSheetPreparation, framesToLoad);
             loadedTextures[shpFileName] = InfantryTextures[i];
         }
-
-        lock (graphicsPreparationObjectLocker)
-            graphicsPreparationObjects.Add(graphicsPreparationObject);
-
-        graphicsPreparationObject.PostProcessAction = PostProcessPositionedTexture;
 
         Logger.Log("Finished loading infantry textures.");
     }
@@ -1274,7 +1113,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
     {
         Logger.Log("Loading overlay textures.");
 
-        var graphicsPreparationObject = new GraphicsPreparationClass();
+        var spriteSheetPreparation = graphicsPreparation.CreateBatch();
 
         OverlayTextures = new ShapeImage[overlayTypes.Count];
         for (int i = 0; i < overlayTypes.Count; i++)
@@ -1349,14 +1188,9 @@ public class TheaterGraphics : ITheater, ITheaterTileData
                 bool isRemapable = overlayType.Tiberium && !Constants.TheaterPaletteForTiberium;
                 bool affectedByLighting = !overlayType.Tiberium || Constants.TiberiumAffectedByLighting;
 
-                OverlayTextures[i] = new ShapeImage(graphicsDevice, shpFile, shpData, palette, affectedByLighting, isRemapable, graphicsPreparationObject);
+                OverlayTextures[i] = new ShapeImage(graphicsDevice, shpFile, shpData, palette, affectedByLighting, isRemapable, spriteSheetPreparation);
             }
         }
-
-        lock (graphicsPreparationObjectLocker)
-            graphicsPreparationObjects.Add(graphicsPreparationObject);
-
-        graphicsPreparationObject.PostProcessAction = PostProcessPositionedTexture;
 
         Logger.Log("Finished loading overlay textures.");
     }
@@ -1387,14 +1221,14 @@ public class TheaterGraphics : ITheater, ITheaterTileData
         Logger.Log("Finished loading smudge textures.");
     }
 
-    private ShapeImage LoadShape(string name, XNAPalette palette, GraphicsPreparationClass graphicsPreparationObject)
+    private ShapeImage LoadShape(string name, XNAPalette palette, SpriteSheetPreparation spriteSheetPreparation)
     {
         byte[] data = fileManager.LoadFile("PIPS.SHP");
         if (data != null)
         {
             var shpFile = new ShpFile(name);
             shpFile.ParseFromBuffer(data);
-            return new ShapeImage(graphicsDevice, shpFile, data, palette, false, false, graphicsPreparationObject);
+            return new ShapeImage(graphicsDevice, shpFile, data, palette, false, false, spriteSheetPreparation);
         }
 
         return null;
@@ -1404,14 +1238,9 @@ public class TheaterGraphics : ITheater, ITheaterTileData
     {
         Logger.Log("Loading miscellaneous textures.");
 
-        var graphicsPreparationObject = new GraphicsPreparationClass(100, 100);
+        var spriteSheetPreparation = graphicsPreparation.CreateBatch();
 
-        PipTextures = LoadShape("PIPS.SHP", palettePalette, graphicsPreparationObject);
-
-        lock (graphicsPreparationObjectLocker)
-            graphicsPreparationObjects.Add(graphicsPreparationObject);
-
-        graphicsPreparationObject.PostProcessAction = PostProcessPositionedTexture;
+        PipTextures = LoadShape("PIPS.SHP", palettePalette, spriteSheetPreparation);
     }
 
     public static int GetVeterancyFrame(int veteranLevel)
@@ -1439,6 +1268,7 @@ public class TheaterGraphics : ITheater, ITheaterTileData
         Array.ForEach(UnitTurretModels, m => m?.ClearFrames());
         Array.ForEach(UnitBarrelModels, m => m?.ClearFrames());
         Array.ForEach(AircraftModels, m => m?.ClearFrames());
+        voxelFrameAtlas.Dispose();
     }
 
     public int GetOverlayFrameCount(OverlayType overlayType)
@@ -1484,12 +1314,12 @@ public class TheaterGraphics : ITheater, ITheaterTileData
         //var task10 = Task.Factory.StartNew(() => DisposeObjectImagesFromArray(InfantryTextures));
         //var task11 = Task.Factory.StartNew(() => DisposeObjectImagesFromArray(OverlayTextures));
         //var task12 = Task.Factory.StartNew(() => DisposeObjectImagesFromArray(SmudgeTextures));
-        var task13 = Task.Factory.StartNew(() => { spriteSheets.ForEach(tex2D => tex2D.Dispose()); });
+        var task13 = Task.Factory.StartNew(graphicsPreparation.Dispose);
         //var task14 = Task.Factory.StartNew(() => DisposeObjectImagesFromArray(AnimTextures));
         //Task.WaitAll(task1, task2, task3, task4, task5, task6, task7, task8, task9, task10, task11, task12, task13, task14);
         Task.WaitAll(task3, task4, task6, task7, task8, task9, task13);
 
-        spriteSheets.Clear();
+        voxelFrameAtlas.Dispose();
         terrainGraphicsList.Clear();
         mmTerrainGraphicsList.Clear();
 

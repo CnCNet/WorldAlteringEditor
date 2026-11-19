@@ -44,7 +44,7 @@ public class EditorWindow : XNAWindow
     {
         Color baseColor = UISettings.ActiveSettings.PanelBackgroundColor;
         var backgroundColor = new Color(baseColor.R / 2, baseColor.G / 2, baseColor.B / 2, 222);
-        BackgroundTexture = AssetLoader.CreateTexture(backgroundColor, 2, 2);
+        BackgroundTexture = AssetLoader.GetSolidUITexture(backgroundColor);
         PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
 
         if (!backdropBlurEffectLoadAttempted)

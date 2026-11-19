@@ -1,7 +1,7 @@
 ﻿using MapEditorLibrary;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using Rampastring.XNAUI;
+using Rampastring.XNAUI.Graphics;
 using System.Collections.Generic;
 
 namespace TSMapEditor.UI;
@@ -9,6 +9,21 @@ namespace TSMapEditor.UI;
 public static class EditorThemes
 {
     public static Dictionary<string, UISettings> Themes { get; set; } = new Dictionary<string, UISettings>();
+
+    private static readonly Dictionary<(int Width, int Height, Color Main, Color Secondary, Color Tertiary), TextureReference> buttonTextures = new();
+
+    internal static TextureReference GetButtonTexture(int width, int height, Color main, Color secondary, Color tertiary)
+    {
+        var key = (width, height, main, secondary, tertiary);
+        if (buttonTextures.TryGetValue(key, out TextureReference texture))
+            return texture;
+
+        Color[] pixels = Helpers.CreateUITexturePixels(width, height, main, secondary, tertiary);
+        texture = AssetLoader.CreateUITexture(pixels, width, height, premultiplyAlpha: false);
+        buttonTextures.Add(key, texture);
+
+        return texture;
+    }
 
     public static void Initialize()
     {
@@ -46,13 +61,13 @@ public static class EditorThemes
                 {
                     property.SetValue(theme, themeSection.GetSingleValue(property.Name, (float)property.GetValue(theme)));
                 }
-                else if (property.PropertyType == typeof(Texture2D))
+                else if (property.PropertyType == typeof(TextureReference))
                 {
                     string textureString = themeSection.GetPathStringValue(property.Name, null);
                     if (textureString == null)
                         continue;
 
-                    property.SetValue(theme, AssetLoader.LoadTexture(textureString));
+                    property.SetValue(theme, AssetLoader.LoadUITexture(textureString));
                 }
             }
 

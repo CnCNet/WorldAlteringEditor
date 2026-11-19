@@ -60,7 +60,7 @@ public class OverlayListPanel : XNAPanel, ISearchBoxContainer
         ObjectTreeView.Height = Height - ObjectTreeView.Y;
         ObjectTreeView.Width = Width;
         AddChild(ObjectTreeView);
-        ObjectTreeView.BackgroundTexture = AssetLoader.CreateTexture(new Color(0, 0, 0, 222), 2, 2);
+        ObjectTreeView.BackgroundTexture = AssetLoader.GetSolidUITexture(new Color(0, 0, 0, 222));
 
         base.Initialize();
 

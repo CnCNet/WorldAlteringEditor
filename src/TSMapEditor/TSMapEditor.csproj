@@ -537,7 +537,7 @@
     <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.6.1" />
     <PackageReference Include="Rampastring.Tools" Version="3.0.3" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.6.1" />
-    <PackageReference Include="Rampastring.XNAUI.WindowsDX" Version="5.0.1" />
+    <PackageReference Include="Rampastring.XNAUI.WindowsDX" Version="6.0.1" />
     <PackageReference Include="TextCopy" Version="6.2.1" />
     <PackageReference Include="Westwind.Scripting" Version="1.3.3" />
   </ItemGroup>

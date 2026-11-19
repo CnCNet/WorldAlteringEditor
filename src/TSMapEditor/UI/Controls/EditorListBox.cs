@@ -13,10 +13,10 @@ public class EditorListBox : XNAListBox
     {
         base.Initialize();
 
-        if (BackgroundTexture == null)
+        if (BackgroundTexture.IsEmpty)
         {
             var color = ((CustomUISettings)UISettings.ActiveSettings).ListBoxBackgroundColor;
-            BackgroundTexture = AssetLoader.CreateTexture(color, 2, 2);
+            BackgroundTexture = AssetLoader.GetSolidUITexture(color);
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
         }
     }

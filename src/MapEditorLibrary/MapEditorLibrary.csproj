@@ -23,7 +23,7 @@
     <PackageReference Include="HarfBuzzSharp" Version="8.3.1.2" />
     <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.6.1" />
     <PackageReference Include="Rampastring.Tools" Version="3.0.3" />
-    <PackageReference Include="Rampastring.XNAUI.WindowsDX" Version="5.0.0" />
+    <PackageReference Include="Rampastring.XNAUI.WindowsDX" Version="6.0.1" />
   </ItemGroup>
 
 </Project>

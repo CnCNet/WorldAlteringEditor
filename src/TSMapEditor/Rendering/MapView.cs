@@ -1190,7 +1190,7 @@ public class MapView : IMapView, IMapScreenCropper
                 tmpImage.ExtraSourceRectangle.Width,
                 tmpImage.ExtraSourceRectangle.Height);
 
-            terrainBatcher.Draw(tmpImage.Texture, exDrawRectangle, tmpImage.ExtraSourceRectangle, color, depthTop, depthBottom);
+            terrainBatcher.Draw(tmpImage.ExtraTexture, exDrawRectangle, tmpImage.ExtraSourceRectangle, color, depthTop, depthBottom);
         }
     }
 

@@ -2,6 +2,7 @@ using MapEditorLibrary.CCEngine;
 using MapEditorLibrary.CCEngine.TileData;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Rampastring.XNAUI.Graphics;
 
 namespace MapEditorLibrary.Graphics
 {
@@ -15,10 +16,10 @@ namespace MapEditorLibrary.Graphics
         /// Creates a new MonoGame TMP image and copies its color data to a sprite sheet preparation object.
         /// </summary>
         /// <param name="tmpImage">The single-cell TMP image for this MonoGame TMP image instance.</param>
-        /// <param name="megaTexturePreparation">Mega texture preparation object.</param>
+        /// <param name="spriteSheetPreparation">The batch that will supply the tile graphics to the sprite sheet.</param>
         /// <param name="palette">The palette to use for this image.</param>
         /// <param name="tileSetId">Index of the tile set of this image within all TileSets. Only tracked for convenience.</param>
-        public MGSubTileImage(TmpImage tmpImage, GraphicsPreparationClass graphicsPreparationClass, XNAPalette palette, int tileSetId)
+        public MGSubTileImage(TmpImage tmpImage, SpriteSheetPreparation spriteSheetPreparation, XNAPalette palette, int tileSetId)
         {
             if (tmpImage != null)
             {
@@ -26,21 +27,12 @@ namespace MapEditorLibrary.Graphics
                 Palette = palette;
                 byte[] data = RenderToRectangularBuffer(tmpImage);
 
-                int extraWidth = tmpImage.HasExtraData() ? (int)tmpImage.ExtraWidth : 0;
-                int extraHeight = tmpImage.HasExtraData() ? (int)tmpImage.ExtraHeight : 0;
-                if (!graphicsPreparationClass.CanFitTexture(Constants.CellSizeX + extraWidth, Constants.CellSizeY + extraHeight))
-                {
-                    graphicsPreparationClass.GenerateNewSpriteSheetWorkingObject();
-                }
-
-                Point offset = graphicsPreparationClass.AddImage(Constants.CellSizeX, Constants.CellSizeY, data, this);
-                SourceRectangle = new Rectangle(offset.X, offset.Y, Constants.CellSizeX, Constants.CellSizeY);
+                spriteSheetPreparation.AddImage(data, Constants.CellSizeX, Constants.CellSizeY, SetSpriteSheetRegion);
 
                 if (tmpImage.HasExtraData())
                 {
                     byte[] extraData = RenderExtraDataToBuffer(tmpImage);
-                    offset = graphicsPreparationClass.AddImage(extraWidth, extraHeight, extraData, null); // don't add this object to the meta twice
-                    ExtraSourceRectangle = new Rectangle(offset.X, offset.Y, extraWidth, extraHeight);
+                    spriteSheetPreparation.AddImage(extraData, (int)tmpImage.ExtraWidth, (int)tmpImage.ExtraHeight, SetExtraGraphicsSpriteSheetRegion);
                 }
             }
 
@@ -51,12 +43,25 @@ namespace MapEditorLibrary.Graphics
         /// The mega-texture where this sub-tile's texture is stored.
         /// </summary>
         public Texture2D Texture { get; set; }
-        public Rectangle SourceRectangle { get; set; }
-        public Rectangle ExtraSourceRectangle { get; set; }
+        public Rectangle SourceRectangle { get; private set; }
+        public Texture2D ExtraTexture { get; private set; }
+        public Rectangle ExtraSourceRectangle { get; private set; }
 
         public int TileSetId { get; }
         public TmpImage TmpImage { get; private set; }
         private XNAPalette Palette { get; set; }
+
+        private void SetSpriteSheetRegion(TextureReference region)
+        {
+            Texture = region.Texture;
+            SourceRectangle = region.SourceRectangle.Value;
+        }
+
+        private void SetExtraGraphicsSpriteSheetRegion(TextureReference region)
+        {
+            ExtraTexture = region.Texture;
+            ExtraSourceRectangle = region.SourceRectangle.Value;
+        }
 
         private byte[] RenderToRectangularBuffer(TmpImage image)
         {

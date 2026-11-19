@@ -185,11 +185,11 @@ public abstract class ObjectListPanel : XNAPanel, ISearchBoxContainer
         Renderer.EndDraw();
 
         // Render them as smaller textures to be independent of the voxel cache
-        Texture2D regularTexture = Helpers.RenderTextureAsSmaller(frame.Texture, renderTarget, GraphicsDevice);
+        Texture2D regularTexture = Helpers.RenderTextureAsSmaller(frame.Texture, frame.SourceRectangle, renderTarget, GraphicsDevice);
         Texture2D remapTexture = null;
 
         if (remapFrame != null && remapFrame.Texture != null)
-            remapTexture = Helpers.RenderTextureAsSmaller(remapFrame.Texture, renderTarget, GraphicsDevice);
+            remapTexture = Helpers.RenderTextureAsSmaller(remapFrame.Texture, remapFrame.SourceRectangle, renderTarget, GraphicsDevice);
 
         return (regularTexture, remapTexture);
     }

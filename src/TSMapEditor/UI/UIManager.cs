@@ -27,10 +27,10 @@ public class CustomUISettings : UISettings
 {
     public CustomUISettings()
     {
-        CheckBoxCheckedTexture = AssetLoader.LoadTexture("checkBoxChecked.png");
-        CheckBoxClearTexture = AssetLoader.LoadTexture("checkBoxClear.png");
-        CheckBoxDisabledCheckedTexture = AssetLoader.LoadTexture("checkBoxCheckedD.png");
-        CheckBoxDisabledClearTexture = AssetLoader.LoadTexture("checkBoxClearD.png");
+        CheckBoxCheckedTexture = AssetLoader.LoadUITexture("checkBoxChecked.png");
+        CheckBoxClearTexture = AssetLoader.LoadUITexture("checkBoxClear.png");
+        CheckBoxDisabledCheckedTexture = AssetLoader.LoadUITexture("checkBoxCheckedD.png");
+        CheckBoxDisabledClearTexture = AssetLoader.LoadUITexture("checkBoxClearD.png");
         PanelBackgroundColor = new Color(128, 128, 128, 255);
         PanelBorderColor = new Color(128, 128, 128, 255);
         DefaultAlphaRate = 1.0f; // ScrollBar textures need instant animations

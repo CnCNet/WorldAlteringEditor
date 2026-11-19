@@ -40,10 +40,11 @@ public class VxlRenderer
         new [] { 4, 0, 3 }, new [] { 3, 7, 4 }, // left
     };
 
-    public static (Texture2D texture, Point2D offset) Render(GraphicsDevice graphicsDevice, byte facing, RampType ramp, VxlFile vxl, HvaFile hva, Palette palette, VplFile vpl = null, bool forRemap = false)
+    public static (Color[] Pixels, int Width, int Height, Point2D Offset) Render(GraphicsDevice graphicsDevice, byte facing, RampType ramp,
+        VxlFile vxl, HvaFile hva, Palette palette, VplFile vpl = null, bool forRemap = false)
     {
         if (vxl.Sections.Count > hva.Sections.Count)
-            return (null, Point2D.Zero);
+            return (null, 0, 0, Point2D.Zero);
 
         /*********** Voxel space setup **********/
 
@@ -130,7 +131,7 @@ public class VxlRenderer
 
         // The model is actually empty, return null so we can draw replacement text
         if (vertexData.Count == 0)
-            return (null, Point2D.Zero);
+            return (null, 0, 0, Point2D.Zero);
 
         var renderTarget = new RenderTarget2D(graphicsDevice, Convert.ToInt32(imageBounds.Width / ModelScale), Convert.ToInt32(imageBounds.Height / ModelScale), false, SurfaceFormat.Color, DepthFormat.Depth24);
         Renderer.PushRenderTarget(renderTarget);
@@ -169,8 +170,7 @@ public class VxlRenderer
             graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, vertexIndices.Count / 3);
         }
 
-        // Crop the rendered voxel texture to save VRAM
-        (Texture2D texture, Point2D offset) = Helpers.CropTextureToVisiblePortion(renderTarget, graphicsDevice);
+        var croppedImage = Helpers.ReadCroppedTexturePixels(renderTarget);
 
         Renderer.PopRenderTarget();
         renderTarget.Dispose();
@@ -178,7 +178,7 @@ public class VxlRenderer
         vertexBuffer.Dispose();
         triangleListIndexBuffer.Dispose();
 
-        return (texture, offset);
+        return croppedImage;
     }
 
     private static readonly int[] SlopeAxisZAngles =

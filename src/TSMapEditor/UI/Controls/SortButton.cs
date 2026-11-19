@@ -12,7 +12,7 @@ public class SortButton : EditorButton
 
     public override void Initialize()
     {
-        ExtraTexture = AssetLoader.LoadTexture("sortbutton.png");
+        ExtraTexture = AssetLoader.LoadUITexture("sortbutton.png");
         base.Initialize();
     }
 }

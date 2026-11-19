@@ -13,28 +13,17 @@ public class EditorPanel : XNAPanel
     {
     }
 
-    private bool isStockBackgroundTexture;
-
     public override void Initialize()
     {
         base.Initialize();
 
-        if (BackgroundTexture == null)
+        if (BackgroundTexture.IsEmpty)
         {
-            BackgroundTexture = AssetLoader.CreateTexture(Color.White, 2, 2);
+            BackgroundTexture = AssetLoader.GetSolidUITexture(Color.White);
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
-            isStockBackgroundTexture = true;
         }
 
         UIHelpers.AutoAssignTextBoxNextControls(this);
-    }
-
-    public override void Kill()
-    {
-        if (isStockBackgroundTexture)
-            BackgroundTexture?.Dispose();
-
-        base.Kill();
     }
 
     public override void Draw(GameTime gameTime)
