@@ -29,6 +29,7 @@ public class MutationHistoryMetadata
         Origin = origin;
         ToolName = toolName;
         AffectedCells = affectedCells ?? throw new ArgumentNullException(nameof(affectedCells));
+        CreatedAtUtc = DateTime.UtcNow;
     }
 
     public long MutationId { get; }
@@ -36,4 +37,5 @@ public class MutationHistoryMetadata
     public string Origin { get; }
     public string ToolName { get; }
     public MutationAffectedCells AffectedCells { get; }
+    public DateTime CreatedAtUtc { get; }
 }

@@ -339,35 +339,118 @@ internal static class ScriptingContentHasher
         }
     }
 
+    /// <summary>
+    /// Returns the canonical fields that make up a model's content hash as an ordered list of
+    /// path/value pairs, for example <c>actions[2].parameter[1].rawParameter = 5</c>.
+    /// The fields are produced by the same code that computes the hash, so two models have
+    /// identical field lists exactly when they have identical content hashes.
+    /// </summary>
+    /// <param name="computeHash">A call to one of the <c>Compute</c> overloads.</param>
+    public static List<KeyValuePair<string, string>> DescribeFields(Func<string> computeHash)
+    {
+        ArgumentNullException.ThrowIfNull(computeHash);
+
+        var recorder = new FieldRecorder();
+        activeRecorder = recorder;
+
+        try
+        {
+            computeHash();
+        }
+        finally
+        {
+            activeRecorder = null;
+        }
+
+        return recorder.Fields;
+    }
+
+    [ThreadStatic]
+    private static FieldRecorder activeRecorder;
+
     private static string Hash(string modelType, Action<CanonicalWriter> writeContent)
     {
         using var stream = new MemoryStream();
-        var writer = new CanonicalWriter(stream);
+        var writer = new CanonicalWriter(stream, null);
         writer.WriteString("format", HashFormatVersion);
         writer.WriteString("modelType", modelType);
+        writer.Recorder = activeRecorder;
         writeContent(writer);
 
         byte[] hash = SHA256.HashData(stream.ToArray());
         return HashPrefix + Convert.ToHexString(hash).ToLowerInvariant();
     }
 
+    /// <summary>
+    /// Records canonical fields with readable paths. Fields named "...Index" open a scope
+    /// for the fields that follow them, so repeated entries can be told apart.
+    /// </summary>
+    private sealed class FieldRecorder
+    {
+        private const string ParameterIndexName = "parameterIndex";
+        private const string ParameterCountName = "parameterCount";
+        private const string IndexSuffix = "Index";
+        private const string CountSuffix = "Count";
+
+        private string entryScope = string.Empty;
+        private string parameterScope = string.Empty;
+
+        public List<KeyValuePair<string, string>> Fields { get; } = new List<KeyValuePair<string, string>>();
+
+        public void Record(string name, string value)
+        {
+            if (name == ParameterIndexName)
+            {
+                parameterScope = "parameter[" + value + "].";
+                return;
+            }
+
+            if (name.Length > IndexSuffix.Length && name.EndsWith(IndexSuffix, StringComparison.Ordinal))
+            {
+                string collectionName = name.Substring(0, name.Length - IndexSuffix.Length);
+                entryScope = collectionName + "s[" + value + "].";
+                parameterScope = string.Empty;
+                return;
+            }
+
+            // A count introduces a new list: "parameterCount" belongs to the current entry,
+            // any other count (for example "actionCount" after the events) to the element itself.
+            if (name == ParameterCountName)
+            {
+                parameterScope = string.Empty;
+            }
+            else if (name.EndsWith(CountSuffix, StringComparison.Ordinal))
+            {
+                entryScope = string.Empty;
+                parameterScope = string.Empty;
+            }
+
+            Fields.Add(new KeyValuePair<string, string>(entryScope + parameterScope + name, value));
+        }
+    }
+
     private sealed class CanonicalWriter
     {
-        public CanonicalWriter(Stream stream)
+        public CanonicalWriter(Stream stream, FieldRecorder recorder)
         {
             this.stream = stream;
+            Recorder = recorder;
         }
 
         private readonly Stream stream;
 
+        public FieldRecorder Recorder { get; set; }
+
         public void WriteBoolean(string name, bool value)
         {
+            Recorder?.Record(name, value ? "true" : "false");
             WriteName(name);
             stream.WriteByte(value ? (byte)1 : (byte)0);
         }
 
         public void WriteInt32(string name, int value)
         {
+            Recorder?.Record(name, value.ToString(CultureInfo.InvariantCulture));
             WriteName(name);
             Span<byte> buffer = stackalloc byte[sizeof(int)];
             BinaryPrimitives.WriteInt32BigEndian(buffer, value);
@@ -376,6 +459,7 @@ internal static class ScriptingContentHasher
 
         public void WriteNullableInt32(string name, int? value)
         {
+            Recorder?.Record(name, value?.ToString(CultureInfo.InvariantCulture));
             WriteName(name);
             stream.WriteByte(value.HasValue ? (byte)1 : (byte)0);
             if (!value.HasValue)
@@ -388,6 +472,7 @@ internal static class ScriptingContentHasher
 
         public void WriteDouble(string name, double value)
         {
+            Recorder?.Record(name, value.ToString("R", CultureInfo.InvariantCulture));
             WriteName(name);
             Span<byte> buffer = stackalloc byte[sizeof(long)];
             BinaryPrimitives.WriteInt64BigEndian(buffer, BitConverter.DoubleToInt64Bits(value));
@@ -396,6 +481,7 @@ internal static class ScriptingContentHasher
 
         public void WriteString(string name, string value)
         {
+            Recorder?.Record(name, value);
             WriteName(name);
             WriteRawString(value);
         }

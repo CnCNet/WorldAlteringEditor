@@ -4,7 +4,7 @@
 
 The World-Altering Editor MCP server exposes map-local TaskForces, Scripts, TeamTypes, AITriggers, Local Variables, Triggers, and Tags to AI agents. The API supports browsing the active game configuration and applying related scripting changes as one validated, atomic operation.
 
-Scripting changes are applied atomically and are not added to map undo/redo history. Saving the map persists the result, but normal Undo cannot revert it; an agent must read the new state and submit an explicit inverse change if one is needed.
+Each applied scripting change set is recorded as a single entry in the map's undo/redo history. The result of `apply_scripting_changes` includes its `mutationId`; agents can inspect it with `review_action` and revert it with `undo_latest` or `undo_through`, and users can revert it with Ctrl+Z like any other edit. See [Action history, review, and undo](#action-history-review-and-undo).
 
 ## Recommended workflow
 
@@ -326,3 +326,28 @@ Only the editable event/action parameters are present. For the bundled definitio
 - Tags reference a valid Trigger and use a repeating value from 0 through 2.
 - Deletion checks incoming references from scripting elements, placed technos, and cell tags.
 - Global TaskForces, Scripts, and TeamTypes may be browsed, referenced, and guarded where supported, but cannot be edited through map-local operations.
+
+## Action history, review, and undo
+
+Every MCP action that changes the map, including scripting change sets, is recorded in the editor's regular undo/redo history alongside the user's own edits. The history is the list of actions an agent can inspect and revert:
+
+- `get_mutation_history` lists undo and redo entries newest first. Entries created through MCP have a `mutationId`, the tool name, a UTC timestamp, a `kind` of `Map` or `Scripting`, and an affected-cell summary.
+- `review_action` returns one entry in detail, whether it is currently applied or has been undone. For a scripting change set it lists each created, updated, and deleted element with a field-level before/after diff and whether the element still matches the recorded state. For a map edit it suggests a cell region to pass to `screenshot_map_region` or `move_camera`.
+- `undo_latest` and `redo_latest` step one entry at a time.
+- `undo_through` undoes every entry from the top of the undo history down to a given `mutationId` in one call. It refuses, without changing anything, if any entry in that range is a manual edit by the user.
+
+The scripting editor windows change scripting data directly rather than through the undo history. Undo and redo of a scripting change set therefore check first that the map still matches the state the entry expects:
+
+- Updated and created elements must not have been edited or removed since.
+- Elements that undo or redo would remove must not be referenced by anything outside the change set, such as a TeamType the user created afterwards.
+- Elements that undo or redo would bring back must not collide with an ID or Local Variable index that has been reused since, and their direct references must still resolve.
+
+If a check fails, MCP undo and redo refuse with an explanation and change nothing; the entry reports a `blockReason` in the history. When the user presses Ctrl+Z or Ctrl+Y on such an entry, the editor removes it from the history and shows a notification instead of overwriting the user's newer work.
+
+## Editor tools
+
+These tools act on the editor rather than on map content. None of them shows a dialog or takes keyboard or mouse focus from the user.
+
+- `get_camera` returns the cell at the center of the user's view, the zoom level, and the approximate visible size in cells.
+- `move_camera` centers the view on a cell, or on the cells changed by a `mutationId`, and can change the zoom level. While the user is scrolling, painting, dragging or rotating objects, or has moved the view within the last two seconds, the camera is left alone and `notMovedReason` says why. `force` overrides this and should only be used when the user asks for it.
+- `save_map` saves the map like File > Save. Without `filePath` it writes to the map's current file; with `filePath` (an absolute `.map`, `.mpr`, or `.yrm` path) it saves to a new file, which is required for a map that has never been saved. Replacing a different existing file requires `overwrite`. Instead of the "Issues Found" dialog that follows a manual save, the result returns the map checker's issues, and the editor shows a brief "Map saved by an MCP agent" notification.
