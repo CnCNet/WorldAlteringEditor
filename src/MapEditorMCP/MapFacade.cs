@@ -81,6 +81,8 @@ internal class MapFacade
         return mutationManager.Revision;
     }
 
+    public bool IsCellWithinMap(int x, int y) => map.IsCoordWithinMap(x, y);
+
     public MapMutationHistoryInfo GetMutationHistory(int limit)
     {
         if (limit < 1 || limit > MaxMutationHistoryEntries)
@@ -92,19 +94,23 @@ internal class MapFacade
         var undoHistory = new List<MapMutationHistoryEntry>(Math.Min(limit, mutationManager.UndoList.Count));
         for (int i = mutationManager.UndoList.Count - 1; i >= 0 && undoHistory.Count < limit; i--)
         {
+            bool isTop = i == mutationManager.UndoList.Count - 1;
             undoHistory.Add(CreateMutationHistoryEntry(
                 mutationManager.UndoList[i],
-                canUndo: i == mutationManager.UndoList.Count - 1,
-                canRedo: false));
+                canUndo: isTop,
+                canRedo: false,
+                blockReason: isTop ? GetUndoBlockReason(mutationManager.UndoList[i]) : null));
         }
 
         var redoHistory = new List<MapMutationHistoryEntry>(Math.Min(limit, mutationManager.RedoList.Count));
         for (int i = mutationManager.RedoList.Count - 1; i >= 0 && redoHistory.Count < limit; i--)
         {
+            bool isTop = i == mutationManager.RedoList.Count - 1;
             redoHistory.Add(CreateMutationHistoryEntry(
                 mutationManager.RedoList[i],
                 canUndo: false,
-                canRedo: i == mutationManager.RedoList.Count - 1));
+                canRedo: isTop,
+                blockReason: isTop ? GetRedoBlockReason(mutationManager.RedoList[i]) : null));
         }
 
         return new MapMutationHistoryInfo(
@@ -130,6 +136,7 @@ internal class MapFacade
                 $"The latest undo mutation changed from ID {expectedMutationId} to {metadata.MutationId}. Query mutation history again before undoing it.");
         }
 
+        ThrowIfBlocked(GetUndoBlockReason(mutation));
         mutationManager.UndoOne();
 
         return new MapMutationOperationResult(
@@ -156,6 +163,7 @@ internal class MapFacade
                 $"The latest redo mutation changed from ID {expectedMutationId} to {metadata.MutationId}. Query mutation history again before redoing it.");
         }
 
+        ThrowIfBlocked(GetRedoBlockReason(mutation));
         mutationManager.Redo();
 
         return new MapMutationOperationResult(
@@ -165,6 +173,226 @@ internal class MapFacade
             mutationManager.RedoList.Count,
             CanUndoLatestMutationThroughMCP(),
             CanRedoLatestMutationThroughMCP());
+    }
+
+    /// <summary>
+    /// Undoes MCP-created entries from the top of the undo history down to and including
+    /// the given entry. Validates the whole range first and changes nothing if any entry in
+    /// it was created outside MCP (a manual edit by the user), so manual work is never undone.
+    /// </summary>
+    public MapMutationBatchUndoResult UndoThrough(int expectedRevision, long mutationId)
+    {
+        ValidateExpectedRevision(expectedRevision, "undoing through a mutation");
+
+        int targetIndex = mutationManager.UndoList.FindLastIndex(candidate => candidate.HistoryMetadata?.MutationId == mutationId);
+        if (targetIndex < 0)
+        {
+            throw new MapFacadeValidationException(
+                $"Mutation ID {mutationId} is not in the undo history. It may already have been undone or discarded; query mutation history again.");
+        }
+
+        int count = mutationManager.UndoList.Count - targetIndex;
+        if (count > MaxMutationHistoryEntries)
+            throw new MapFacadeValidationException($"undo_through can undo at most {MaxMutationHistoryEntries} entries at once.");
+
+        for (int i = mutationManager.UndoList.Count - 1; i >= targetIndex; i--)
+        {
+            IMutation candidate = mutationManager.UndoList[i];
+            if (candidate.HistoryMetadata == null)
+            {
+                throw new MapFacadeValidationException(
+                    $"Undoing through mutation ID {mutationId} would also undo a manual edit made by the user " +
+                    $"(\"{candidate.GetDisplayString()}\", {mutationManager.UndoList.Count - 1 - i} entries from the top). Nothing was undone.");
+            }
+        }
+
+        var undone = new List<MapMutationHistoryEntry>(count);
+        while (mutationManager.UndoList.Count > targetIndex)
+        {
+            IMutation mutation = mutationManager.UndoList[^1];
+            string blockReason = GetUndoBlockReason(mutation);
+            if (blockReason != null)
+            {
+                string progress = undone.Count == 0
+                    ? "Nothing was undone."
+                    : $"{undone.Count} newer entries were undone before stopping; they can be redone with redo_latest.";
+                throw new MapFacadeValidationException(
+                    $"Stopped at mutation ID {mutation.HistoryMetadata.MutationId}: {blockReason} {progress}");
+            }
+
+            mutationManager.UndoOne();
+            undone.Add(CreateMutationHistoryEntry(mutation, canUndo: false, canRedo: false));
+        }
+
+        return new MapMutationBatchUndoResult(
+            mutationManager.Revision,
+            undone,
+            mutationManager.UndoList.Count,
+            mutationManager.RedoList.Count,
+            CanUndoLatestMutationThroughMCP(),
+            CanRedoLatestMutationThroughMCP());
+    }
+
+    /// <summary>
+    /// Returns a detailed review of one MCP-created history entry, whether it is currently
+    /// applied (undo history) or undone (redo history).
+    /// </summary>
+    public MapActionReviewInfo ReviewAction(long mutationId, int maxFieldChangesPerElement)
+    {
+        if (maxFieldChangesPerElement < 1 || maxFieldChangesPerElement > 10_000)
+            throw new MapFacadeValidationException("maxFieldChangesPerElement must be from 1 through 10000.");
+
+        bool inUndoStack = true;
+        int index = mutationManager.UndoList.FindLastIndex(candidate => candidate.HistoryMetadata?.MutationId == mutationId);
+        List<IMutation> stack = mutationManager.UndoList;
+
+        if (index < 0)
+        {
+            inUndoStack = false;
+            stack = mutationManager.RedoList;
+            index = stack.FindLastIndex(candidate => candidate.HistoryMetadata?.MutationId == mutationId);
+        }
+
+        if (index < 0)
+        {
+            throw new MapFacadeValidationException(
+                $"Mutation ID {mutationId} is not in the undo or redo history. Entries are dropped when a new edit clears the redo history, " +
+                "when the map is reloaded, or when an unsafe undo or redo discards them.");
+        }
+
+        IMutation mutation = stack[index];
+        bool isTop = index == stack.Count - 1;
+        string blockReason = isTop ? (inUndoStack ? GetUndoBlockReason(mutation) : GetRedoBlockReason(mutation)) : null;
+
+        int nonMcpAbove = 0;
+        for (int i = index + 1; i < stack.Count; i++)
+        {
+            if (stack[i].HistoryMetadata == null)
+                nonMcpAbove++;
+        }
+
+        return new MapActionReviewInfo
+        {
+            Entry = CreateMutationHistoryEntry(mutation, canUndo: inUndoStack && isTop, canRedo: !inUndoStack && isTop, blockReason),
+            HistoryStack = inUndoStack ? "Undo" : "Redo",
+            PositionFromTop = stack.Count - 1 - index,
+            NonMcpEntriesAbove = nonMcpAbove,
+            SuggestedViewRegion = GetSuggestedViewRegion(mutation.HistoryMetadata.AffectedCells),
+            ScriptingChanges = mutation is ScriptingChangeMutation scriptingMutation
+                ? CreateScriptingReview(scriptingMutation, inUndoStack, maxFieldChangesPerElement)
+                : null
+        };
+    }
+
+    private MapCellRectangleInfo GetSuggestedViewRegion(MutationAffectedCells affectedCells)
+    {
+        const int margin = 3;
+
+        if (affectedCells == null || !affectedCells.IsKnown || affectedCells.Count == 0 ||
+            affectedCells.MinX == null || affectedCells.MinY == null || affectedCells.MaxX == null || affectedCells.MaxY == null)
+        {
+            return null;
+        }
+
+        int minX = Math.Max(0, affectedCells.MinX.Value - margin);
+        int minY = Math.Max(0, affectedCells.MinY.Value - margin);
+        int maxX = affectedCells.MaxX.Value + margin;
+        int maxY = affectedCells.MaxY.Value + margin;
+
+        return new MapCellRectangleInfo(minX, minY, maxX - minX + 1, maxY - minY + 1);
+    }
+
+    private List<ScriptingElementChangeReviewInfo> CreateScriptingReview(ScriptingChangeMutation mutation, bool isApplied, int maxFieldChanges)
+    {
+        var reviews = new List<ScriptingElementChangeReviewInfo>(mutation.Changes.Count);
+
+        foreach (ScriptingElementChange change in mutation.Changes)
+        {
+            object identityModel = change.AfterSnapshot ?? change.BeforeSnapshot ?? change.Model;
+
+            List<KeyValuePair<string, string>> beforeFields = change.BeforeSnapshot == null
+                ? new List<KeyValuePair<string, string>>()
+                : ScriptingModelOperations.DescribeFields(change.Kind, change.BeforeSnapshot, map);
+            List<KeyValuePair<string, string>> afterFields = change.AfterSnapshot == null
+                ? new List<KeyValuePair<string, string>>()
+                : ScriptingModelOperations.DescribeFields(change.Kind, change.AfterSnapshot, map);
+
+            // While applied, the element should look like the "after" state (or be gone if deleted);
+            // while undone, like the "before" state (or be gone if created).
+            string expectedHash = isApplied ? change.AfterHash : change.BeforeHash;
+            bool matches = expectedHash == null
+                ? !ScriptingModelOperations.GetLocalList(map, change.Kind).Cast<object>().Any(item => ReferenceEquals(item, change.Model))
+                : mutation.MatchesCurrentState(change, expectedHash);
+
+            reviews.Add(new ScriptingElementChangeReviewInfo
+            {
+                Kind = change.Kind.ToString(),
+                ChangeType = change.ChangeType.ToString(),
+                Id = Scripting.ScriptingChangePlanner.GetElementId(change.Kind, identityModel),
+                Index = Scripting.ScriptingChangePlanner.GetElementIndex(change.Kind, identityModel),
+                Name = Scripting.ScriptingChangePlanner.GetElementName(change.Kind, identityModel),
+                ContentHashBefore = change.BeforeHash,
+                ContentHashAfter = change.AfterHash,
+                MatchesExpectedCurrentState = matches,
+                FieldChanges = DiffFields(beforeFields, afterFields, maxFieldChanges)
+            });
+        }
+
+        return reviews;
+    }
+
+    private static List<ScriptingFieldChangeInfo> DiffFields(List<KeyValuePair<string, string>> before,
+        List<KeyValuePair<string, string>> after, int maxChanges)
+    {
+        var beforeByField = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var field in before)
+            beforeByField[field.Key] = field.Value;
+
+        var afterByField = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var field in after)
+            afterByField[field.Key] = field.Value;
+
+        // Keep the canonical field order: fields of the after state first, then removed fields.
+        var orderedFields = after.Select(field => field.Key)
+            .Concat(before.Select(field => field.Key))
+            .Distinct(StringComparer.Ordinal);
+
+        var changes = new List<ScriptingFieldChangeInfo>();
+        foreach (string field in orderedFields)
+        {
+            beforeByField.TryGetValue(field, out string beforeValue);
+            afterByField.TryGetValue(field, out string afterValue);
+
+            bool inBefore = beforeByField.ContainsKey(field);
+            bool inAfter = afterByField.ContainsKey(field);
+            if (inBefore && inAfter && string.Equals(beforeValue, afterValue, StringComparison.Ordinal))
+                continue;
+
+            if (changes.Count == maxChanges)
+            {
+                changes.Add(new ScriptingFieldChangeInfo("(truncated)", null, "More field changes exist; raise maxFieldChangesPerElement to see them."));
+                break;
+            }
+
+            changes.Add(new ScriptingFieldChangeInfo(field, inBefore ? beforeValue : null, inAfter ? afterValue : null));
+        }
+
+        return changes;
+    }
+
+    private static string GetUndoBlockReason(IMutation mutation)
+        => (mutation as IGuardedMutation)?.GetUndoBlockReason();
+
+    private static string GetRedoBlockReason(IMutation mutation)
+        => (mutation as IGuardedMutation)?.GetRedoBlockReason();
+
+    private static void ThrowIfBlocked(string blockReason)
+    {
+        if (blockReason != null)
+        {
+            throw new MapFacadeValidationException(blockReason +
+                " Nothing was changed. Use review_action to see the recorded before/after state and submit an explicit change instead.");
+        }
     }
 
     public List<MapObjectTypeInfo> GetTerrainTypes(string nameFilter = null)
@@ -1860,15 +2088,17 @@ internal class MapFacade
         }
     }
 
-    private MapMutationHistoryEntry CreateMutationHistoryEntry(IMutation mutation, bool canUndo, bool canRedo)
+    private MapMutationHistoryEntry CreateMutationHistoryEntry(IMutation mutation, bool canUndo, bool canRedo, string blockReason = null)
     {
         return new MapMutationHistoryEntry(
             mutation.HistoryMetadata,
             mutationManager.Revision,
             mutation.GetType().Name,
             mutation.GetDisplayString(),
+            mutation is ScriptingChangeMutation ? MapMutationKinds.Scripting : MapMutationKinds.Map,
             canUndo,
-            canRedo);
+            canRedo,
+            blockReason);
     }
 
     private MutationHistoryMetadata GetMutationMetadata(IMutation mutation)
@@ -1879,12 +2109,14 @@ internal class MapFacade
 
     private bool CanUndoLatestMutationThroughMCP()
     {
-        return mutationManager.CanUndo() && mutationManager.UndoList[^1].HistoryMetadata != null;
+        return mutationManager.CanUndo() && mutationManager.UndoList[^1].HistoryMetadata != null &&
+            GetUndoBlockReason(mutationManager.UndoList[^1]) == null;
     }
 
     private bool CanRedoLatestMutationThroughMCP()
     {
-        return mutationManager.CanRedo() && mutationManager.RedoList[^1].HistoryMetadata != null;
+        return mutationManager.CanRedo() && mutationManager.RedoList[^1].HistoryMetadata != null &&
+            GetRedoBlockReason(mutationManager.RedoList[^1]) == null;
     }
 
     private void ValidateExpectedRevision(int expectedRevision, string operationDescription)

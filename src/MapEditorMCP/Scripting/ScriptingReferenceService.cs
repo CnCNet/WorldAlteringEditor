@@ -58,6 +58,22 @@ internal sealed class ScriptingReferenceService
             .ToList();
     }
 
+    /// <summary>
+    /// Returns the paths of all references to the given element instance whose source
+    /// is not one of <paramref name="ignoredSources"/>.
+    /// </summary>
+    internal List<string> GetIncomingReferencePaths(object element, IReadOnlySet<object> ignoredSources)
+    {
+        ArgumentNullException.ThrowIfNull(element);
+        ArgumentNullException.ThrowIfNull(ignoredSources);
+
+        return BuildReferenceGraph()
+            .Where(edge => ReferenceEquals(edge.Target, element) && !ignoredSources.Contains(edge.Source))
+            .Select(edge => edge.Path)
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToList();
+    }
+
     internal ScriptingElementIdentityInfo GetElementIdentity(ScriptingElementReference elementReference)
         => CreateIdentity(ResolveElement(elementReference));
 

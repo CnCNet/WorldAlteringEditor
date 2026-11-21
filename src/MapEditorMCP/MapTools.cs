@@ -86,8 +86,11 @@ internal sealed class MapTools
     }
 
     [McpServerTool(Name = "get_mutation_history", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Returns undo and redo history in newest-first order with the current map revision. Entries created through MCP include stable IDs, " +
-        "tool names, and affected-cell summaries; only those entries can be undone or redone through MCP.")]
+    [Description("Returns the list of actions on the map: undo and redo history in newest-first order with the current map revision. " +
+        "It contains both the user's manual edits and MCP actions, including scripting change sets (kind \"Scripting\"). " +
+        "Entries created through MCP include stable mutation IDs, tool names, timestamps, and affected-cell summaries; only those " +
+        "entries can be reviewed, undone, or redone through MCP. If the next entry cannot be safely undone or redone because the map " +
+        "changed outside the history, it reports a blockReason.")]
     public async Task<MapMutationHistoryInfo> GetMutationHistory(
         [Description("Maximum number of entries returned from each stack. Defaults to 50 and may be at most 1000.")] int limit = 50,
         CancellationToken cancellationToken = default)
@@ -135,6 +138,50 @@ internal sealed class MapTools
         try
         {
             return await gameThreadDispatcher.InvokeAsync(() => mapFacade.RedoLatest(expectedRevision, expectedMutationId), cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "undo_through", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Undoes every MCP-created entry from the top of the undo history down to and including the given mutation, newest first. " +
+        "Use it to roll back a sequence of your own actions in one call. It refuses, without changing anything, if any entry in that range is " +
+        "a manual edit by the user, so the user's work is never undone. If an entry turns out to be unsafe to undo partway, it stops there and " +
+        "reports how many entries were undone.")]
+    public async Task<MapMutationBatchUndoResult> UndoThrough(
+        [Description("Exact current map revision returned by get_mutation_history.")] int expectedRevision,
+        [Description("Mutation ID of the oldest entry to undo.")] long mutationId,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(UndoThrough)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(() => mapFacade.UndoThrough(expectedRevision, mutationId), cancellationToken);
+        }
+        catch (MapFacadeValidationException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+    }
+
+    [McpServerTool(Name = "review_action", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Reviews one MCP-created action from the history by mutation ID, whether it is currently applied or has been undone. " +
+        "For scripting change sets it returns every created, updated, and deleted element with a field-level before/after diff and whether " +
+        "the element still matches the recorded state. For map edits it returns the affected cells and a suggested region to pass to " +
+        "screenshot_map_region or move_camera to see the result. Use it to verify your own work before reporting it to the user.")]
+    public async Task<MapActionReviewInfo> ReviewAction(
+        [Description("Mutation ID from get_mutation_history or from the result of the action.")] long mutationId,
+        [Description("Maximum number of changed fields listed per scripting element. Defaults to 200.")] int maxFieldChangesPerElement = 200,
+        CancellationToken cancellationToken = default)
+    {
+        Logger.Log($"{nameof(MapTools)}.{nameof(ReviewAction)}");
+
+        try
+        {
+            return await gameThreadDispatcher.InvokeAsync(() => mapFacade.ReviewAction(mutationId, maxFieldChangesPerElement), cancellationToken);
         }
         catch (MapFacadeValidationException ex)
         {

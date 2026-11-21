@@ -21,10 +21,17 @@ public sealed class MCPServer : IDisposable
 
     public MCPServer(WindowManager windowManager, Map map, MutationManager mutationManager, IMutationTarget mutationTarget,
         IMapScreenCropper mapScreenCropper, int port)
+        : this(windowManager, map, mutationManager, mutationTarget, mapScreenCropper, null, null, port)
+    {
+    }
+
+    public MCPServer(WindowManager windowManager, Map map, MutationManager mutationManager, IMutationTarget mutationTarget,
+        IMapScreenCropper mapScreenCropper, IEditorViewController viewController, IMapSaveHandler saveHandler, int port)
     {
         this.windowManager = windowManager;
+        hostServices = new EditorHostServices(viewController, saveHandler);
         mapFacade = new MapFacade(map, mutationManager, mutationTarget);
-        scriptingFacade = new ScriptingFacade(map);
+        scriptingFacade = new ScriptingFacade(map, mutationManager, mutationTarget);
         this.mapScreenCropper = mapScreenCropper;
         this.port = port;
     }
@@ -35,6 +42,7 @@ public sealed class MCPServer : IDisposable
     private readonly MapFacade mapFacade;
     private readonly ScriptingFacade scriptingFacade;
     private readonly IMapScreenCropper mapScreenCropper;
+    private readonly EditorHostServices hostServices;
     private readonly CancellationTokenSource shutdownCancellationTokenSource = new CancellationTokenSource();
     private readonly int port;
 
@@ -56,12 +64,14 @@ public sealed class MCPServer : IDisposable
         services.AddSingleton(mapFacade);
         services.AddSingleton(scriptingFacade);
         services.AddSingleton(mapScreenCropper);
+        services.AddSingleton(hostServices);
         services.AddSingleton(new GameThreadDispatcher(windowManager, shutdownCancellationTokenSource.Token));
         services
             .AddMcpServer(options => options.Filters.Request.CallToolFilters.Add(next => (request, requestCancellationToken) =>
                 InvokeToolWithDetailedErrors(next, request, requestCancellationToken)))
             .WithTools<MapTools>()
-            .WithTools<ScriptingTools>();
+            .WithTools<ScriptingTools>()
+            .WithTools<EditorTools>();
 
         serviceProvider = services.BuildServiceProvider();
         httpServer = new LoopbackHttpServer(port, boundPort =>
