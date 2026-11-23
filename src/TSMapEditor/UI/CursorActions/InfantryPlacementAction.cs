@@ -1,5 +1,6 @@
 ﻿using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
+using System.Collections.Generic;
 using MapEditorLibrary.Mutations.Classes;
 using System;
 
@@ -78,10 +79,16 @@ public class InfantryPlacementAction : CursorAction
         }
     }
 
+    public override IEnumerable<(Point2D Cell, bool CanPlace)> GetMirroredPreview(Point2D cellCoords) =>
+        GetMirroredTechnoPreview(cellCoords, infantry);
+
     public override void LeftDown(Point2D cellCoords)
     {
         if (InfantryType == null)
             throw new InvalidOperationException(nameof(InfantryType) + " cannot be null");
+
+        if (TryPlaceMirroredTechno(cellCoords, infantry))
+            return;
 
         var tile = CursorActionTarget.Map.GetTile(cellCoords);
         SubCell freeSubCell = tile.GetFreeSubCellSpot();

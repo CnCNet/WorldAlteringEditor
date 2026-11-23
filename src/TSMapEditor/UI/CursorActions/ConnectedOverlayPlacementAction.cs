@@ -99,6 +99,11 @@ public class ConnectedOverlayPlacementAction : LineAndRegularPaintingAction
         CursorActionTarget.AddRefreshPoint(cellCoords, Math.Max(CursorActionTarget.BrushSize.Height, CursorActionTarget.BrushSize.Width));
     }
 
+    protected override bool CanMirrorPaint => ConnectedOverlayType != null;
+
+    protected override IMutation CreateMirroredCellMutation(Point2D cell, int variant) =>
+        new PlaceConnectedOverlayMutation(MutationTarget, ConnectedOverlayType, cell, SingleCellBrush);
+
     protected override ICheckableMutation CreateRegularPlacementMutation(Point2D cellCoords)
     {
         return new PlaceConnectedOverlayMutation(CursorActionTarget.MutationTarget, ConnectedOverlayType, cellCoords, EventID);

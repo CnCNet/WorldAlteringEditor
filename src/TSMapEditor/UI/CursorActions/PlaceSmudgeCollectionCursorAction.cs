@@ -111,6 +111,12 @@ public class PlaceSmudgeCollectionCursorAction : LineAndRegularPaintingAction
 
     protected override bool CanDrawLinePreview() => _smudgeCollection != null;
 
+    protected override bool CanMirrorPaint => SmudgeCollection != null;
+    protected override int MirroredVariantCount => SmudgeCollection.Entries.Length;
+
+    protected override IMutation CreateMirroredCellMutation(Point2D cell, int variant) =>
+        new PlaceSmudgeMutation(MutationTarget, SmudgeCollection.Entries[variant].SmudgeType, cell, SingleCellBrush, EventID);
+
     protected override ICheckableMutation CreateRegularPlacementMutation(Point2D cellCoords)
     {
         return new PlaceSmudgeCollectionMutation(CursorActionTarget.MutationTarget, SmudgeCollection, cellCoords, MutationTarget.BrushSize, EventID);

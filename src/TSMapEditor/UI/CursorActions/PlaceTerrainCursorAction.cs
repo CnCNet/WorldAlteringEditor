@@ -8,6 +8,7 @@ using MapEditorLibrary.Mutations.Classes;
 using Rampastring.XNAUI.Input;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace TSMapEditor.UI.CursorActions;
 
@@ -25,6 +26,9 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
     {
         if (Tile == null)
             yield break;
+
+        if (CursorActionTarget.Mirroring != null && !CanMirrorPaint)
+            yield return Translate("MirroringHint", "Terrain mirroring applies only to 1x1 tiles.");
 
         foreach (string hint in base.GetHintLines())
             yield return hint;
@@ -251,6 +255,25 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
 
     protected override bool CanDrawLinePreview() => Tile != null;
 
+    protected override bool CanMirrorPaint => Tile?.Width == 1 && Tile.Height == 1 && Tile.GetSubTile(0) != null;
+
+    protected override Point2D GetMirroredCursorCell(Point2D cellCoords) => GetAdjustedCellCoords(cellCoords);
+
+    private bool IsFilling => LineSourceCell == null && KeyboardCommands.Instance.FillTerrain.AreKeysOrModifiersDown(Keyboard);
+
+    protected override IEnumerable<Point2D> GetMirroredPreviewSourceCells(Point2D cellCoords) =>
+        IsFilling ? new[] { cellCoords } : base.GetMirroredPreviewSourceCells(cellCoords);
+
+    protected override bool CanPaintMirroredCell(MapTile tile, int variant) =>
+        IsFilling || !MutationTarget.OnlyPaintOnClearGround || tile.IsClearGround();
+
+    private protected override IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line, bool fill)
+    {
+        var cells = targets.Select(target => target.Cell).ToArray();
+        if (cells.Length > 0)
+            yield return new PlaceMirroredTerrainMutation(MutationTarget, cells, Tile, heightOffset, line, fill);
+    }
+
     protected override ICheckableMutation CreateRegularPlacementMutation(Point2D cellCoords)
     {
         return new PlaceTerrainTileMutation(CursorActionTarget.MutationTarget, cellCoords, Tile, heightOffset, EventID);
@@ -295,6 +318,12 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
         return true;
     }
 
+    private IEnumerable<Point2D> GetMirroredFillCells(MapTile targetCell)
+    {
+        foreach (Point2D cell in Helpers.GetFillAreaTiles(targetCell, Map, Map.TheaterInstance))
+            yield return cell;
+    }
+
     private void TryFillTerrain(Point2D cellCoords)
     {
         Point2D adjustedCellCoords = GetAdjustedCellCoords(cellCoords);
@@ -305,8 +334,11 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
         if (!FillTerrainPassesPreviousMutationCheck(cellCoords))
             return;
 
-        var mutation = new FillTerrainAreaMutation(CursorActionTarget.MutationTarget, targetCell, Tile);
-        CursorActionTarget.MutationManager.PerformMutation(mutation);
+        if (!TryPerformMirroredPaint(GetMirroredFillCells(targetCell), fill: true, stampOrigin: adjustedCellCoords))
+        {
+            var mutation = new FillTerrainAreaMutation(CursorActionTarget.MutationTarget, targetCell, Tile);
+            CursorActionTarget.MutationManager.PerformMutation(mutation);
+        }
         PreviousCellCoords = cellCoords;
     }
 
@@ -349,9 +381,16 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
             return;
 
         Point2D adjustedCellCoords = GetAdjustedCellCoords(cellCoords);
-        var tileMutation = new PlaceTerrainTileMutation(CursorActionTarget.MutationTarget, adjustedCellCoords, Tile, heightOffset, EventID);
-        CursorActionTarget.MutationManager.PerformMutation(tileMutation);
+        int revision = MutationManager.Revision;
+        if (!TryPerformMirroredPaint(CursorActionTarget.BrushSize.GetCells(adjustedCellCoords), stampOrigin: adjustedCellCoords))
+        {
+            var tileMutation = new PlaceTerrainTileMutation(CursorActionTarget.MutationTarget, adjustedCellCoords, Tile, heightOffset, EventID);
+            CursorActionTarget.MutationManager.PerformMutation(tileMutation);
+        }
+
         PreviousCellCoords = cellCoords;
+        if (MutationManager.Revision == revision)
+            return;
 
         // Changing cell height affects which cell the cursor points at on the next frame,
         // causing users to unintentionally place many tiles with one mouse-down event when a placed tile modifies cell height.

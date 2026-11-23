@@ -44,6 +44,7 @@ public class WindowController : XNAWindowController
     public ChangeHeightWindow ChangeHeightWindow { get; private set; }
     public FindWaypointWindow FindWaypointWindow { get; private set; }
     public DeletionModeConfigurationWindow DeletionModeConfigurationWindow { get; private set; }
+    public MirroringWindow MirroringWindow { get; private set; }
     public RenderedObjectsConfigurationWindow RenderedObjectsConfigurationWindow { get; private set; }
     public ConfigureAlliesWindow ConfigureAlliesWindow { get; private set; }
     public SelectConnectedTileWindow SelectConnectedTileWindow { get; private set; }
@@ -155,6 +156,9 @@ public class WindowController : XNAWindowController
 
         DeletionModeConfigurationWindow = new DeletionModeConfigurationWindow(WindowParentControl.WindowManager, editorState);
         RegisterWindow(DeletionModeConfigurationWindow);
+
+        MirroringWindow = new MirroringWindow(WindowParentControl.WindowManager, editorState, cursorActionTarget, notificationManager);
+        RegisterWindow(MirroringWindow);
 
         RenderedObjectsConfigurationWindow = new RenderedObjectsConfigurationWindow(WindowParentControl.WindowManager, editorState);
         RegisterWindow(RenderedObjectsConfigurationWindow);

@@ -60,6 +60,14 @@ public class TerrainObjectPlacementAction : LineAndRegularPaintingAction
 
     protected override bool CanDrawLinePreview() => TerrainType != null;
 
+    protected override bool CanMirrorPaint => TerrainType != null;
+
+    protected override bool CanPaintMirroredCell(MapTile tile, int variant) =>
+        tile.TerrainObject == null;
+
+    protected override IMutation CreateMirroredCellMutation(Point2D cell, int variant) =>
+        new PlaceTerrainObjectMutation(MutationTarget, TerrainType, cell, SingleCellBrush, EventID);
+
     protected override ICheckableMutation CreateRegularPlacementMutation(Point2D cellCoords)
     {
         return new PlaceTerrainObjectMutation(CursorActionTarget.MutationTarget, TerrainType, cellCoords, EventID);

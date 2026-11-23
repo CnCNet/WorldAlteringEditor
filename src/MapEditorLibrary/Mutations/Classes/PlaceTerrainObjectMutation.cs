@@ -9,12 +9,18 @@ namespace MapEditorLibrary.Mutations.Classes;
 /// </summary>
 public class PlaceTerrainObjectMutation : Mutation, ICheckableMutation
 {
-    public PlaceTerrainObjectMutation(IMutationTarget mutationTarget, TerrainType terrainType, Point2D cellCoords, int eventID) : base(mutationTarget)
+    public PlaceTerrainObjectMutation(IMutationTarget mutationTarget, TerrainType terrainType, Point2D cellCoords, int eventID)
+        : this(mutationTarget, terrainType, cellCoords, mutationTarget.BrushSize, eventID)
+    {
+    }
+
+    public PlaceTerrainObjectMutation(IMutationTarget mutationTarget, TerrainType terrainType, Point2D cellCoords, BrushSize brushSize, int eventID)
+        : base(mutationTarget)
     {
         this.terrainType = terrainType;
         this.cellCoords = cellCoords;
+        this.brushSize = brushSize;
         EventID = eventID;
-        brushSize = mutationTarget.BrushSize;
     }
 
     private readonly TerrainType terrainType;

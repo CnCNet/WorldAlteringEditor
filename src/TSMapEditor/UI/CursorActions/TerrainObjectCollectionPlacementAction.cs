@@ -71,6 +71,15 @@ public class TerrainObjectCollectionPlacementAction : LineAndRegularPaintingActi
 
     protected override bool CanDrawLinePreview() => _terrainObjectCollection != null;
 
+    protected override bool CanMirrorPaint => TerrainObjectCollection != null;
+    protected override int MirroredVariantCount => TerrainObjectCollection.Entries.Length;
+
+    protected override bool CanPaintMirroredCell(MapTile tile, int variant) =>
+        tile.TerrainObject == null;
+
+    protected override IMutation CreateMirroredCellMutation(Point2D cell, int variant) =>
+        new PlaceTerrainObjectMutation(MutationTarget, TerrainObjectCollection.Entries[variant].TerrainType, cell, SingleCellBrush, EventID);
+
     protected override ICheckableMutation CreateRegularPlacementMutation(Point2D cellCoords)
     {
         return new PlaceTerrainObjectCollectionMutation(CursorActionTarget.MutationTarget, TerrainObjectCollection, cellCoords, EventID);

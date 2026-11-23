@@ -37,6 +37,7 @@ public interface ICursorActionTarget : IMapView
     DeletionMode DeletionMode { get; }
     Randomizer Randomizer { get; }
     bool AutoLATEnabled { get; }
+    MapMirroring Mirroring => null;
     bool OnlyPaintOnClearGround { get; }
     CopiedMapData CopiedMapData { get; set; }
     TechnoBase TechnoUnderCursor { get; set; }
@@ -96,6 +97,8 @@ public class MapUI : XNAControl, ICursorActionTarget, IMutationTarget, IMapScree
     public LightingPreviewMode LightingPreviewState => EditorState.IsLighting ? EditorState.LightingPreviewState : LightingPreviewMode.NoLighting;
     public Randomizer Randomizer => EditorState.Randomizer;
     public bool AutoLATEnabled => EditorState.AutoLATEnabled;
+
+    public MapMirroring Mirroring => EditorState.MirroringEnabled ? EditorState.Mirroring : null;
     public bool LightDisabledLightSources => EditorState.LightDisabledLightSources;
     public bool OnlyPaintOnClearGround => EditorState.OnlyPaintOnClearGround;
     public CopiedMapData CopiedMapData
@@ -749,26 +752,33 @@ public class MapUI : XNAControl, ICursorActionTarget, IMutationTarget, IMapScree
 
     public override void Draw(GameTime gameTime)
     {
+        var mirroredPreview = IsActive && tileUnderCursor != null
+            ? CursorAction?.GetMirroredPreview(tileUnderCursor.CoordsToPoint())
+            : null;
+
         mapView.IsDrawing = true;
         try
         {
             // Run the cursor action's pre-map-draw logic before passing TechnoUnderCursor
             // to the renderer, so that placement previews (which assign TechnoUnderCursor)
             // get their range indicators drawn during placement.
-            if (IsActive && tileUnderCursor != null && CursorAction != null)
+            if (mirroredPreview == null && IsActive && tileUnderCursor != null && CursorAction != null)
                 CursorAction.PreMapDraw(tileUnderCursor.CoordsToPoint());
 
-            mapView.Draw(IsActive, TechnoUnderCursor, tileUnderCursor, CursorAction);
+            mapView.Draw(IsActive, TechnoUnderCursor, tileUnderCursor, CursorAction, mirroredPreview);
         }
         finally
         {
             mapView.IsDrawing = false;
         }
 
-        mapView.DrawOnTileUnderCursor(tileUnderCursor, CursorAction, isDraggingObject,
-            isRotatingObject, draggedOrRotatedObject,
-            KeyboardCommands.Instance.CloneObject.AreKeysOrModifiersDown(Keyboard),
-            KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(Keyboard));
+        if (mirroredPreview == null)
+        {
+            mapView.DrawOnTileUnderCursor(tileUnderCursor, CursorAction, isDraggingObject,
+                isRotatingObject, draggedOrRotatedObject,
+                KeyboardCommands.Instance.CloneObject.AreKeysOrModifiersDown(Keyboard),
+                KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(Keyboard));
+        }
 
         mapView.DrawOnMinimap();
 

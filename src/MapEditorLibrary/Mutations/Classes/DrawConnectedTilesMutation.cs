@@ -36,9 +36,18 @@ public class DrawConnectedTilesMutation : Mutation
     private readonly ConnectedTilePlan plan;
     private readonly int originLevel;
     private readonly int randomSeed;
+    private (Point2D Cell, int TileIndex, byte SubTileIndex, byte Height)[] cellPlacements;
+
+    private IReadOnlyList<(Point2D Cell, int TileIndex, byte SubTileIndex, byte Height)> CellPlacements =>
+        cellPlacements ??= ResolveCellPlacements().ToArray();
 
     public IReadOnlyCollection<Point2D> AffectedCellCoords => affectedCellCoords;
     public ConnectedTilePlan Plan => plan;
+
+    /// <summary>
+    /// Enumerates the cells covered by the tile variants selected for this plan.
+    /// </summary>
+    public IEnumerable<Point2D> GetPlacementCells() => CellPlacements.Select(placement => placement.Cell);
 
     public override string GetDisplayString()
     {
@@ -47,6 +56,31 @@ public class DrawConnectedTilesMutation : Mutation
     }
 
     public override void Perform()
+    {
+        foreach (var placement in CellPlacements)
+        {
+            var mapTile = Map.GetTile(placement.Cell);
+            if (mapTile == null)
+                continue;
+
+            undoData.Add(new ConnectedTileUndoData
+            {
+                CellCoords = placement.Cell,
+                TileIndex = mapTile.TileIndex,
+                SubTileIndex = mapTile.SubTileIndex,
+                Level = mapTile.Level
+            });
+            affectedCellCoords.Add(placement.Cell);
+
+            mapTile.ChangeTileIndex(placement.TileIndex, placement.SubTileIndex);
+            mapTile.Level = (byte)Math.Min(originLevel + placement.Height, Constants.MaxMapHeightLevel);
+            RefreshCellLighting(mapTile);
+        }
+
+        MutationTarget.InvalidateMap();
+    }
+
+    private IEnumerable<(Point2D Cell, int TileIndex, byte SubTileIndex, byte Height)> ResolveCellPlacements()
     {
         var random = new Random(randomSeed);
         ConnectedTile lastPlacedTile = null;
@@ -58,7 +92,7 @@ public class DrawConnectedTilesMutation : Mutation
         {
             ConnectedTilePlacement placement = plan.Placements[placementIndex];
             ConnectedTile connectedTile = placement.Tile;
-            var tileSet = MutationTarget.Map.TheaterInstance.Theater.TileSets.Find(
+            var tileSet = Map.TheaterInstance.Theater.TileSets.Find(
                 tileSet => tileSet.SetName == connectedTile.TileSetName && tileSet.AllowToPlace);
 
             if (tileSet == null)
@@ -77,45 +111,20 @@ public class DrawConnectedTilesMutation : Mutation
             int tileIndexInSet = connectedTile.IndicesInTileSet[tileIndex];
             ITileImage tileImage = MutationTarget.TheaterGraphicsData.GetTile(tileSet.StartTileIndex + tileIndexInSet);
 
-            PlaceTile(tileImage, placement.Location);
-
             lastPlacedTileIndex = tileIndex;
             lastPlacedTile = connectedTile;
-        }
 
-        MutationTarget.InvalidateMap();
-    }
-
-    private void PlaceTile(ITileImage tile, Point2D targetCellCoords)
-    {
-        if (tile == null)
-            return;
-
-        for (int i = 0; i < tile.SubTileCount; i++)
-        {
-            ISubTileImage image = tile.GetSubTile(i);
-            if (image == null)
+            if (tileImage == null)
                 continue;
 
-            int cx = targetCellCoords.X + i % tile.Width;
-            int cy = targetCellCoords.Y + i / tile.Width;
-
-            var mapTile = MutationTarget.Map.GetTile(cx, cy);
-            if (mapTile != null)
+            for (int i = 0; i < tileImage.SubTileCount; i++)
             {
-                undoData.Add(new ConnectedTileUndoData
-                {
-                    CellCoords = new Point2D(cx, cy),
-                    TileIndex = mapTile.TileIndex,
-                    SubTileIndex = mapTile.SubTileIndex,
-                    Level = mapTile.Level
-                });
-                affectedCellCoords.Add(new Point2D(cx, cy));
+                var subTile = tileImage.GetSubTile(i);
+                if (subTile == null)
+                    continue;
 
-                mapTile.ChangeTileIndex(tile.TileID, (byte)i);
-                mapTile.Level = (byte)Math.Min(originLevel + image.TmpImage.Height,
-                    Constants.MaxMapHeightLevel);
-                RefreshCellLighting(mapTile);
+                Point2D cell = placement.Location + new Point2D(i % tileImage.Width, i / tileImage.Width);
+                yield return (cell, tileImage.TileID, (byte)i, subTile.TmpImage.Height);
             }
         }
     }

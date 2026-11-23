@@ -5,6 +5,7 @@ using MapEditorLibrary.Mutations;
 using MapEditorLibrary.Mutations.Classes;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace TSMapEditor.UI.CursorActions;
 
@@ -149,6 +150,24 @@ public class OverlayPlacementAction : LineAndRegularPaintingAction
     }
 
     protected override bool CanDrawLinePreview() => OverlayType != null;
+
+    protected override bool CanMirrorPaint => true;
+
+    private protected override IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line, bool fill)
+    {
+        var placements = targets
+            .Where(target =>
+            {
+                var overlay = Map.GetTileOrFail(target.Cell).Overlay;
+                return OverlayType == null ? overlay != null
+                    : overlay?.OverlayType != OverlayType || (FrameIndex.HasValue && overlay.FrameIndex != FrameIndex.Value);
+            })
+            .Select(target => (target.Cell, OverlayType, FrameIndex ?? 0))
+            .ToArray();
+
+        if (placements.Length > 0)
+            yield return new PlaceMirroredOverlaysMutation(MutationTarget, placements, !FrameIndex.HasValue);
+    }
 
     protected override ICheckableMutation CreateRegularPlacementMutation(Point2D cellCoords)
     {

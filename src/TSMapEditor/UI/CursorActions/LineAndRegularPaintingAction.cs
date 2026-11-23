@@ -1,12 +1,15 @@
 ﻿using MapEditorLibrary;
+using MapEditorLibrary.Configuration;
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Misc;
 using MapEditorLibrary.Models;
 using MapEditorLibrary.Mutations;
+using MapEditorLibrary.Mutations.Classes;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace TSMapEditor.UI.CursorActions;
 
@@ -51,6 +54,98 @@ public abstract class LineAndRegularPaintingAction : CursorAction
 
     protected abstract Mutation CreateLinePlacementMutation(Direction direction, int length);
 
+    protected static readonly BrushSize SingleCellBrush = new BrushSize(1, 1);
+
+    protected virtual bool CanMirrorPaint => false;
+    protected virtual int MirroredVariantCount => 1;
+
+    protected virtual bool CanPaintMirroredCell(MapTile tile, int variant) => true;
+
+    protected virtual IMutation CreateMirroredCellMutation(Point2D cell, int variant) =>
+        throw new NotSupportedException("This tool does not support mirrored painting.");
+
+    private protected virtual IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line, bool fill)
+    {
+        foreach (MirroredPaintTarget target in targets)
+        {
+            var mutation = CreateMirroredCellMutation(target.Cell, target.Variant);
+            if (mutation is not ICheckableMutation checkable || checkable.ShouldPerform())
+                yield return mutation;
+        }
+    }
+
+    private (int Event, Point2D Origin, BrushSize Brush, MapMirroring Mirroring, bool Fill)? previousMirroredStamp;
+    private readonly HashSet<Point2D> cellsPaintedThisStroke = new HashSet<Point2D>();
+
+    protected virtual Point2D GetMirroredCursorCell(Point2D cellCoords) => cellCoords;
+
+    private Point2D GetMirroredBrushOrigin(Point2D coords) =>
+        CenterCellCoordsOnBrush ? GetCenteredBrushSizeCellCoords(coords) : coords;
+
+    private IEnumerable<Point2D> GetMirroredLineCells(Point2D cellCoords)
+    {
+        (Direction direction, int length) = GetLineInformation(GetMirroredCursorCell(cellCoords));
+        foreach (Point2D cell in CursorActionTarget.BrushSize.GetCellsAlongLine(GetMirroredBrushOrigin(LineSourceCell.Value), direction, length))
+            yield return cell;
+    }
+
+    public override IEnumerable<(Point2D Cell, bool CanPlace)> GetMirroredPreview(Point2D cellCoords)
+    {
+        if (CursorActionTarget.Mirroring == null || !CanMirrorPaint)
+            return null;
+
+        if (Blocked)
+            return Array.Empty<(Point2D, bool)>();
+
+        var sourceCells = LineSourceCell.HasValue
+            ? GetMirroredLineCells(cellCoords)
+            : GetMirroredPreviewSourceCells(GetMirroredCursorCell(cellCoords));
+        bool highlightPaintedCells = !LineSourceCell.HasValue && previousMirroredStamp?.Event == EventID &&
+            CursorActionTarget.WindowManager.Cursor.LeftDown;
+
+        return MirroredPaintTargets.GetTargets(Map, CursorActionTarget.Mirroring, sourceCells, MirroredVariantCount, CanPaintMirroredCell)
+            .Select(target => (target.Cell, target.CanPaint || (highlightPaintedCells && cellsPaintedThisStroke.Contains(target.Cell))));
+    }
+
+    protected virtual IEnumerable<Point2D> GetMirroredPreviewSourceCells(Point2D cellCoords) =>
+        CursorActionTarget.BrushSize.GetCells(GetMirroredBrushOrigin(cellCoords));
+
+    protected bool TryPerformMirroredPaint(IEnumerable<Point2D> source, bool line = false, bool fill = false, Point2D? stampOrigin = null)
+    {
+        if (CursorActionTarget.Mirroring == null || !CanMirrorPaint)
+            return false;
+
+        if (stampOrigin.HasValue)
+        {
+            var stamp = (EventID, stampOrigin.Value, CursorActionTarget.BrushSize, CursorActionTarget.Mirroring, fill);
+            if (previousMirroredStamp == stamp)
+                return true;
+
+            if (previousMirroredStamp?.Event != EventID)
+                cellsPaintedThisStroke.Clear();
+
+            previousMirroredStamp = stamp;
+        }
+
+        var targets = MirroredPaintTargets.GetTargets(Map, CursorActionTarget.Mirroring, source, MirroredVariantCount,
+            CanPaintMirroredCell).Where(target => target.CanPaint);
+
+        bool trackPaintedCells = stampOrigin.HasValue && !fill;
+        if (trackPaintedCells)
+            targets = targets.ToArray();
+
+        var mutations = CreateMirroredPaintMutations(targets, line, fill).ToArray();
+        if (mutations.Length > 0)
+        {
+            PerformMutation(new MirroredPlacementMutation(MutationTarget, mutations, line ? Mutation.EventIdNone : EventID));
+
+            if (trackPaintedCells)
+                cellsPaintedThisStroke.UnionWith(targets.Select(target => target.Cell));
+        }
+
+        return true;
+    }
+
     protected (Direction direction, int length) GetLineInformation(Point2D cellCoords)
     {
         // A zero-length line previews one brush stamp, for which direction is irrelevant.
@@ -68,6 +163,7 @@ public abstract class LineAndRegularPaintingAction : CursorAction
     {
         LineSourceCell = null;
         Blocked = false;
+        previousMirroredStamp = null;
 
         if (LinePreviewMutation != null)
             ClearLinePreview();
@@ -97,7 +193,9 @@ public abstract class LineAndRegularPaintingAction : CursorAction
 
     protected void ApplyLineInternal(Point2D cellCoords)
     {
-        ApplyLine(cellCoords);
+        if (!TryPerformMirroredPaint(GetMirroredLineCells(cellCoords), line: true))
+            ApplyLine(cellCoords);
+
         LineSourceCell = null;
     }
 
@@ -125,11 +223,13 @@ public abstract class LineAndRegularPaintingAction : CursorAction
     {
         if (!PreventInputEventsOnPreviousCell || PreviousCellCoords != coords)
         {
-            var mutation = CreateRegularPlacementMutation(coords);
-            if (mutation.ShouldPerform())
+            if (!TryPerformMirroredPaint(CursorActionTarget.BrushSize.GetCells(coords), stampOrigin: coords))
             {
-                CursorActionTarget.MutationManager.PerformMutation(mutation);
+                var mutation = CreateRegularPlacementMutation(coords);
+                if (mutation.ShouldPerform())
+                    CursorActionTarget.MutationManager.PerformMutation(mutation);
             }
+
             PreviousCellCoords = coords;
         }
     }

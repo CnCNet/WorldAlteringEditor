@@ -29,6 +29,9 @@ public class EditorState
     public event EventHandler LightingPreviewStateChanged;
     public event EventHandler IsLightingChanged;
 
+    public MapMirroring Mirroring { get; set; } = new MapMirroring(MirrorAxes.NorthSouth);
+    public bool MirroringEnabled { get; set; }
+
     private CursorAction _cursorAction;
     public CursorAction CursorAction
     {

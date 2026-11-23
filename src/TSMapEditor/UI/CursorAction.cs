@@ -8,6 +8,7 @@ using Rampastring.XNAUI;
 using Rampastring.XNAUI.Input;
 using System;
 using System.Collections.Generic;
+using TSMapEditor.UI.CursorActions;
 
 namespace TSMapEditor.UI;
 
@@ -83,6 +84,31 @@ public abstract class CursorAction
     protected IMutationTarget MutationTarget => CursorActionTarget.MutationTarget;
 
     protected MutationManager MutationManager => CursorActionTarget.MutationManager;
+
+    public virtual IEnumerable<(Point2D Cell, bool CanPlace)> GetMirroredPreview(Point2D cellCoords) => null;
+
+    protected IEnumerable<(Point2D Cell, bool CanPlace)> GetMirroredTechnoPreview(Point2D cell, TechnoBase template)
+    {
+        if (CursorActionTarget.Mirroring == null || template == null)
+            return null;
+
+        return PlanMirroredTechno(cell, template).GetPreview();
+    }
+
+    protected bool TryPlaceMirroredTechno(Point2D cell, TechnoBase template)
+    {
+        if (CursorActionTarget.Mirroring == null)
+            return false;
+
+        PlanMirroredTechno(cell, template).Perform(CursorActionTarget, template);
+        return true;
+    }
+
+    private MirroredTechnoPlacement PlanMirroredTechno(Point2D cell, TechnoBase template)
+    {
+        bool overlap = KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(Keyboard);
+        return new MirroredTechnoPlacement(Map, CursorActionTarget.Mirroring, template, cell, overlap);
+    }
 
     protected bool Is2DMode => CursorActionTarget.Is2DMode;
 

@@ -112,6 +112,10 @@ class TopBarMenu : EditorPanel
         editContextMenu.AddItem(Translate(this, "Edit.Redo", "Redo"), () => mutationManager.Redo(), () => mutationManager.CanRedo(), null, null, () => KeyboardCommands.Instance.Redo.GetKeyDisplayString());
         editContextMenu.AddItem(Translate(this, "Edit.ActionHistory", "Action History"), () => windowController.HistoryWindow.Open());
         editContextMenu.AddItem(" ", null, () => false, null, null);
+        editContextMenu.AddItem(Translate(this, "Edit.MirroringSetup", "Mirroring Setup..."), () => windowController.MirroringWindow.Open());
+        editContextMenu.AddItem(Translate(this, "Edit.DisableMirroring", "Disable Mirroring"), ToggleMirroring,
+            () => mapUI.EditorState.MirroringEnabled, null, null, () => KeyboardCommands.Instance.ToggleMirroring.GetKeyDisplayString());
+        editContextMenu.AddItem(" ", null, () => false, null, null);
         editContextMenu.AddItem(Translate(this, "Edit.Basic", "Basic"), () => windowController.BasicSectionConfigWindow.Open(), null, null, null);
         editContextMenu.AddItem(Translate(this, "Edit.MapSize", "Map Size"), () => windowController.MapSizeWindow.Open(), null, null, null, null);
         editContextMenu.AddItem(" ", null, () => false, null, null);
@@ -275,6 +279,7 @@ class TopBarMenu : EditorPanel
         KeyboardCommands.Instance.CheckDistance.Triggered += (s, e) => mapUI.EditorState.CursorAction = checkDistanceCursorAction;
         KeyboardCommands.Instance.CheckDistancePathfinding.Triggered += (s, e) => mapUI.EditorState.CursorAction = checkDistancePathfindingCursorAction;
         KeyboardCommands.Instance.Save.Triggered += (s, e) => SaveMap();
+        KeyboardCommands.Instance.ToggleMirroring.Triggered += (s, e) => ToggleMirroring();
 
         windowController.TerrainGeneratorConfigWindow.ConfigApplied += TerrainGeneratorConfigWindow_ConfigApplied;
     }
@@ -282,6 +287,14 @@ class TopBarMenu : EditorPanel
     private void TerrainGeneratorConfigWindow_ConfigApplied(object sender, EventArgs e)
     {
         EnterTerrainGenerator();
+    }
+
+    private void ToggleMirroring()
+    {
+        if (mapUI.EditorState.MirroringEnabled)
+            mapUI.EditorState.MirroringEnabled = false;
+        else
+            windowController.MirroringWindow.Open();
     }
 
     private void SaveMap()

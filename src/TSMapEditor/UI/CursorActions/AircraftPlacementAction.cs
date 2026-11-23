@@ -1,6 +1,7 @@
 ﻿using System;
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
+using System.Collections.Generic;
 using MapEditorLibrary.Mutations.Classes;
 using Rampastring.XNAUI.Input;
 
@@ -78,10 +79,16 @@ public class AircraftPlacementAction : CursorAction
         }
     }
 
+    public override IEnumerable<(Point2D Cell, bool CanPlace)> GetMirroredPreview(Point2D cellCoords) =>
+        GetMirroredTechnoPreview(cellCoords, aircraft);
+
     public override void LeftDown(Point2D cellCoords)
     {
         if (AircraftType == null)
             throw new InvalidOperationException(nameof(AircraftType) + " cannot be null");
+
+        if (TryPlaceMirroredTechno(cellCoords, aircraft))
+            return;
 
         bool overlapObjects = KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(keyboard);
 

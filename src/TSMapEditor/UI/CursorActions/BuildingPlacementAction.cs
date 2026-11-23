@@ -1,6 +1,7 @@
 ﻿using System;
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
+using System.Collections.Generic;
 using MapEditorLibrary.Mutations.Classes;
 using Rampastring.XNAUI.Input;
 
@@ -82,10 +83,16 @@ public class BuildingPlacementAction : CursorAction
         }
     }
 
+    public override IEnumerable<(Point2D Cell, bool CanPlace)> GetMirroredPreview(Point2D cellCoords) =>
+        GetMirroredTechnoPreview(cellCoords, structure);
+
     public override void LeftDown(Point2D cellCoords)
     {
         if (BuildingType == null)
             throw new InvalidOperationException(nameof(BuildingType) + " cannot be null");
+
+        if (TryPlaceMirroredTechno(cellCoords, structure))
+            return;
 
         bool overlapObjects = KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(keyboard);
 

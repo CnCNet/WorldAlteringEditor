@@ -1974,7 +1974,107 @@ public class MapView : IMapView, IMapScreenCropper
         Color color, float angleDiff, float sideLineLength, int thickness = 1)
         => RendererExtensions.DrawArrow(start, end, color, angleDiff, sideLineLength, thickness);
 
-    public void Draw(bool isActive, TechnoBase technoUnderCursor, MapTile tileUnderCursor, CursorAction cursorAction)
+    private void DrawMirroringGuides()
+    {
+        if (!EditorState.MirroringEnabled)
+            return;
+
+        Rectangle bounds = Rectangle.Intersect(mapRenderSourceRectangle,
+            new Rectangle(0, Constants.MapYBaseline, Map.WidthInPixels, Map.HeightInPixels + Constants.CellSizeY / 2));
+        if (bounds.IsEmpty)
+            return;
+
+        Point2D doubledMirroringPoint = EditorState.Mirroring.GetDoubledMirroringPoint(Map.Size);
+        bool betweenCells = (doubledMirroringPoint.X & 1) != 0;
+        var centerCell = new Point2D(
+            (int)Math.Floor(doubledMirroringPoint.X / 2.0), (int)Math.Floor(doubledMirroringPoint.Y / 2.0));
+        Vector2 center = CellMath.CellCenterPointFromCellCoords(centerCell, Map).ToXNAVector();
+
+        // When the point lies between cells, both logical coordinates have a half-cell offset.
+        if (betweenCells)
+            center.Y += Constants.CellSizeY / 2;
+
+        var guideColor = new Color(70, 215, 240);
+        foreach (MirrorTransform transform in EditorState.Mirroring.Transforms)
+        {
+            if (!transform.Reflected)
+                continue;
+
+            Vector2 direction = transform.QuarterTurns switch
+            {
+                0 => Vector2.UnitY,
+                1 => new Vector2(Constants.CellSizeX, -Constants.CellSizeY),
+                2 => Vector2.UnitX,
+                _ => new Vector2(Constants.CellSizeX, Constants.CellSizeY)
+            };
+
+            float start = float.NegativeInfinity;
+            float end = float.PositiveInfinity;
+            if (ClipGuideAxis(center.X, direction.X, bounds.Left, bounds.Right, ref start, ref end) &&
+                ClipGuideAxis(center.Y, direction.Y, bounds.Top, bounds.Bottom, ref start, ref end))
+            {
+                Renderer.DrawLine(ToView(center + direction * start), ToView(center + direction * end), guideColor, 2);
+            }
+        }
+
+        if (EditorState.Mirroring.Axes.HasFlag(MirrorAxes.HalfTurn) && bounds.Contains((int)center.X, (int)center.Y))
+        {
+            const int MarkerRadius = 12;
+            Vector2 viewCenter = ToView(center);
+            var diagonal1 = new Vector2(MarkerRadius, MarkerRadius);
+            var diagonal2 = new Vector2(-MarkerRadius, MarkerRadius);
+            Color outline = Color.Black * 0.8f;
+
+            Renderer.DrawLine(viewCenter - diagonal1, viewCenter + diagonal1, outline, 7);
+            Renderer.DrawLine(viewCenter - diagonal2, viewCenter + diagonal2, outline, 7);
+            Renderer.DrawLine(viewCenter - diagonal1, viewCenter + diagonal1, Color.Orange, 3);
+            Renderer.DrawLine(viewCenter - diagonal2, viewCenter + diagonal2, Color.Orange, 3);
+        }
+    }
+
+    private static bool ClipGuideAxis(float origin, float direction, int min, int max, ref float start, ref float end)
+    {
+        if (direction == 0)
+            return origin >= min && origin <= max;
+
+        float first = (min - origin) / direction;
+        float last = (max - origin) / direction;
+        start = Math.Max(start, Math.Min(first, last));
+        end = Math.Min(end, Math.Max(first, last));
+        return start <= end;
+    }
+
+    private Vector2 ToView(Vector2 world) => (world - Camera.TopLeftPoint.ToXNAVector()) * (float)Camera.ZoomLevel;
+
+    private void DrawMirroredPreview(IEnumerable<(Point2D Cell, bool CanPlace)> preview)
+    {
+        var halfCell = new Vector2(Constants.CellSizeX, Constants.CellSizeY) * ((float)Camera.ZoomLevel / 2);
+        var horizontal = new Vector2(halfCell.X, 0);
+        var vertical = new Vector2(0, halfCell.Y);
+        var validColor = new Color(105, 235, 200);
+        var blockedColor = new Color(255, 94, 94);
+
+        foreach (var target in preview)
+        {
+            Point2D world = EditorState.Is2DMode
+                ? CellMath.CellCenterPointFromCellCoords(target.Cell, Map)
+                : CellMath.CellCenterPointFromCellCoords_3D(target.Cell, Map);
+            Vector2 center = ToView(world.ToXNAVector());
+
+            if (center.X < -halfCell.X || center.X > Width + halfCell.X ||
+                center.Y < -halfCell.Y || center.Y > Height + halfCell.Y)
+                continue;
+
+            Color color = target.CanPlace ? validColor : blockedColor;
+            Renderer.DrawLine(center - vertical, center + horizontal, color, 2);
+            Renderer.DrawLine(center + horizontal, center + vertical, color, 2);
+            Renderer.DrawLine(center + vertical, center - horizontal, color, 2);
+            Renderer.DrawLine(center - horizontal, center - vertical, color, 2);
+        }
+    }
+
+    public void Draw(bool isActive, TechnoBase technoUnderCursor, MapTile tileUnderCursor, CursorAction cursorAction,
+        IEnumerable<(Point2D Cell, bool CanPlace)> mirroredPreview)
     {
         ScreenCropRequest currentScreenCropRequest = TryBeginScreenCropRequest();
         ScreenCropLayout screenCropLayout = default;
@@ -2015,7 +2115,13 @@ public class MapView : IMapView, IMapScreenCropper
                     Camera.ScaleIntWithZoom(mapRenderTarget.Height - Constants.MapYBaseline)));
             }
 
-            if (isActive && tileUnderCursor != null && cursorAction != null)
+            DrawMirroringGuides();
+
+            if (mirroredPreview != null)
+            {
+                DrawMirroredPreview(mirroredPreview);
+            }
+            else if (isActive && tileUnderCursor != null && cursorAction != null)
             {
                 cursorAction.DrawPreview(tileUnderCursor.CoordsToPoint(), Camera.TopLeftPoint);
                 cursorAction.PostMapDraw(tileUnderCursor.CoordsToPoint());

@@ -1,6 +1,7 @@
 ﻿using System;
 using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Models;
+using System.Collections.Generic;
 using MapEditorLibrary.Mutations.Classes;
 using Rampastring.XNAUI.Input;
 
@@ -82,10 +83,16 @@ class UnitPlacementAction : CursorAction
         }
     }
 
+    public override IEnumerable<(Point2D Cell, bool CanPlace)> GetMirroredPreview(Point2D cellCoords) =>
+        GetMirroredTechnoPreview(cellCoords, unit);
+
     public override void LeftDown(Point2D cellCoords)
     {
         if (UnitType == null)
             throw new InvalidOperationException(nameof(UnitType) + " cannot be null");
+
+        if (TryPlaceMirroredTechno(cellCoords, unit))
+            return;
 
         bool overlapObjects = KeyboardCommands.Instance.OverlapObjects.AreKeysOrModifiersDown(keyboard);
 

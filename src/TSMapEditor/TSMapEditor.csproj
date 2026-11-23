@@ -167,6 +167,9 @@
     <None Update="Config\Default\UI\Windows\RenderedObjectsConfigurationWindow.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Config\Default\UI\Windows\MirroringWindow.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Config\Default\UI\Windows\DeletionModeConfigurationWindow.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

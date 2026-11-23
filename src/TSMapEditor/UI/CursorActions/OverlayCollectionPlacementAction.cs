@@ -7,6 +7,7 @@ using MapEditorLibrary.Mutations;
 using MapEditorLibrary.Mutations.Classes;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace TSMapEditor.UI.CursorActions;
 
@@ -178,6 +179,30 @@ public class OverlayCollectionPlacementAction : LineAndRegularPaintingAction
     }
 
     protected override bool CanDrawLinePreview() => _overlayCollection != null;
+
+    protected override bool CanMirrorPaint => OverlayCollection != null;
+    protected override int MirroredVariantCount => OverlayCollection.Entries.Length;
+
+    protected override bool CanPaintMirroredCell(MapTile tile, int variant)
+    {
+        if (!OverlayCollection.Entries[variant].OverlayType.Tiberium)
+            return true;
+
+        var image = Map.TheaterInstance.GetTile(tile.TileIndex).GetSubTile(tile.SubTileIndex);
+        return !Helpers.IsLandTypeImpassable(image.TmpImage.TerrainType, true);
+    }
+
+    private protected override IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line, bool fill)
+    {
+        var placements = targets.Select(target =>
+        {
+            var entry = OverlayCollection.Entries[target.Variant];
+            return (target.Cell, entry.OverlayType, entry.Frame);
+        }).ToArray();
+
+        if (placements.Length > 0)
+            yield return new PlaceMirroredOverlaysMutation(MutationTarget, placements, true);
+    }
 
     protected override ICheckableMutation CreateRegularPlacementMutation(Point2D cellCoords)
     {

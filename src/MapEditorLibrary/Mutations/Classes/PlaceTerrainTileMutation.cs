@@ -80,13 +80,7 @@ public class PlaceTerrainTileMutation : Mutation, ICheckableMutation
 
             if (mapTile != null)
             {
-                var existingTile = Map.TheaterInstance.GetTile(mapTile.TileIndex).GetSubTile(mapTile.SubTileIndex);
-
-                int cellLevel = mapTile.Level;
-
-                // Allow replacing back cliffs
-                if (existingTile.TmpImage.Height == Tile.GetSubTile(i).TmpImage.Height)
-                    cellLevel -= existingTile.TmpImage.Height;
+                int cellLevel = GetBaseLevel(Map, mapTile, Tile.GetSubTile(i));
 
                 if (originLevel < 0 || cellLevel < originLevel)
                     originLevel = cellLevel;
@@ -128,6 +122,18 @@ public class PlaceTerrainTileMutation : Mutation, ICheckableMutation
         }
 
         MutationTarget.AddRefreshPoint(TargetCellCoords, Math.Max(Tile.Width, Tile.Height) * Math.Max(BrushSize.Width, BrushSize.Height));
+    }
+
+    /// <summary>
+    /// Gets the starting elevation for placing a subtile in the given map cell.
+    /// When both subtiles have the same height offset, subtracts the existing offset
+    /// so replacing a back cliff preserves its elevation.
+    /// </summary>
+    public static int GetBaseLevel(Map map, MapTile cell, ISubTileImage placement)
+    {
+        var existingTile = map.TheaterInstance.GetTile(cell.TileIndex).GetSubTile(cell.SubTileIndex);
+
+        return existingTile.TmpImage.Height == placement.TmpImage.Height ? cell.Level - existingTile.TmpImage.Height : cell.Level;
     }
 
     public override void Undo()
