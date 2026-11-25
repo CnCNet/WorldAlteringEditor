@@ -9,6 +9,7 @@ using Rampastring.XNAUI.Input;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace TSMapEditor.UI.CursorActions;
 
@@ -275,9 +276,10 @@ public class DrawConnectedTilesCursorAction : CursorAction
         if (connectedTilePath.Count == 0)
             return;
 
-        var mutations = new List<IMutation>();
-        var occupiedCells = new HashSet<Point2D>();
-        Point2D doubledPoint = previewMirroring?.GetDoubledMirroringPoint(Map.Size) ?? Point2D.Zero;
+        var pathsToPlan = new List<(int PreviewIndex, Point2D[] Vertices, MirrorTransform Transform, ConnectedTileSide Side)>();
+        var map = Map;
+        Func<Point2D, bool> isCellValid = cell => map.GetTile(cell) != null;
+        Point2D doubledPoint = previewMirroring?.GetDoubledMirroringPoint(map.Size) ?? Point2D.Zero;
         bool canPlan = connectedTilePath.Count >= 2 && (!closed || HasEnoughVerticesToClose());
 
         foreach (MirrorTransform transform in previewMirroring?.Transforms ?? new[] { default(MirrorTransform) })
@@ -290,12 +292,63 @@ public class DrawConnectedTilesCursorAction : CursorAction
             string failure = null;
             if (canPlan)
             {
-                (DrawConnectedTilesMutation mutation, failure) = PlanPath(vertices, transform, occupiedCells);
-                if (mutation != null)
-                    mutations.Add(mutation);
+                if (transform != default && vertices.Any(cell => !isCellValid(cell)))
+                    failure = Translate("PlanStatus.OutOfBounds", "a path extends outside the map");
+                else
+                    pathsToPlan.Add((previewPaths.Count, vertices, transform, GetStartingSide(vertices, transform)));
             }
 
             previewPaths.Add(new PathPreview(vertices, failure));
+        }
+
+        if (pathsToPlan.Count == 0)
+            return;
+
+        var plans = new ConnectedTilePlanResult[pathsToPlan.Count];
+        int seed = randomSeed;
+        bool isClosed = closed;
+        bool hasEndPieces = useEndPieces && !isClosed;
+        byte? sourceFrontSeamDirections = null;
+
+        void PlanPath(int index)
+        {
+            var path = pathsToPlan[index];
+            byte? frontSeamDirections = sourceFrontSeamDirections;
+            if (frontSeamDirections.HasValue && path.Transform.Reflected)
+                frontSeamDirections = (byte)~frontSeamDirections.Value;
+
+            plans[index] = ConnectedTilePlanner.Plan(connectedTileType, path.Vertices, path.Side, seed, hasEndPieces, isClosed,
+                isCellValid, frontSeamDirections);
+        }
+
+        int firstPathToPlan = 0;
+        if (isClosed && !connectedTileType.FrontOnly && pathsToPlan.Count > 1)
+        {
+            PlanPath(0);
+            firstPathToPlan = 1;
+
+            if (plans[0].Plan is ConnectedTilePlan sourcePlan)
+                sourceFrontSeamDirections = GetFrontSeamDirections(sourcePlan);
+        }
+
+        // The editor thread waits here, keeping the map and tile definitions stable for the workers.
+        if (pathsToPlan.Count - firstPathToPlan == 1)
+            PlanPath(firstPathToPlan);
+        else
+            Parallel.For(firstPathToPlan, pathsToPlan.Count, PlanPath);
+
+        var mutations = new List<IMutation>();
+        var occupiedCells = new HashSet<Point2D>();
+
+        // Accept footprints in transform order so the same path wins when copies overlap.
+        for (int i = 0; i < pathsToPlan.Count; i++)
+        {
+            var path = pathsToPlan[i];
+            (DrawConnectedTilesMutation mutation, string failure) = CreatePathMutation(plans[i], path.Transform, occupiedCells);
+            if (mutation != null)
+                mutations.Add(mutation);
+            else
+                previewPaths[path.PreviewIndex] = new PathPreview(path.Vertices, failure);
         }
 
         if (mutations.Count == 0)
@@ -306,12 +359,8 @@ public class DrawConnectedTilesCursorAction : CursorAction
         previewMutation.Perform();
     }
 
-    private (DrawConnectedTilesMutation Mutation, string Failure) PlanPath(Point2D[] vertices, MirrorTransform transform,
-        HashSet<Point2D> occupiedCells)
+    private ConnectedTileSide GetStartingSide(Point2D[] vertices, MirrorTransform transform)
     {
-        if (transform != default && vertices.Any(cell => Map.GetTile(cell) == null))
-            return (null, Translate("PlanStatus.OutOfBounds", "a path extends outside the map"));
-
         ConnectedTileSide side = connectedTileSide;
         if (!connectedTileType.FrontOnly && transform != default && connectedTilePath[0] != connectedTilePath[1])
         {
@@ -324,9 +373,12 @@ public class DrawConnectedTilesCursorAction : CursorAction
                 side = side == ConnectedTileSide.Front ? ConnectedTileSide.Back : ConnectedTileSide.Front;
         }
 
-        ConnectedTilePlanResult result = ConnectedTilePlanner.Plan(
-            connectedTileType, vertices, side, randomSeed, useEndPieces && !closed, closed, coords => Map.GetTile(coords) != null);
+        return side;
+    }
 
+    private (DrawConnectedTilesMutation Mutation, string Failure) CreatePathMutation(ConnectedTilePlanResult result,
+        MirrorTransform transform, HashSet<Point2D> occupiedCells)
+    {
         if (!result.IsSuccess)
             return (null, GetPlanFailureText(result));
 
@@ -347,6 +399,17 @@ public class DrawConnectedTilesCursorAction : CursorAction
 
         occupiedCells.UnionWith(placementCells);
         return (mutation, null);
+    }
+
+    private static byte GetFrontSeamDirections(ConnectedTilePlan plan)
+    {
+        // The initial side applies to the seam's connection into the first tile.
+        // Reflections reverse the side relative to travel and rotations preserve it.
+        ConnectedTilePlacement first = plan.Placements[0];
+        bool entersEastOrSouth = PointsEastOrSouth(plan.Placements[^1].ExitCoordinates.Value, first.EntryCoordinates.Value);
+        bool frontEntersEastOrSouth = (first.EntryPoint.Value.Side == ConnectedTileSide.Front) == entersEastOrSouth;
+
+        return frontEntersEastOrSouth ? (byte)0b11110000 : (byte)0b00001111;
     }
 
     private static bool PointsEastOrSouth(Point2D start, Point2D end) =>

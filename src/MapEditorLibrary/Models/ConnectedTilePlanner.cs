@@ -223,7 +223,8 @@ public static class ConnectedTilePlanner
         public int ExitPointIndex { get; private init; }
         public float GScore { get; private init; }
         public int Depth { get; private init; }
-        public ConnectedTileSide SyntheticStartingSide { get; private init; }
+        private ConnectedTileSide SyntheticStartingSide { get; init; }
+        private byte SyntheticConnectionMask { get; init; }
 
         public bool HasExitPoint => Tile == null || ExitPointIndex >= 0;
 
@@ -237,7 +238,7 @@ public static class ConnectedTilePlanner
                 return new TileConnectionPoint
                 {
                     Index = -1,
-                    ConnectionMask = byte.MaxValue,
+                    ConnectionMask = SyntheticConnectionMask,
                     CoordinateOffset = Point2D.Zero,
                     Side = SyntheticStartingSide,
                     RequiredTiles = Array.Empty<int>(),
@@ -250,7 +251,7 @@ public static class ConnectedTilePlanner
             ? Location
             : Location + Tile.ConnectionPoints[ExitPointIndex].CoordinateOffset;
 
-        public static SearchNode MakeSyntheticStart(Point2D location, ConnectedTileSide startingSide)
+        public static SearchNode MakeSyntheticStart(Point2D location, ConnectedTileSide startingSide, byte connectionMask = byte.MaxValue)
         {
             return new SearchNode
             {
@@ -258,6 +259,7 @@ public static class ConnectedTilePlanner
                 EntryPointIndex = -1,
                 ExitPointIndex = -1,
                 SyntheticStartingSide = startingSide,
+                SyntheticConnectionMask = connectionMask,
                 GScore = 0.0f,
                 Depth = 0
             };
@@ -271,9 +273,13 @@ public static class ConnectedTilePlanner
         public bool SearchWasLimited { get; set; }
     }
 
+    /// <summary>
+    /// Plans a connected path. A front seam direction mask lets a closed path
+    /// choose its starting side based on the connection direction at the seam.
+    /// </summary>
     public static ConnectedTilePlanResult Plan(ConnectedTileType type, IReadOnlyList<Point2D> path,
         ConnectedTileSide startingSide, int randomSeed, bool useEndPieces, bool closed,
-        Func<Point2D, bool> isCellValid)
+        Func<Point2D, bool> isCellValid, byte? frontSeamDirectionMask = null)
     {
         if (type == null)
             return ConnectedTilePlanResult.Failed(ConnectedTilePlanStatus.InvalidInput, "A connected tile type is required.");
@@ -324,6 +330,29 @@ public static class ConnectedTilePlanner
             }
         }
 
+        Point2D origin = vertices[0];
+        vertices = vertices[..vertexCount];
+
+        var result = PlanPath(type, vertices, origin, startingSide, randomSeed, useEndPieces, closed, isCellValid, frontSeamDirectionMask);
+        if (closed && frontSeamDirectionMask.HasValue && result.Status == ConnectedTilePlanStatus.SearchLimit)
+        {
+            // The same loop can be easier to close at a different vertex.
+            // Keep the facing constraint and the original vertex used for elevation.
+            vertices[1..].CopyTo(vertices);
+            vertices[^1] = origin;
+
+            var retry = PlanPath(type, vertices, origin, startingSide, randomSeed, useEndPieces, closed, isCellValid, frontSeamDirectionMask);
+            if (retry.IsSuccess)
+                return retry;
+        }
+
+        return result;
+    }
+
+    private static ConnectedTilePlanResult PlanPath(ConnectedTileType type, ReadOnlySpan<Point2D> vertices,
+        Point2D origin, ConnectedTileSide startingSide, int randomSeed, bool useEndPieces, bool closed,
+        Func<Point2D, bool> isCellValid, byte? frontSeamDirectionMask)
+    {
         SearchTileCache searchTileCache = GetSearchTileCache(type);
         SearchTile[] linearTiles = searchTileCache.LinearTiles;
         SearchTile[] endingTiles = searchTileCache.EndingTiles;
@@ -341,6 +370,16 @@ public static class ConnectedTilePlanner
                     "No compatible starting ending piece can be placed at the first vertex.");
             }
         }
+        else if (closed && frontSeamDirectionMask is byte frontMask)
+        {
+            // A loop can enter its first tile from either side of the seam. Use
+            // the actual connection direction to choose the entry side.
+            frontier = new List<SearchNode>
+            {
+                SearchNode.MakeSyntheticStart(vertices[0], ConnectedTileSide.Front, frontMask),
+                SearchNode.MakeSyntheticStart(vertices[0], ConnectedTileSide.Back, (byte)~frontMask)
+            };
+        }
         else
         {
             frontier = new List<SearchNode>
@@ -351,7 +390,7 @@ public static class ConnectedTilePlanner
 
         var openSet = new PriorityQueue<SearchNode, (float Score, int ExtraPriority, long Sequence)>();
         bool earlierSearchWasLimited = false;
-        int segmentCount = vertexCount - 1 + (closed ? 1 : 0);
+        int segmentCount = vertices.Length - 1 + (closed ? 1 : 0);
 
         for (int segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++)
         {
@@ -426,7 +465,7 @@ public static class ConnectedTilePlanner
         }
 
         var placements = BuildPlacements(finalNode);
-        var plan = new ConnectedTilePlan(type, vertices[0], placements, closed, usesEndPieces);
+        var plan = new ConnectedTilePlan(type, origin, placements, closed, usesEndPieces);
         return ConnectedTilePlanResult.Succeeded(plan);
     }
 
@@ -808,8 +847,14 @@ public static class ConnectedTilePlanner
         if (SearchTileCaches.TryGetValue(type, out SearchTileCache cache) && cache.Matches(type))
             return cache;
 
-        SearchTileCaches.Remove(type);
-        return SearchTileCaches.GetValue(type, static connectedTileType => new SearchTileCache(connectedTileType));
+        lock (SearchTileCaches)
+        {
+            if (SearchTileCaches.TryGetValue(type, out cache) && cache.Matches(type))
+                return cache;
+
+            SearchTileCaches.Remove(type);
+            return SearchTileCaches.GetValue(type, static connectedTileType => new SearchTileCache(connectedTileType));
+        }
     }
 
     private static bool HasUsableFoundation(ConnectedTile tile)

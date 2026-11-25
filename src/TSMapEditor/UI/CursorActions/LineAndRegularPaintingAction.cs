@@ -64,7 +64,7 @@ public abstract class LineAndRegularPaintingAction : CursorAction
     protected virtual IMutation CreateMirroredCellMutation(Point2D cell, int variant) =>
         throw new NotSupportedException("This tool does not support mirrored painting.");
 
-    private protected virtual IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line, bool fill)
+    private protected virtual IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line)
     {
         foreach (MirroredPaintTarget target in targets)
         {
@@ -74,7 +74,7 @@ public abstract class LineAndRegularPaintingAction : CursorAction
         }
     }
 
-    private (int Event, Point2D Origin, BrushSize Brush, MapMirroring Mirroring, bool Fill)? previousMirroredStamp;
+    private (int Event, Point2D Origin, BrushSize Brush, MapMirroring Mirroring)? previousMirroredStamp;
     private readonly HashSet<Point2D> cellsPaintedThisStroke = new HashSet<Point2D>();
 
     protected virtual Point2D GetMirroredCursorCell(Point2D cellCoords) => cellCoords;
@@ -110,14 +110,14 @@ public abstract class LineAndRegularPaintingAction : CursorAction
     protected virtual IEnumerable<Point2D> GetMirroredPreviewSourceCells(Point2D cellCoords) =>
         CursorActionTarget.BrushSize.GetCells(GetMirroredBrushOrigin(cellCoords));
 
-    protected bool TryPerformMirroredPaint(IEnumerable<Point2D> source, bool line = false, bool fill = false, Point2D? stampOrigin = null)
+    protected bool TryPerformMirroredPaint(IEnumerable<Point2D> source, bool line = false, Point2D? stampOrigin = null)
     {
         if (CursorActionTarget.Mirroring == null || !CanMirrorPaint)
             return false;
 
         if (stampOrigin.HasValue)
         {
-            var stamp = (EventID, stampOrigin.Value, CursorActionTarget.BrushSize, CursorActionTarget.Mirroring, fill);
+            var stamp = (EventID, stampOrigin.Value, CursorActionTarget.BrushSize, CursorActionTarget.Mirroring);
             if (previousMirroredStamp == stamp)
                 return true;
 
@@ -130,11 +130,11 @@ public abstract class LineAndRegularPaintingAction : CursorAction
         var targets = MirroredPaintTargets.GetTargets(Map, CursorActionTarget.Mirroring, source, MirroredVariantCount,
             CanPaintMirroredCell).Where(target => target.CanPaint);
 
-        bool trackPaintedCells = stampOrigin.HasValue && !fill;
+        bool trackPaintedCells = stampOrigin.HasValue;
         if (trackPaintedCells)
             targets = targets.ToArray();
 
-        var mutations = CreateMirroredPaintMutations(targets, line, fill).ToArray();
+        var mutations = CreateMirroredPaintMutations(targets, line).ToArray();
         if (mutations.Length > 0)
         {
             PerformMutation(new MirroredPlacementMutation(MutationTarget, mutations, line ? Mutation.EventIdNone : EventID));

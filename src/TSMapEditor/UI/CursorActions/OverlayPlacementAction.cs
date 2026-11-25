@@ -153,7 +153,7 @@ public class OverlayPlacementAction : LineAndRegularPaintingAction
 
     protected override bool CanMirrorPaint => true;
 
-    private protected override IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line, bool fill)
+    private protected override IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line)
     {
         var placements = targets
             .Where(target =>

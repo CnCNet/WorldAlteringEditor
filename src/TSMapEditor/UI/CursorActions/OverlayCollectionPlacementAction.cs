@@ -192,7 +192,7 @@ public class OverlayCollectionPlacementAction : LineAndRegularPaintingAction
         return !Helpers.IsLandTypeImpassable(image.TmpImage.TerrainType, true);
     }
 
-    private protected override IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line, bool fill)
+    private protected override IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line)
     {
         var placements = targets.Select(target =>
         {

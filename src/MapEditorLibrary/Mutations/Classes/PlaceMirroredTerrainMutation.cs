@@ -10,21 +10,19 @@ namespace MapEditorLibrary.Mutations.Classes;
 public class PlaceMirroredTerrainMutation : Mutation
 {
     public PlaceMirroredTerrainMutation(IMutationTarget mutationTarget, IReadOnlyList<Point2D> cells, TileImage tile,
-        int heightOffset, bool line, bool fill) : base(mutationTarget)
+        int heightOffset, bool line) : base(mutationTarget)
     {
         this.cells = cells;
         this.tile = tile;
         this.heightOffset = heightOffset;
         this.line = line;
-        this.fill = fill;
-        autoLAT = mutationTarget.AutoLATEnabled && !fill;
+        autoLAT = mutationTarget.AutoLATEnabled;
     }
 
     private readonly IReadOnlyList<Point2D> cells;
     private readonly TileImage tile;
     private readonly int heightOffset;
     private readonly bool line;
-    private readonly bool fill;
     private readonly bool autoLAT;
     private readonly Dictionary<Point2D, OriginalCellTerrainData> original = new Dictionary<Point2D, OriginalCellTerrainData>();
 
@@ -40,11 +38,8 @@ public class PlaceMirroredTerrainMutation : Mutation
             var cell = Map.GetTileOrFail(coords);
             RecordOriginal(coords);
 
-            if (!fill)
-            {
-                int baseLevel = line ? cell.Level : Math.Max(0, PlaceTerrainTileMutation.GetBaseLevel(Map, cell, subTile) + heightOffset);
-                cell.Level = (byte)Math.Min(baseLevel + subTile.TmpImage.Height, Constants.MaxMapHeightLevel);
-            }
+            int baseLevel = line ? cell.Level : Math.Max(0, PlaceTerrainTileMutation.GetBaseLevel(Map, cell, subTile) + heightOffset);
+            cell.Level = (byte)Math.Min(baseLevel + subTile.TmpImage.Height, Constants.MaxMapHeightLevel);
 
             cell.ChangeTileIndex(tile.TileID, 0);
             RefreshCellLighting(cell);

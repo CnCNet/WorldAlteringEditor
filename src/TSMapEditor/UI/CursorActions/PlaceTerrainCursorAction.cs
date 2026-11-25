@@ -261,17 +261,24 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
 
     private bool IsFilling => LineSourceCell == null && KeyboardCommands.Instance.FillTerrain.AreKeysOrModifiersDown(Keyboard);
 
-    protected override IEnumerable<Point2D> GetMirroredPreviewSourceCells(Point2D cellCoords) =>
-        IsFilling ? new[] { cellCoords } : base.GetMirroredPreviewSourceCells(cellCoords);
+    public override IEnumerable<(Point2D Cell, bool CanPlace)> GetMirroredPreview(Point2D cellCoords)
+    {
+        var mirroring = CursorActionTarget.Mirroring;
+        if (mirroring == null || !CanMirrorPaint || !IsFilling)
+            return base.GetMirroredPreview(cellCoords);
+
+        var target = Blocked ? null : Map.GetTile(GetAdjustedCellCoords(cellCoords));
+        return target == null ? Array.Empty<(Point2D, bool)>() : FillTerrainAreaMutation.GetMirroredSeeds(Map, target, mirroring);
+    }
 
     protected override bool CanPaintMirroredCell(MapTile tile, int variant) =>
-        IsFilling || !MutationTarget.OnlyPaintOnClearGround || tile.IsClearGround();
+        !MutationTarget.OnlyPaintOnClearGround || tile.IsClearGround();
 
-    private protected override IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line, bool fill)
+    private protected override IEnumerable<IMutation> CreateMirroredPaintMutations(IEnumerable<MirroredPaintTarget> targets, bool line)
     {
         var cells = targets.Select(target => target.Cell).ToArray();
         if (cells.Length > 0)
-            yield return new PlaceMirroredTerrainMutation(MutationTarget, cells, Tile, heightOffset, line, fill);
+            yield return new PlaceMirroredTerrainMutation(MutationTarget, cells, Tile, heightOffset, line);
     }
 
     protected override ICheckableMutation CreateRegularPlacementMutation(Point2D cellCoords)
@@ -300,28 +307,12 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
     /// Checks whether filling terrain in specific cell coords is allowed.
     /// It is not allowed if the latest mutation we have performed has achieved exactly the same effects.
     /// </summary>
-    private bool FillTerrainPassesPreviousMutationCheck(Point2D cellCoords)
+    private bool FillTerrainPassesPreviousMutationCheck(Point2D cellCoords, MapTile target, MapMirroring mirroring)
     {
-        if (PreviousCellCoords != cellCoords)
-            return true;
-
-        var previousMutation = MutationManager.GetLatestMutation();
-        if (previousMutation is FillTerrainAreaMutation fillTerrainAreaMutation)
-        {
-            Point2D adjustedCellCoords = GetAdjustedCellCoords(cellCoords);
-            var targetCell = CursorActionTarget.Map.GetTile(adjustedCellCoords);
-
-            if (fillTerrainAreaMutation.TargetCell == targetCell && fillTerrainAreaMutation.Tile == Tile)
-                return false;
-        }
-
-        return true;
-    }
-
-    private IEnumerable<Point2D> GetMirroredFillCells(MapTile targetCell)
-    {
-        foreach (Point2D cell in Helpers.GetFillAreaTiles(targetCell, Map, Map.TheaterInstance))
-            yield return cell;
+        return PreviousCellCoords != cellCoords ||
+            MutationManager.GetLatestMutation() is not FillTerrainAreaMutation previousFill ||
+            previousFill.TargetCell != target || previousFill.Tile != Tile || previousFill.Mirroring != mirroring ||
+            (mirroring != null && previousFill.EventID != EventID);
     }
 
     private void TryFillTerrain(Point2D cellCoords)
@@ -331,14 +322,13 @@ public class PlaceTerrainCursorAction : LineAndRegularPaintingAction
         if (targetCell == null)
             return;
 
-        if (!FillTerrainPassesPreviousMutationCheck(cellCoords))
+        var mirroring = CanMirrorPaint ? CursorActionTarget.Mirroring : null;
+        if (!FillTerrainPassesPreviousMutationCheck(cellCoords, targetCell, mirroring))
             return;
 
-        if (!TryPerformMirroredPaint(GetMirroredFillCells(targetCell), fill: true, stampOrigin: adjustedCellCoords))
-        {
-            var mutation = new FillTerrainAreaMutation(CursorActionTarget.MutationTarget, targetCell, Tile);
-            CursorActionTarget.MutationManager.PerformMutation(mutation);
-        }
+        var mutation = new FillTerrainAreaMutation(MutationTarget, targetCell, Tile, mirroring,
+            mirroring == null ? Mutation.EventIdNone : EventID);
+        PerformMutation(mutation);
         PreviousCellCoords = cellCoords;
     }
 
