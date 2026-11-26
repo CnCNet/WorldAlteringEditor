@@ -43,6 +43,7 @@ public class WindowController : XNAWindowController
     public ExpandMapWindow ExpandMapWindow { get; private set; }
     public ChangeHeightWindow ChangeHeightWindow { get; private set; }
     public FindWaypointWindow FindWaypointWindow { get; private set; }
+    public ObjectListWindow ObjectListWindow { get; private set; }
     public DeletionModeConfigurationWindow DeletionModeConfigurationWindow { get; private set; }
     public MirroringWindow MirroringWindow { get; private set; }
     public RenderedObjectsConfigurationWindow RenderedObjectsConfigurationWindow { get; private set; }
@@ -153,6 +154,10 @@ public class WindowController : XNAWindowController
 
         FindWaypointWindow = new FindWaypointWindow(WindowParentControl.WindowManager, map, cursorActionTarget);
         RegisterWindow(FindWaypointWindow);
+
+        ObjectListWindow = new ObjectListWindow(WindowParentControl.WindowManager, map, cursorActionTarget,
+            trigger => NavigateToReference(trigger, map, cursorActionTarget, notificationManager));
+        RegisterWindow(ObjectListWindow);
 
         DeletionModeConfigurationWindow = new DeletionModeConfigurationWindow(WindowParentControl.WindowManager, editorState);
         RegisterWindow(DeletionModeConfigurationWindow);

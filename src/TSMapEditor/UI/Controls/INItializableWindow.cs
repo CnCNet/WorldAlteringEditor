@@ -179,6 +179,16 @@ public class INItializableWindow : EditorWindow
             {
                 control.Text = Parser.Instance.GetExprValueString(kvp.Value, "Text", control);
             }
+            else if (!isForLayout && kvp.Key.StartsWith("$Column", StringComparison.Ordinal) && control is XNAMultiColumnListBox listBox)
+            {
+                int separatorIndex = kvp.Value.LastIndexOf(':');
+                if (separatorIndex < 0)
+                    throw new INIConfigException($"Missing width in {control.Name}.{kvp.Key}");
+
+                string header = Parser.Instance.GetExprValueString(kvp.Value[..separatorIndex], kvp.Key[1..], control);
+                int width = Parser.Instance.GetExprValue(kvp.Value[(separatorIndex + 1)..], control);
+                listBox.AddColumn(header, width);
+            }
             else if (kvp.Key == "$Suggestion" && control is XNASuggestionTextBox)
             {
                 ((XNASuggestionTextBox)control).Suggestion = Parser.Instance.GetExprValueString(kvp.Value, "Suggestion", control);

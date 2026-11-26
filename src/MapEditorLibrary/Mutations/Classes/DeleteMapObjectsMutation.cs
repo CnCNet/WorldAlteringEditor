@@ -1,7 +1,6 @@
 using MapEditorLibrary.Models;
-using MapEditorLibrary.Mutations;
 
-namespace MapEditorMCP.MCPMutations;
+namespace MapEditorLibrary.Mutations.Classes;
 
 public sealed class DeleteMapObjectsMutation : Mutation
 {
@@ -16,7 +15,7 @@ public sealed class DeleteMapObjectsMutation : Mutation
 
     public override string GetDisplayString()
     {
-        return $"Delete {objects.Count} map object(s)";
+        return string.Format(Translate(this, "DisplayString", "Delete {0} map object(s)"), objects.Count);
     }
 
     public override void Perform()

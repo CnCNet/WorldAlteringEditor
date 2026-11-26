@@ -184,6 +184,7 @@ class TopBarMenu : EditorPanel
         viewContextMenu.AddItem(Translate(this, "View.ViewMinimap", "View Minimap"), () => windowController.MinimapWindow.Open());
         viewContextMenu.AddItem(" ", null, () => false, null, null);
         viewContextMenu.AddItem(Translate(this, "View.FindWaypoint", "Find Waypoint..."), () => windowController.FindWaypointWindow.Open());
+        viewContextMenu.AddItem(Translate(this, "View.ObjectList", "Object List..."), () => windowController.ObjectListWindow.Open());
         viewContextMenu.AddItem(Translate(this, "View.CenterOfMap", "Center of Map"), () => mapUI.Camera.CenterOnMapCenterCell());
         viewContextMenu.AddItem(" ", null, () => false, null, null);
         viewContextMenu.AddItem(Translate(this, "View.NoLighting", "No Lighting"), () => mapUI.EditorState.LightingPreviewState = LightingPreviewMode.NoLighting);
