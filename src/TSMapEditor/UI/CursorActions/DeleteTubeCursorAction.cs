@@ -14,6 +14,8 @@ public class DeleteTubeCursorAction : CursorAction
     {
     }
 
+    public override bool DrawCellCursor => true;
+
     public override string GetName() => Translate("Name", "Delete Tube");
 
     public override void DrawPreview(Point2D cellCoords, Point2D cameraTopLeftPoint)
@@ -23,16 +25,16 @@ public class DeleteTubeCursorAction : CursorAction
 
         Func<Point2D, Map, Point2D> getCellCenterPoint = Is2DMode ? CellMath.CellCenterPointFromCellCoords : CellMath.CellCenterPointFromCellCoords_3D;
         Point2D cellPixelCoords = getCellCenterPoint(cellCoords, CursorActionTarget.Map) - cameraTopLeftPoint;
-        cellPixelCoords = new Point2D(cellPixelCoords.X + Constants.CellSizeX / 2, cellPixelCoords.Y);
         cellPixelCoords = cellPixelCoords.ScaleBy(CursorActionTarget.Camera.ZoomLevel);
 
         string text = Translate("Text", "Delete Tube");
         var textDimensions = Renderer.GetTextDimensions(text, Constants.UIBoldFont);
         int x = cellPixelCoords.X - (int)(textDimensions.X / 2);
+        int y = cellPixelCoords.Y - (int)(textDimensions.Y / 2);
 
         Renderer.DrawStringWithShadow(text,
             Constants.UIBoldFont,
-            new Vector2(x, cellPixelCoords.Y),
+            new Vector2(x, y),
             color);
     }
 
