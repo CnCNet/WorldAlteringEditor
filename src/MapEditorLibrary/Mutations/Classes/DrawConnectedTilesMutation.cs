@@ -11,7 +11,7 @@ namespace MapEditorLibrary.Mutations.Classes;
 public class DrawConnectedTilesMutation : Mutation
 {
     public DrawConnectedTilesMutation(IMutationTarget mutationTarget, ConnectedTilePlan plan,
-        int randomSeed, byte extraHeight) : base(mutationTarget)
+        int randomSeed, byte extraHeight, int? baseLevel = null) : base(mutationTarget)
     {
         this.plan = plan ?? throw new ArgumentNullException(nameof(plan));
         this.randomSeed = randomSeed;
@@ -20,7 +20,7 @@ public class DrawConnectedTilesMutation : Mutation
         if (originTile == null)
             throw new ArgumentException("The connected tile plan origin is outside the map.", nameof(plan));
 
-        originLevel = originTile.Level + extraHeight;
+        originLevel = baseLevel ?? originTile.Level + extraHeight;
     }
 
     private struct ConnectedTileUndoData

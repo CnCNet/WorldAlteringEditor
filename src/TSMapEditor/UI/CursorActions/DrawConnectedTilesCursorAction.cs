@@ -33,9 +33,15 @@ public class DrawConnectedTilesCursorAction : CursorAction
     private readonly ConnectedTileType connectedTileType;
 
     private sealed record PathPreview(Point2D[] Vertices, string Failure);
+    private sealed record PathToPlan(int PreviewIndex, Point2D[] Vertices, MirrorTransform Transform, ConnectedTileSide Side,
+        ConnectedTileAnchor? StartAnchor, ConnectedTileAnchor? EndAnchor);
 
     private readonly List<Point2D> connectedTilePath = new List<Point2D>();
     private readonly List<PathPreview> previewPaths = new List<PathPreview>();
+    private readonly Dictionary<Point2D, ConnectedTileConnectionFinder.TerrainCell> terrainUnderPreview = new();
+    private ConnectedTileConnectionFinder connectionFinder;
+    private ConnectedTileAnchor? startAnchor;
+    private ConnectedTileAnchor? endAnchor;
     private ConnectedTileSide connectedTileSide = ConnectedTileSide.Front;
     private IMutation previewMutation;
     private MapMirroring previewMirroring;
@@ -45,6 +51,10 @@ public class DrawConnectedTilesCursorAction : CursorAction
 
     private int randomSeed = new Random().Next();
 
+    private bool IsAttached => startAnchor.HasValue || endAnchor.HasValue;
+
+    private bool CanUseEndPieces => connectedTileType.SupportsEndPieces && !closed && (!startAnchor.HasValue || !endAnchor.HasValue);
+
     public override void OnActionEnter()
     {
         connectedTilePath.Clear();
@@ -53,22 +63,35 @@ public class DrawConnectedTilesCursorAction : CursorAction
         previewMirroring = CursorActionTarget.Mirroring;
         useEndPieces = false;
         closed = false;
+        startAnchor = null;
+        endAnchor = null;
+        terrainUnderPreview.Clear();
+        var theaterGraphics = CursorActionTarget.TheaterGraphics;
+        connectionFinder = new ConnectedTileConnectionFinder(connectedTileType, theaterGraphics.Theater,
+            tileIndex => theaterGraphics.GetTileGraphics(tileIndex, 0), GetTerrain);
 
         base.OnActionEnter();
     }
 
     public override void DrawPreview(Point2D cellCoords, Point2D cameraTopLeftPoint)
     {
-        string mainText = Translate("MainText.V3", "Click on a cell to place a new vertex.\r\n\r\n" +
-            "After placing at least three distinct vertices, you can optionally\r\nclick the first one to close the formation.\r\n\r\n" +
-            "ENTER to confirm\r\n" +
-            "Backspace to go back one step\r\n" +
-            "R to re-generate the pattern\r\n");
+        string mainText;
+        if (IsAttached)
+        {
+            mainText = endAnchor.HasValue ? string.Empty : Translate("VertexText", "Click on a cell to place a new vertex.\r\n\r\n");
+            mainText += Translate("ControlsText", "ENTER to confirm\r\nBackspace to go back one step\r\nR to re-generate the pattern\r\n");
+        }
+        else
+        {
+            mainText = Translate("MainText.V3", "Click on a cell to place a new vertex.\r\n\r\n" +
+                "After placing at least three distinct vertices, you can optionally\r\nclick the first one to close the formation.\r\n\r\n" +
+                "ENTER to confirm\r\nBackspace to go back one step\r\nR to re-generate the pattern\r\n");
+        }
 
         string tabText = Translate("TabText", "TAB to toggle between front and back sides\r\n");
         string pageUpDownText = Translate("PageUpDownText", "PageUp to raise the tiles, PageDown to lower them\r\n");
         string endPiecesText = string.Empty;
-        if (connectedTileType.SupportsEndPieces && !closed)
+        if (CanUseEndPieces)
         {
             endPiecesText = string.Format(
                 Translate("EndPiecesText", "E to toggle ending pieces ({0})\r\n"),
@@ -81,11 +104,19 @@ public class DrawConnectedTilesCursorAction : CursorAction
         string exitText = Translate("ExitText", "Right-click or ESC to exit");
 
         string text = mainText + endPiecesText + closedText;
-        if (!connectedTileType.FrontOnly)
+        if (!connectedTileType.FrontOnly && !startAnchor.HasValue)
             text += tabText;
-        if (!Constants.IsFlatWorld)
+        if (!Constants.IsFlatWorld && !IsAttached)
             text += pageUpDownText;
         text += exitText;
+
+        bool pointingAtConnection = FindHoveredConnection(cellCoords).HasValue;
+        if (pointingAtConnection)
+        {
+            text += "\r\n\r\n" + (connectedTilePath.Count == 0
+                ? Translate("StartConnectionText", "Click to start from this connection point.")
+                : Translate("EndConnectionText", "Click to connect the path to this point."));
+        }
 
         string previewPlanFailureText = previewPaths.Count > 0 ? previewPaths[0].Failure : null;
         if (previewPlanFailureText != null)
@@ -109,10 +140,13 @@ public class DrawConnectedTilesCursorAction : CursorAction
         Func<Point2D, Map, Point2D> getCellCenterPoint = Is2DMode ? CellMath.CellCenterPointFromCellCoords : CellMath.CellCenterPointFromCellCoords_3D;
 
         bool pointingAtFirstVertex = connectedTilePath.Count > 0 && cellCoords == connectedTilePath[0];
-        bool showingClosingGuide = closed || (pointingAtFirstVertex && HasEnoughVerticesToClose());
+        bool showingClosingGuide = closed || (pointingAtFirstVertex && CanClosePath());
 
         Vector2 ToView(Point2D cell) =>
             (getCellCenterPoint(cell, Map) - cameraTopLeftPoint).ScaleBy(CursorActionTarget.Camera.ZoomLevel).ToXNAVector();
+
+        if (pointingAtConnection)
+            Renderer.DrawCircle(ToView(cellCoords), Constants.CellSizeY * 0.25f, Color.LimeGreen, 8, 3);
 
         for (int pathIndex = 0; pathIndex < previewPaths.Count; pathIndex++)
         {
@@ -122,8 +156,8 @@ public class DrawConnectedTilesCursorAction : CursorAction
 
             if (pathIndex == 0)
             {
-                Color startColor = showingClosingGuide ? Color.LimeGreen : Color.Red;
-                if (closed && path.Failure != null)
+                Color startColor = showingClosingGuide || startAnchor.HasValue ? Color.LimeGreen : Color.Red;
+                if ((closed || startAnchor.HasValue) && path.Failure != null)
                     startColor = Color.OrangeRed;
 
                 Renderer.DrawCircle(start, Constants.CellSizeY * 0.25f, startColor, 8, 3);
@@ -139,6 +173,9 @@ public class DrawConnectedTilesCursorAction : CursorAction
 
             if (showingClosingGuide && path.Vertices.Length > 1)
                 Renderer.DrawLine(previous, start, path.Failure == null ? Color.LimeGreen : Color.OrangeRed, 3);
+
+            if (pathIndex == 0 && endAnchor.HasValue)
+                Renderer.DrawCircle(previous, Constants.CellSizeY * 0.25f, path.Failure == null ? Color.LimeGreen : Color.OrangeRed, 8, 3);
         }
     }
 
@@ -158,7 +195,7 @@ public class DrawConnectedTilesCursorAction : CursorAction
         }
         else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.Tab)
         {
-            if (!connectedTileType.FrontOnly)
+            if (!connectedTileType.FrontOnly && !startAnchor.HasValue)
             {
                 connectedTileSide = connectedTileSide == ConnectedTileSide.Front ? ConnectedTileSide.Back : ConnectedTileSide.Front;
                 RedrawPreview();
@@ -175,6 +212,9 @@ public class DrawConnectedTilesCursorAction : CursorAction
             else if (connectedTilePath.Count > 0)
             {
                 connectedTilePath.RemoveAt(connectedTilePath.Count - 1);
+                endAnchor = null;
+                if (connectedTilePath.Count == 0)
+                    startAnchor = null;
             }
 
             RedrawPreview();
@@ -183,7 +223,7 @@ public class DrawConnectedTilesCursorAction : CursorAction
         }
         else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.E)
         {
-            if (connectedTileType.SupportsEndPieces && !closed)
+            if (CanUseEndPieces)
             {
                 useEndPieces = !useEndPieces;
                 RedrawPreview();
@@ -203,7 +243,7 @@ public class DrawConnectedTilesCursorAction : CursorAction
         }
         else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.PageUp)
         {
-            if (!Constants.IsFlatWorld)
+            if (!Constants.IsFlatWorld && !IsAttached)
             {
                 if (connectedTilePath.Count > 0)
                 {
@@ -218,7 +258,7 @@ public class DrawConnectedTilesCursorAction : CursorAction
         }
         else if (e.PressedKey == Microsoft.Xna.Framework.Input.Keys.PageDown)
         {
-            if (!Constants.IsFlatWorld)
+            if (!Constants.IsFlatWorld && !IsAttached)
             {
                 if (connectedTilePath.Count > 0)
                 {
@@ -252,35 +292,81 @@ public class DrawConnectedTilesCursorAction : CursorAction
 
     public override void LeftClick(Point2D cellCoords)
     {
-        if (closed)
+        if (closed || endAnchor.HasValue)
             return;
 
-        if (connectedTilePath.Count > 0 && cellCoords == connectedTilePath[0] && HasEnoughVerticesToClose())
+        if (connectedTilePath.Count > 0 && cellCoords == connectedTilePath[0])
         {
-            closed = true;
-            RedrawPreview();
-            return;
+            if (CanClosePath())
+            {
+                closed = true;
+                RedrawPreview();
+                return;
+            }
+
+            if (startAnchor.HasValue)
+                return;
         }
+
+        ConnectedTileAnchor? anchor = FindHoveredConnection(cellCoords);
+        if (connectedTilePath.Count == 0)
+            startAnchor = anchor;
+        else
+            endAnchor = anchor;
 
         connectedTilePath.Add(cellCoords);
         RedrawPreview();
+    }
+
+    private ConnectedTileAnchor? FindHoveredConnection(Point2D cellCoords)
+    {
+        if (closed || endAnchor.HasValue || (connectedTilePath.Count > 0 && cellCoords == connectedTilePath[0]))
+            return null;
+
+        ConnectedTileAnchor? anchor = connectionFinder.FindOpenConnection(cellCoords);
+        return anchor.HasValue && connectedTilePath.Count > 0 ? PreferConnectionToward(anchor.Value, connectedTilePath[^1]) : anchor;
+    }
+
+    private ConnectedTileAnchor PreferConnectionToward(ConnectedTileAnchor anchor, Point2D cell)
+    {
+        if (anchor.Coordinates == cell)
+            return anchor;
+
+        var direction = Helpers.DirectionFromPoints(anchor.Coordinates, cell);
+        byte mask = (byte)(0b10000000 >> (int)direction);
+        return (anchor.ConnectionPoint.ConnectionMask & mask) != 0
+            ? anchor
+            : connectionFinder.FindOpenConnection(anchor.Coordinates, mask) ?? anchor;
+    }
+
+    private ConnectedTileConnectionFinder.TerrainCell? GetTerrain(Point2D cell)
+    {
+        if (terrainUnderPreview.TryGetValue(cell, out var original))
+            return original;
+
+        var tile = Map.GetTile(cell);
+        return tile == null ? null : new ConnectedTileConnectionFinder.TerrainCell(tile.TileIndex, tile.SubTileIndex, tile.Level);
     }
 
     private void RedrawPreview()
     {
         previewMutation?.Undo();
         previewMutation = null;
+        terrainUnderPreview.Clear();
         previewMirroring = CursorActionTarget.Mirroring;
         previewPaths.Clear();
 
         if (connectedTilePath.Count == 0)
             return;
 
-        var pathsToPlan = new List<(int PreviewIndex, Point2D[] Vertices, MirrorTransform Transform, ConnectedTileSide Side)>();
+        var pathsToPlan = new List<PathToPlan>();
         var map = Map;
         Func<Point2D, bool> isCellValid = cell => map.GetTile(cell) != null;
         Point2D doubledPoint = previewMirroring?.GetDoubledMirroringPoint(map.Size) ?? Point2D.Zero;
-        bool canPlan = connectedTilePath.Count >= 2 && (!closed || HasEnoughVerticesToClose());
+        bool canPlan = connectedTilePath.Count >= 2;
+        ConnectedTileAnchor? sourceStart = canPlan && startAnchor.HasValue
+            ? PreferConnectionToward(startAnchor.Value, connectedTilePath[1])
+            : startAnchor;
 
         foreach (MirrorTransform transform in previewMirroring?.Transforms ?? new[] { default(MirrorTransform) })
         {
@@ -293,9 +379,27 @@ public class DrawConnectedTilesCursorAction : CursorAction
             if (canPlan)
             {
                 if (transform != default && vertices.Any(cell => !isCellValid(cell)))
+                {
                     failure = Translate("PlanStatus.OutOfBounds", "a path extends outside the map");
+                }
                 else
-                    pathsToPlan.Add((previewPaths.Count, vertices, transform, GetStartingSide(vertices, transform)));
+                {
+                    ConnectedTileAnchor? pathStart = GetMirroredAnchor(sourceStart, vertices[0], transform);
+                    ConnectedTileAnchor? pathEnd = GetMirroredAnchor(endAnchor, vertices[^1], transform);
+                    if ((startAnchor.HasValue && !pathStart.HasValue) || (endAnchor.HasValue && !pathEnd.HasValue))
+                    {
+                        failure = Translate("PlanStatus.MissingConnection", "no matching open connection point was found");
+                    }
+                    else if (pathStart.HasValue && pathEnd.HasValue && pathStart.Value.BaseLevel != pathEnd.Value.BaseLevel)
+                    {
+                        failure = Translate("PlanStatus.ConnectionHeight", "the existing connection points are at different elevations");
+                    }
+                    else
+                    {
+                        var side = pathStart?.ConnectionPoint.Side ?? GetStartingSide(vertices, transform);
+                        pathsToPlan.Add(new PathToPlan(previewPaths.Count, vertices, transform, side, pathStart, pathEnd));
+                    }
+                }
             }
 
             previewPaths.Add(new PathPreview(vertices, failure));
@@ -310,6 +414,9 @@ public class DrawConnectedTilesCursorAction : CursorAction
         bool hasEndPieces = useEndPieces && !isClosed;
         byte? sourceFrontSeamDirections = null;
 
+        bool CanPlaceOnCell(Point2D cell) => !connectionFinder.ContainsTile(map.GetTile(cell).TileIndex);
+        Func<Point2D, bool> canPlaceOnCell = IsAttached ? CanPlaceOnCell : null;
+
         void PlanPath(int index)
         {
             var path = pathsToPlan[index];
@@ -318,7 +425,7 @@ public class DrawConnectedTilesCursorAction : CursorAction
                 frontSeamDirections = (byte)~frontSeamDirections.Value;
 
             plans[index] = ConnectedTilePlanner.Plan(connectedTileType, path.Vertices, path.Side, seed, hasEndPieces, isClosed,
-                isCellValid, frontSeamDirections);
+                isCellValid, frontSeamDirections, path.StartAnchor, path.EndAnchor, canPlaceOnCell);
         }
 
         int firstPathToPlan = 0;
@@ -344,7 +451,7 @@ public class DrawConnectedTilesCursorAction : CursorAction
         for (int i = 0; i < pathsToPlan.Count; i++)
         {
             var path = pathsToPlan[i];
-            (DrawConnectedTilesMutation mutation, string failure) = CreatePathMutation(plans[i], path.Transform, occupiedCells);
+            (DrawConnectedTilesMutation mutation, string failure) = CreatePathMutation(plans[i], path, occupiedCells);
             if (mutation != null)
                 mutations.Add(mutation);
             else
@@ -356,7 +463,34 @@ public class DrawConnectedTilesCursorAction : CursorAction
 
         previewMutation = mutations.Count == 1 ? mutations[0]
             : new MirroredPlacementMutation(MutationTarget, mutations, Mutation.EventIdNone);
+
+        // Hit testing must see the original terrain under the temporary placements.
+        foreach (Point2D cell in occupiedCells)
+        {
+            if (GetTerrain(cell) is ConnectedTileConnectionFinder.TerrainCell original)
+                terrainUnderPreview.Add(cell, original);
+        }
+
         previewMutation.Perform();
+    }
+
+    private ConnectedTileAnchor? GetMirroredAnchor(ConnectedTileAnchor? anchor, Point2D cell, MirrorTransform transform)
+    {
+        if (!anchor.HasValue || transform == default)
+            return anchor;
+
+        byte directionMask = 0;
+        for (int i = 0; i < (int)Direction.Count; i++)
+        {
+            if ((anchor.Value.ConnectionPoint.ConnectionMask & (0b10000000 >> i)) == 0)
+                continue;
+
+            Point2D offset = transform.ApplyToOffset(Helpers.VisualDirectionToPoint((Direction)i));
+            int direction = (int)Helpers.DirectionFromPoints(Point2D.Zero, offset);
+            directionMask |= (byte)(0b10000000 >> direction);
+        }
+
+        return connectionFinder.FindOpenConnection(cell, directionMask);
     }
 
     private ConnectedTileSide GetStartingSide(Point2D[] vertices, MirrorTransform transform)
@@ -377,22 +511,24 @@ public class DrawConnectedTilesCursorAction : CursorAction
     }
 
     private (DrawConnectedTilesMutation Mutation, string Failure) CreatePathMutation(ConnectedTilePlanResult result,
-        MirrorTransform transform, HashSet<Point2D> occupiedCells)
+        PathToPlan path, HashSet<Point2D> occupiedCells)
     {
         if (!result.IsSuccess)
             return (null, GetPlanFailureText(result));
 
-        var mutation = new DrawConnectedTilesMutation(MutationTarget, result.Plan, randomSeed, extraHeight);
-        if (previewMirroring == null)
-            return (mutation, null);
+        int? baseLevel = path.StartAnchor?.BaseLevel ?? path.EndAnchor?.BaseLevel;
+        var mutation = new DrawConnectedTilesMutation(MutationTarget, result.Plan, randomSeed, extraHeight, baseLevel);
 
         // The planner uses configured foundations, which can differ from the subtiles actually written.
         var placementCells = mutation.GetPlacementCells().ToHashSet();
-        if (placementCells.Count == 0)
+        if ((previewMirroring != null || IsAttached) && placementCells.Count == 0)
             return (null, Translate("PlanStatus.Empty", "no tiles could be placed"));
 
-        if (transform != default && placementCells.Any(cell => Map.GetTile(cell) == null))
+        if ((path.Transform != default || IsAttached) && placementCells.Any(cell => Map.GetTile(cell) == null))
             return (null, Translate("PlanStatus.OutOfBounds", "a path extends outside the map"));
+
+        if (IsAttached && placementCells.Any(cell => connectionFinder.ContainsTile(Map.GetTile(cell).TileIndex)))
+            return (null, Translate("PlanStatus.ConnectionOverlap", "a path overlaps existing connected tiles"));
 
         if (occupiedCells.Overlaps(placementCells))
             return (null, Translate("PlanStatus.Overlap", "a path overlaps another placement"));
@@ -437,9 +573,9 @@ public class DrawConnectedTilesCursorAction : CursorAction
         return false;
     }
 
-    private bool HasEnoughVerticesToClose()
+    private bool CanClosePath()
     {
-        return new HashSet<Point2D>(connectedTilePath).Count >= 3;
+        return !IsAttached && new HashSet<Point2D>(connectedTilePath).Count >= 3;
     }
 
     private string GetPlanFailureText(ConnectedTilePlanResult planResult)
@@ -459,5 +595,6 @@ public class DrawConnectedTilesCursorAction : CursorAction
         previewMutation?.Undo();
         previewMutation = null;
         previewPaths.Clear();
+        terrainUnderPreview.Clear();
     }
 }

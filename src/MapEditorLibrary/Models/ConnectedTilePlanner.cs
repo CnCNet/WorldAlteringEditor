@@ -13,6 +13,12 @@ public enum ConnectedTilePlanStatus
     SearchLimit
 }
 
+public readonly record struct ConnectedTileAnchor(ConnectedTile Tile, Point2D Location, int ConnectionPointIndex, int BaseLevel)
+{
+    public TileConnectionPoint ConnectionPoint => Tile.ConnectionPoints[ConnectionPointIndex];
+    public Point2D Coordinates => Location + ConnectionPoint.CoordinateOffset;
+}
+
 public sealed class ConnectedTilePlacement
 {
     internal ConnectedTilePlacement(ConnectedTile tile, Point2D location,
@@ -109,7 +115,8 @@ public static class ConnectedTilePlanner
     {
         Point,
         EndingPiece,
-        ClosedSeam
+        ClosedSeam,
+        ExistingConnection
     }
 
     private readonly struct SearchTile
@@ -223,6 +230,7 @@ public static class ConnectedTilePlanner
         public int ExitPointIndex { get; private init; }
         public float GScore { get; private init; }
         public int Depth { get; private init; }
+        public bool IsExisting { get; private init; }
         private ConnectedTileSide SyntheticStartingSide { get; init; }
         private byte SyntheticConnectionMask { get; init; }
 
@@ -264,6 +272,18 @@ public static class ConnectedTilePlanner
                 Depth = 0
             };
         }
+
+        public static SearchNode MakeExistingStart(ConnectedTileAnchor anchor)
+        {
+            return new SearchNode
+            {
+                SearchTile = new SearchTile(anchor.Tile),
+                Location = anchor.Location,
+                EntryPointIndex = -1,
+                ExitPointIndex = anchor.ConnectionPointIndex,
+                IsExisting = true
+            };
+        }
     }
 
     private sealed class SegmentSearchResult
@@ -276,10 +296,12 @@ public static class ConnectedTilePlanner
     /// <summary>
     /// Plans a connected path. A front seam direction mask lets a closed path
     /// choose its starting side based on the connection direction at the seam.
+    /// An existing anchor replaces the corresponding endpoint and any cap there.
     /// </summary>
     public static ConnectedTilePlanResult Plan(ConnectedTileType type, IReadOnlyList<Point2D> path,
         ConnectedTileSide startingSide, int randomSeed, bool useEndPieces, bool closed,
-        Func<Point2D, bool> isCellValid, byte? frontSeamDirectionMask = null)
+        Func<Point2D, bool> isCellValid, byte? frontSeamDirectionMask = null,
+        ConnectedTileAnchor? startAnchor = null, ConnectedTileAnchor? endAnchor = null, Func<Point2D, bool> canPlaceOnCell = null)
     {
         if (type == null)
             return ConnectedTilePlanResult.Failed(ConnectedTilePlanStatus.InvalidInput, "A connected tile type is required.");
@@ -333,7 +355,24 @@ public static class ConnectedTilePlanner
         Point2D origin = vertices[0];
         vertices = vertices[..vertexCount];
 
-        var result = PlanPath(type, vertices, origin, startingSide, randomSeed, useEndPieces, closed, isCellValid, frontSeamDirectionMask);
+        bool IsValidAnchor(ConnectedTileAnchor anchor, Point2D vertex) => !closed && anchor.Tile != null &&
+            type.Tiles.Contains(anchor.Tile) && HasUsableFoundation(anchor.Tile) &&
+            anchor.ConnectionPointIndex >= 0 && anchor.ConnectionPointIndex < anchor.Tile.ConnectionPoints.Length &&
+            anchor.Coordinates == vertex;
+
+        if ((startAnchor.HasValue && !IsValidAnchor(startAnchor.Value, origin)) ||
+            (endAnchor.HasValue && !IsValidAnchor(endAnchor.Value, vertices[^1])))
+        {
+            return ConnectedTilePlanResult.Failed(ConnectedTilePlanStatus.InvalidInput,
+                "An existing connection point must match an endpoint of an open path.");
+        }
+
+        bool CanPlaceOnCell(Point2D cell) => isCellValid(cell) && (canPlaceOnCell == null || canPlaceOnCell(cell)) &&
+            (!endAnchor.HasValue || !endAnchor.Value.Tile.Foundation.Contains(cell - endAnchor.Value.Location));
+
+        Func<Point2D, bool> isPlacementCellValid = endAnchor.HasValue || canPlaceOnCell != null ? CanPlaceOnCell : isCellValid;
+        var result = PlanPath(type, vertices, origin, startingSide, randomSeed, useEndPieces, closed,
+            isPlacementCellValid, frontSeamDirectionMask, startAnchor, endAnchor);
         if (closed && frontSeamDirectionMask.HasValue && result.Status == ConnectedTilePlanStatus.SearchLimit)
         {
             // The same loop can be easier to close at a different vertex.
@@ -341,7 +380,8 @@ public static class ConnectedTilePlanner
             vertices[1..].CopyTo(vertices);
             vertices[^1] = origin;
 
-            var retry = PlanPath(type, vertices, origin, startingSide, randomSeed, useEndPieces, closed, isCellValid, frontSeamDirectionMask);
+            var retry = PlanPath(type, vertices, origin, startingSide, randomSeed, useEndPieces, closed,
+                isPlacementCellValid, frontSeamDirectionMask, startAnchor, endAnchor);
             if (retry.IsSuccess)
                 return retry;
         }
@@ -351,17 +391,22 @@ public static class ConnectedTilePlanner
 
     private static ConnectedTilePlanResult PlanPath(ConnectedTileType type, ReadOnlySpan<Point2D> vertices,
         Point2D origin, ConnectedTileSide startingSide, int randomSeed, bool useEndPieces, bool closed,
-        Func<Point2D, bool> isCellValid, byte? frontSeamDirectionMask)
+        Func<Point2D, bool> isCellValid, byte? frontSeamDirectionMask, ConnectedTileAnchor? startAnchor, ConnectedTileAnchor? endAnchor)
     {
         SearchTileCache searchTileCache = GetSearchTileCache(type);
         SearchTile[] linearTiles = searchTileCache.LinearTiles;
         SearchTile[] endingTiles = searchTileCache.EndingTiles;
 
-        bool usesEndPieces = useEndPieces && !closed;
-        bool strict = usesEndPieces || closed;
+        bool useStartingCap = useEndPieces && !closed && !startAnchor.HasValue;
+        bool useEndingCap = useEndPieces && !closed && !endAnchor.HasValue;
+        bool strict = useStartingCap || useEndingCap || closed || endAnchor.HasValue;
 
         List<SearchNode> frontier;
-        if (usesEndPieces)
+        if (startAnchor is ConnectedTileAnchor existingStart)
+        {
+            frontier = new List<SearchNode> { SearchNode.MakeExistingStart(existingStart) };
+        }
+        else if (useStartingCap)
         {
             frontier = MakeStartingEndingNodes(endingTiles, vertices[0], startingSide, isCellValid);
             if (frontier.Count == 0)
@@ -403,11 +448,16 @@ public static class ConnectedTilePlanner
             if (!isFirstSegment)
                 frontier = BackUpOnePlacement(frontier);
 
-            SegmentGoal goal = isLastSegment && closed
-                ? SegmentGoal.ClosedSeam
-                : isLastSegment && usesEndPieces
-                    ? SegmentGoal.EndingPiece
-                    : SegmentGoal.Point;
+            SegmentGoal goal = SegmentGoal.Point;
+            if (isLastSegment)
+            {
+                if (closed)
+                    goal = SegmentGoal.ClosedSeam;
+                else if (endAnchor.HasValue)
+                    goal = SegmentGoal.ExistingConnection;
+                else if (useEndingCap)
+                    goal = SegmentGoal.EndingPiece;
+            }
 
             // A broad initial frontier can include paths that reach the first vertex by circling
             // most of a closed outline, effectively erasing the requested starting side.
@@ -426,12 +476,13 @@ public static class ConnectedTilePlanner
                 vertices[0],
                 linearTiles,
                 endingTiles,
-                allowSideChangingTiles: !isFirstSegment || strict,
+                allowSideChangingTiles: !isFirstSegment || strict || startAnchor.HasValue,
                 goal,
                 randomSeed,
                 exactResultLimit,
                 strict,
-                isCellValid);
+                isCellValid,
+                endAnchor);
 
             earlierSearchWasLimited |= searchResult.SearchWasLimited;
 
@@ -465,7 +516,14 @@ public static class ConnectedTilePlanner
         }
 
         var placements = BuildPlacements(finalNode);
-        var plan = new ConnectedTilePlan(type, origin, placements, closed, usesEndPieces);
+        if (placements.Count == 0 && (startAnchor.HasValue || endAnchor.HasValue))
+        {
+            return ConnectedTilePlanResult.Failed(
+                earlierSearchWasLimited ? ConnectedTilePlanStatus.SearchLimit : ConnectedTilePlanStatus.NoSolution,
+                "No new connected tile placements were found.");
+        }
+
+        var plan = new ConnectedTilePlan(type, origin, placements, closed, useStartingCap || useEndingCap);
         return ConnectedTilePlanResult.Succeeded(plan);
     }
 
@@ -474,7 +532,7 @@ public static class ConnectedTilePlanner
         IReadOnlyList<SearchNode> seeds, Point2D destination,
         Point2D origin, SearchTile[] linearTiles, SearchTile[] endingTiles,
         bool allowSideChangingTiles, SegmentGoal goal, int randomSeed, int exactResultLimit, bool strict,
-        Func<Point2D, bool> isCellValid)
+        Func<Point2D, bool> isCellValid, ConnectedTileAnchor? endAnchor)
     {
         var result = new SegmentSearchResult();
         openSet.Clear();
@@ -539,6 +597,12 @@ public static class ConnectedTilePlanner
             }
 
             if (goal == SegmentGoal.ClosedSeam && CanCloseAtOrigin(currentNode, origin))
+            {
+                result.ExactNodes.Add(currentNode);
+                break;
+            }
+
+            if (goal == SegmentGoal.ExistingConnection && CanJoinExistingConnection(currentNode, endAnchor.Value))
             {
                 result.ExactNodes.Add(currentNode);
                 break;
@@ -740,9 +804,8 @@ public static class ConnectedTilePlanner
             return false;
 
         // Existing two-point configurations apply RequiredTiles / ForbiddenTiles from the
-        // incoming candidate only. Preserve that behavior, while allowing a one-point start
-        // cap to constrain the first linear tile through its sole outgoing connection.
-        if (currentNode.Tile?.IsEndingPiece == true &&
+        // incoming candidate only. An existing anchor or starting cap also constrains the join.
+        if ((currentNode.IsExisting || currentNode.Tile?.IsEndingPiece == true) &&
             !ConnectionPointAllowsTile(currentExitPoint, candidateTile.Index))
         {
             return false;
@@ -764,12 +827,26 @@ public static class ConnectedTilePlanner
         TileConnectionPoint finalExit = finalNode.ExitPoint;
         TileConnectionPoint firstEntry = firstNode.Tile.ConnectionPoints[firstNode.EntryPointIndex];
 
-        if (finalExit.Side != firstEntry.Side || !ConnectionPointAllowsTile(firstEntry, finalNode.Tile.Index))
+        return ConnectionPointAllowsTile(firstEntry, finalNode.Tile.Index) &&
+            ConnectionPointsMeet(finalNode.ExitCoordinates, finalExit, firstNode.Location + firstEntry.CoordinateOffset, firstEntry);
+    }
+
+    private static bool CanJoinExistingConnection(SearchNode node, ConnectedTileAnchor anchor)
+    {
+        return node.Tile != null && !node.IsExisting &&
+            ConnectionPointAllowsTile(node.ExitPoint, anchor.Tile.Index) &&
+            ConnectionPointAllowsTile(anchor.ConnectionPoint, node.Tile.Index) &&
+            ConnectionPointsMeet(node.ExitCoordinates, node.ExitPoint, anchor.Coordinates, anchor.ConnectionPoint);
+    }
+
+    internal static bool ConnectionPointsMeet(Point2D exitCoordinates, TileConnectionPoint exitPoint,
+        Point2D entryCoordinates, TileConnectionPoint entryPoint)
+    {
+        if (exitPoint.Side != entryPoint.Side)
             return false;
 
-        Point2D firstEntryCoordinates = firstNode.Location + firstEntry.CoordinateOffset;
-        Point2D delta = firstEntryCoordinates - finalNode.ExitCoordinates;
-        byte compatibleDirections = (byte)(finalExit.ConnectionMask & firstEntry.ReversedConnectionMask);
+        Point2D delta = entryCoordinates - exitCoordinates;
+        byte compatibleDirections = (byte)(exitPoint.ConnectionMask & entryPoint.ReversedConnectionMask);
 
         for (int directionIndex = 0; directionIndex < (int)Direction.Count; directionIndex++)
         {
@@ -901,7 +978,7 @@ public static class ConnectedTilePlanner
 
         while (node != null)
         {
-            if (node.Tile != null)
+            if (node.Tile != null && !node.IsExisting)
             {
                 TileConnectionPoint? entryPoint = node.EntryPointIndex >= 0
                     ? node.Tile.ConnectionPoints[node.EntryPointIndex]
