@@ -6,7 +6,7 @@ namespace MapEditorLibrary;
 
 public static class Constants
 {
-    public static string Version => Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
+    public static string Version => Assembly.GetExecutingAssembly().GetName().Version.ToString(4);
 
     public static int CellSizeX = 48;
     public static int CellSizeY = 24;
