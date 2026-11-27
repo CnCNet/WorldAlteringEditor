@@ -48,7 +48,7 @@ class TopBarMenu : EditorPanel
 
     private DeleteTubeCursorAction deleteTunnelCursorAction;
     private PlaceTubeCursorAction placeTubeCursorAction;
-    private ToggleIceGrowthCursorAction toggleIceGrowthCursorAction;
+    private ManageIceGrowthCursorAction manageIceGrowthCursorAction;
     private CheckDistanceCursorAction checkDistanceCursorAction;
     private CheckDistancePathfindingCursorAction checkDistancePathfindingCursorAction;
     private CalculateTiberiumValueCursorAction calculateTiberiumValueCursorAction;
@@ -63,7 +63,7 @@ class TopBarMenu : EditorPanel
 
         deleteTunnelCursorAction = new DeleteTubeCursorAction(mapUI);
         placeTubeCursorAction = new PlaceTubeCursorAction(mapUI);
-        toggleIceGrowthCursorAction = new ToggleIceGrowthCursorAction(mapUI);
+        manageIceGrowthCursorAction = new ManageIceGrowthCursorAction(mapUI);
         checkDistanceCursorAction = new CheckDistanceCursorAction(mapUI);
         checkDistancePathfindingCursorAction = new CheckDistancePathfindingCursorAction(mapUI);
         calculateTiberiumValueCursorAction = new CalculateTiberiumValueCursorAction(mapUI);
@@ -156,8 +156,11 @@ class TopBarMenu : EditorPanel
             }
         }
 
-        editContextMenu.AddItem(Translate(this, "Edit.ToggleIcegrowth", "Toggle IceGrowth"), () => { mapUI.EditorState.CursorAction = toggleIceGrowthCursorAction; toggleIceGrowthCursorAction.ToggleIceGrowth = true; mapUI.EditorState.HighlightIceGrowth = true; }, null, null, null);
-        editContextMenu.AddItem(Translate(this, "Edit.ClearIceGrowth", "Clear IceGrowth"), () => { mapUI.EditorState.CursorAction = toggleIceGrowthCursorAction; toggleIceGrowthCursorAction.ToggleIceGrowth = false; mapUI.EditorState.HighlightIceGrowth = true; }, null, null, null);
+        editContextMenu.AddItem(Translate(this, "Edit.ManageIceGrowth", "Manage IceGrowth"), () =>
+        {
+            mapUI.EditorState.CursorAction = manageIceGrowthCursorAction;
+            mapUI.EditorState.HighlightIceGrowth = true;
+        });
         editContextMenu.AddItem(" ", null, () => false, null, null);
         editContextMenu.AddItem(Translate(this, "Edit.ManageBaseNodes", "Manage Base Nodes"), ManageBaseNodes_Selected, null, null, null);
 

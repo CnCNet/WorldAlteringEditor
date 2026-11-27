@@ -8,15 +8,15 @@ using System;
 
 namespace TSMapEditor.UI.CursorActions;
 
-public class ToggleIceGrowthCursorAction : CursorAction
+public class ManageIceGrowthCursorAction : CursorAction
 {
-    public ToggleIceGrowthCursorAction(ICursorActionTarget cursorActionTarget) : base(cursorActionTarget)
+    public ManageIceGrowthCursorAction(ICursorActionTarget cursorActionTarget) : base(cursorActionTarget)
     {
     }
 
-    public override string GetName() => ToggleIceGrowth ? Translate("EnableName", "Enable Ice Growth") : Translate("DisableName", "Disable Ice Growth");
+    private (int EventID, Point2D Cell)? lastDragPaint;
 
-    public bool ToggleIceGrowth { get; set; } = true;
+    public override string GetName() => Translate("Name", "Manage IceGrowth");
 
     public override void DrawPreview(Point2D cellCoords, Point2D cameraTopLeftPoint)
     {
@@ -43,15 +43,31 @@ public class ToggleIceGrowthCursorAction : CursorAction
         Renderer.DrawLine(startPoint.ToXNAVector(), corner2.ToXNAVector(), lineColor, thickness);
         Renderer.DrawLine(corner1.ToXNAVector(), endPoint.ToXNAVector(), lineColor, thickness);
         Renderer.DrawLine(corner2.ToXNAVector(), endPoint.ToXNAVector(), lineColor, thickness);
+
+        string text = Translate("Text", "Paint with left mouse button to enable IceGrowth.\r\nHold Shift while painting to disable IceGrowth.");
+
+        DrawText(cellCoords, cameraTopLeftPoint, 60, -100, text, Color.Yellow);
     }
 
     public override void LeftClick(Point2D cellCoords)
     {
-        CursorActionTarget.MutationManager.PerformMutation(
-            new SetIceGrowthMutation(CursorActionTarget.MutationTarget, cellCoords, ToggleIceGrowth));
+        // The mouse-up click can follow a drag that already painted this cell.
+        if (lastDragPaint == (EventID, cellCoords))
+            return;
 
-        base.LeftClick(cellCoords);
+        Paint(cellCoords);
     }
 
-    public override void LeftDown(Point2D cellCoords) => LeftClick(cellCoords);
+    public override void LeftDown(Point2D cellCoords)
+    {
+        Paint(cellCoords);
+        lastDragPaint = (EventID, cellCoords);
+    }
+
+    private void Paint(Point2D cellCoords)
+    {
+        bool enableIceGrowth = !Keyboard.IsShiftHeldDown();
+
+        PerformMutation(new SetIceGrowthMutation(MutationTarget, cellCoords, enableIceGrowth));
+    }
 }
