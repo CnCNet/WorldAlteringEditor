@@ -107,7 +107,9 @@ public class SmoothenIceScript
     };
 
 
-    public void Perform(Map map)
+    public void Perform(Map map) => Perform(map, new Random());
+
+    public void Perform(Map map, Random random)
     {
         transitionInfo.Reverse();
 
@@ -354,8 +356,6 @@ public class SmoothenIceScript
         // ***********************************************************************************
         // Step 6: Find all ice tiles and randomize their tilesets between the 3 ice tile sets
         // ***********************************************************************************
-
-        var random = new Random();
 
         map.DoForAllValidTiles(mapCell =>
         {
