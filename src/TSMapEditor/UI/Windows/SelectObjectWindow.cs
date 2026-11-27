@@ -66,6 +66,7 @@ public abstract class SelectObjectWindow<T> : INItializableWindow
 
         infoPanel = new SelectObjectWindowInfoPanel(WindowManager);
         AddChild(infoPanel);
+        infoPanel.Disable();
 
         EnabledChanged += SelectObjectWindow_EnabledChanged;
     }
