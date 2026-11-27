@@ -268,22 +268,24 @@ public class CornerHeightField
     /// Smooths the field so that neighbouring corners differ by no more than the allowed slope.
     /// Returns false if the edit had to be rejected.
     /// </summary>
-    public bool Flood(HeightFloodMode mode, bool allowSteep)
+    public bool Flood(HeightFloodMode mode, bool allowSteep) => Flood(mode, allowSteep, null);
+
+    internal bool Flood(HeightFloodMode mode, bool allowSteep, int? flattenLevel)
     {
         if (mode == HeightFloodMode.Both)
         {
-            if (!FloodPass(HeightFloodMode.Down, allowSteep))
+            if (!FloodPass(HeightFloodMode.Down, allowSteep, flattenLevel))
                 return false;
 
             RequeueAllDone();
 
-            return FloodPass(HeightFloodMode.Up, allowSteep);
+            return FloodPass(HeightFloodMode.Up, allowSteep, flattenLevel);
         }
 
-        return FloodPass(mode, allowSteep);
+        return FloodPass(mode, allowSteep, flattenLevel);
     }
 
-    private bool FloodPass(HeightFloodMode mode, bool allowSteep)
+    private bool FloodPass(HeightFloodMode mode, bool allowSteep, int? flattenLevel)
     {
         while (worklist.Count > 0)
         {
@@ -347,6 +349,13 @@ public class CornerHeightField
                         int target = Math.Clamp(
                             Math.Clamp(neighborHeight, startHeight - threshold, startHeight + threshold),
                             admMin, admMax);
+
+                        // Ground flattened to the cliff top should meet the lip at its full height.
+                        if (bordersMorphable && startHeight == flattenLevel && target > neighborHeight &&
+                            target < startHeight && TouchesCliffTop(nx, ny, startHeight))
+                        {
+                            target = startHeight;
+                        }
 
                         if (bordersMorphable && target != neighborHeight)
                         {
@@ -610,6 +619,22 @@ public class CornerHeightField
         }
 
         return anyRigid && min <= max;
+    }
+
+    private bool TouchesCliffTop(int px, int py, int level)
+    {
+        foreach (var offset in CornerOffsets)
+        {
+            var cell = map.GetTile(px - offset.X, py - offset.Y);
+            if (cell == null || cell.Level != level || map.IsCellMorphable(cell))
+                continue;
+
+            var tmpImage = map.TheaterInstance.GetTile(cell.TileIndex).GetSubTile(cell.SubTileIndex).TmpImage;
+            if (tmpImage.Height > 0 && tmpImage.RampType == RampType.None)
+                return true;
+        }
+
+        return false;
     }
 
     // First match wins, so the ambiguous double-ramp patterns resolve to the SWNE variants.

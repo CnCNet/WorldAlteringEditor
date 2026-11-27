@@ -1,6 +1,4 @@
-﻿using MapEditorLibrary.CCEngine;
-using MapEditorLibrary.GameMath;
-using MapEditorLibrary.Models.Enums;
+﻿using MapEditorLibrary.GameMath;
 using MapEditorLibrary.Mutations.Classes.HeightMutations;
 
 namespace TSMapEditor.UI.CursorActions.HeightActions;
@@ -47,59 +45,11 @@ public class FlattenGroundCursorAction : CursorAction
             return;
         }
 
-        // Note: the hovered cell itself is intentionally NOT required to be morphable.
-        // When flattening ground up to a cliff, the cursor naturally rests on the cliff
-        // cells themselves (especially for back-facing cliffs), and the brush area still
-        // covers flattenable ground next to them. Non-morphable cells are filtered
-        // per-cell below and in the mutation.
+        var mutation = FlattenGroundMutation.CreateForStroke(MutationTarget, cellCoords, CursorActionTarget.BrushSize, desiredHeightLevel,
+            EventID, allowCliffInterior: !Is2DMode);
 
-        // Check the area of the brush on whether it has any cells that do not match
-        // the height of the origin cell.
-
-        // Match the footprint the mutation actually flattens (exactly Width-2 by Height-2).
-        int xSize = CursorActionTarget.BrushSize.Width - 2;
-        int ySize = CursorActionTarget.BrushSize.Height - 2;
-        if (xSize < 0) xSize = 0;
-        if (ySize < 0) ySize = 0;
-
-        int beginY = cellCoords.Y - (ySize - 1) / 2;
-        int endY = cellCoords.Y + ySize / 2;
-        int beginX = cellCoords.X - (xSize - 1) / 2;
-        int endX = cellCoords.X + xSize / 2;
-
-        bool perform = false;
-
-        for (int y = beginY; y <= endY && !perform; y++)
-        {
-            for (int x = beginX; x <= endX; x++)
-            {
-                var targetCellCoords = new Point2D(x, y);
-                var targetCell = Map.GetTile(targetCellCoords);
-
-                // Don't act on non-morphable terrain
-                if (targetCell == null || !Map.IsCellMorphable(targetCell))
-                    continue;
-
-                var tmpImage = Map.TheaterInstance.GetTile(targetCell.TileIndex).GetSubTile(targetCell.SubTileIndex).TmpImage;
-                LandType landType = (LandType)tmpImage.TerrainType;
-                if (landType == LandType.Rock || landType == LandType.Water)
-                    continue;
-
-                // A cell needs flattening if it is at a different level, or if it is a ramp
-                // (a ramp's Level is its lowest corner, so a ridge of ramps can all be "at"
-                // the desired level yet still need flattening).
-                if (targetCell.Level != desiredHeightLevel || tmpImage.RampType != RampType.None)
-                {
-                    perform = true;
-                    break;
-                }
-            }
-        }
-
-        if (!perform)
-            return;
-
-        CursorActionTarget.MutationManager.PerformMutation(new FlattenGroundMutation(MutationTarget, cellCoords, CursorActionTarget.BrushSize, desiredHeightLevel, EventID));
+        if (mutation != null)
+            PerformMutation(mutation);
     }
 
     public override void MouseMove(Point2D cellCoords)

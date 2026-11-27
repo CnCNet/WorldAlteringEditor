@@ -88,7 +88,7 @@ public abstract class AlterElevationMutationBase : Mutation
             }
         }
 
-        return RunSmoothing(field, mode, allowSteep);
+        return RunSmoothing(field, mode, allowSteep, mode == HeightFloodMode.Both ? newLevel : null);
     }
 
     /// <summary>
@@ -96,8 +96,11 @@ public abstract class AlterElevationMutationBase : Mutation
     /// Returns the changed cells, or null if the edit was rejected.
     /// </summary>
     protected List<MapTile> RunSmoothing(CornerHeightField field, HeightFloodMode mode, bool allowSteep)
+        => RunSmoothing(field, mode, allowSteep, null);
+
+    private List<MapTile> RunSmoothing(CornerHeightField field, HeightFloodMode mode, bool allowSteep, int? flattenLevel)
     {
-        if (!field.Flood(mode, allowSteep))
+        if (!field.Flood(mode, allowSteep, flattenLevel))
             return null;
 
         var changedCells = field.WriteBack(allowSteep, AddCellToUndoData);
