@@ -2,25 +2,34 @@ using MapEditorLibrary;
 using MapEditorLibrary.CCEngine;
 using MapEditorLibrary.Models;
 using MapEditorLibrary.Models.Enums;
+using MapEditorLibrary.Mutations;
+using MapEditorMCP.MCPMutations;
 using System.Globalization;
 
 namespace MapEditorMCP.Scripting;
 
 /// <summary>
 /// Provides game-thread-only access to map scripting data for the MCP tools.
-/// Scripting changes intentionally bypass the terrain/object mutation history.
+/// Applied scripting changes are recorded in the map's undo history as a single
+/// <see cref="ScriptingChangeMutation"/> each.
 /// </summary>
 internal sealed class ScriptingFacade
 {
-    public ScriptingFacade(Map map)
+    public const string ApplyScriptingChangesToolName = "apply_scripting_changes";
+
+    public ScriptingFacade(Map map, MutationManager mutationManager, IMutationTarget mutationTarget)
     {
         this.map = map ?? throw new ArgumentNullException(nameof(map));
+        this.mutationManager = mutationManager ?? throw new ArgumentNullException(nameof(mutationManager));
+        this.mutationTarget = mutationTarget ?? throw new ArgumentNullException(nameof(mutationTarget));
         parameterCodec = new ScriptingParameterCodec(map);
         catalogService = new ScriptingCatalogService(map);
         referenceService = new ScriptingReferenceService(map);
     }
 
     private readonly Map map;
+    private readonly MutationManager mutationManager;
+    private readonly IMutationTarget mutationTarget;
     private readonly ScriptingParameterCodec parameterCodec;
     private readonly ScriptingCatalogService catalogService;
     private readonly ScriptingReferenceService referenceService;
@@ -224,7 +233,22 @@ internal sealed class ScriptingFacade
         => new ScriptingChangePlanner(map, parameterCodec).Process(request, false);
 
     public ScriptingChangeSetResult ApplyScriptingChanges(ScriptingChangeSetRequest request)
-        => new ScriptingChangePlanner(map, parameterCodec).Process(request, true);
+    {
+        var planner = new ScriptingChangePlanner(map, parameterCodec);
+        ScriptingChangeSetResult result = planner.Process(request, true);
+
+        if (result.Applied && planner.AppliedChanges != null && planner.AppliedChanges.Count > 0)
+        {
+            var mutation = new ScriptingChangeMutation(mutationTarget, planner.AppliedChanges);
+            mutationManager.RecordPerformedMutation(mutation, MutationManager.MCPMutationOrigin, ApplyScriptingChangesToolName,
+                new MutationAffectedCells(true, 0, null, null, null, null));
+
+            result.MutationId = mutation.HistoryMetadata.MutationId;
+            result.Revision = mutationManager.Revision;
+        }
+
+        return result;
+    }
 
     private void AddTaskForceInfo(TaskForcesResult result, TaskForce taskForce, bool isGlobal, string nameFilter)
     {

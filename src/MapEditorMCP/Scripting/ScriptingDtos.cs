@@ -664,6 +664,13 @@ internal sealed class ScriptingChangeSetResult
     public List<ScriptingChangedElementInfo> Updated { get; set; } = new List<ScriptingChangedElementInfo>();
     public List<ScriptingElementIdentityInfo> Deleted { get; set; } = new List<ScriptingElementIdentityInfo>();
     public List<ScriptingDiagnosticInfo> Diagnostics { get; set; } = new List<ScriptingDiagnosticInfo>();
+
+    [Description("When the change set was applied, the ID of the undo history entry that records it. " +
+        "Pass it to review_action to inspect the change or to undo_latest / undo_through to revert it.")]
+    public long? MutationId { get; set; }
+
+    [Description("Map revision after the change set was applied.")]
+    public int? Revision { get; set; }
 }
 
 internal sealed class ScriptingPresetOptionInfo

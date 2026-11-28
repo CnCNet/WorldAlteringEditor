@@ -169,8 +169,9 @@ internal sealed class ScriptingTools
     }
 
     [McpServerTool(Name = "apply_scripting_changes", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Atomically applies a validated scripting change set. Changes are not added to map undo/redo history. " +
-        "Updates and deletions require current content hashes.")]
+    [Description("Atomically applies a validated scripting change set. The whole change set is recorded as one entry in the map's " +
+        "undo/redo history (returned as mutationId), so it can be reviewed with review_action and reverted with undo_latest or " +
+        "undo_through, and the user can revert it with Ctrl+Z. Updates and deletions require current content hashes.")]
     public async Task<ScriptingChangeSetResult> ApplyScriptingChanges(
         [Description("Typed scripting create, update, delete, and precondition operations to apply atomically.")] ScriptingChangeSetRequest request,
         CancellationToken cancellationToken = default)

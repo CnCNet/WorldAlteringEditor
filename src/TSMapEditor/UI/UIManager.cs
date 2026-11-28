@@ -9,6 +9,7 @@ using Rampastring.XNAUI;
 using Rampastring.XNAUI.Windowing;
 using Rampastring.XNAUI.XNAControls;
 using System;
+using System.IO;
 using System.Linq;
 using TSMapEditor.Misc;
 using TSMapEditor.Rendering;
@@ -58,7 +59,7 @@ public class CustomUISettings : UISettings
     public float WindowInactiveShadowStrength { get; set; } = 0.25f;
 }
 
-class UIManager : XNAControl, IWindowParentControl
+class UIManager : XNAControl, IWindowParentControl, IMapSaveHandler
 {
     public UIManager(WindowManager windowManager, Map map, TheaterGraphics theaterGraphics,
         EditorGraphics editorGraphics) : base(windowManager)
@@ -99,6 +100,7 @@ class UIManager : XNAControl, IWindowParentControl
 
     private MutationManager mutationManager;
     private MCPServer mcpServer;
+    private bool isSavingForMcp;
 
     private NotificationManager notificationManager;
 
@@ -241,7 +243,7 @@ class UIManager : XNAControl, IWindowParentControl
 
         try
         {
-            mcpServer = new MCPServer(WindowManager, map, mutationManager, mapUI.MutationTarget, mapUI, UserSettings.Instance.MCPServerPort);
+            mcpServer = new MCPServer(WindowManager, map, mutationManager, mapUI.MutationTarget, mapUI, mapUI, this, UserSettings.Instance.MCPServerPort);
             mcpServer.StartAsync().GetAwaiter().GetResult();
             Logger.Log($"MCP server listening at {mcpServer.ServerURL}{MCPServer.MCPPath}");
         }
@@ -453,9 +455,27 @@ class UIManager : XNAControl, IWindowParentControl
 
         map.MapManuallySaved += (s, e) =>
         {
-            notificationManager.AddNotification(Translate(this, "MapSaved", "Map saved."));
             RefreshWindowTitle();
+
+            if (isSavingForMcp)
+            {
+                // The agent receives the issue list in the tool result. Never block the user with a dialog
+                // for a save they did not perform themselves.
+                notificationManager.AddNotification(Translate(this, "MapSavedByMCP", "Map saved by an MCP agent."));
+                return;
+            }
+
+            notificationManager.AddNotification(Translate(this, "MapSaved", "Map saved."));
             CheckForIssuesAfterManualSave(s, e);
+        };
+
+        mutationManager.MutationDiscarded += (s, e) =>
+        {
+            Logger.Log($"Discarded history entry \"{e.Mutation.GetDisplayString()}\" while {(e.IsUndo ? "undoing" : "redoing")}: {e.Reason}");
+            notificationManager.AddNotification(string.Format(
+                e.IsUndo ? Translate(this, "MutationDiscardedOnUndo", "Could not undo \"{0}\" safely, so it was removed from the undo history. {1}")
+                         : Translate(this, "MutationDiscardedOnRedo", "Could not redo \"{0}\" safely, so it was removed from the redo history. {1}"),
+                e.Mutation.GetDisplayString(), e.Reason));
         };
 
         map.MapAutoSaved += (s, e) => notificationManager.AddNotification(Translate(this, "MapAutoSaved", "Map auto-saved."));
@@ -468,6 +488,98 @@ class UIManager : XNAControl, IWindowParentControl
         string mapPath = string.IsNullOrWhiteSpace(map.LoadedINI.FilePath) ? Translate(this, "NewMap", "New map") : map.LoadedINI.FilePath;
 
         Game.Window.Title = string.Format(baseTitle, mapPath);
+    }
+
+    public EditorMapSaveResult SaveMap(string filePath, bool overwrite)
+    {
+        string currentPath = map.LoadedINI.FilePath;
+        string targetPath;
+
+        try
+        {
+            targetPath = filePath == null ? currentPath : Path.GetFullPath(filePath);
+        }
+        catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException || ex is PathTooLongException)
+        {
+            return new EditorMapSaveResult { Saved = false, Error = "Invalid file path: " + ex.Message };
+        }
+
+        if (string.IsNullOrWhiteSpace(targetPath))
+        {
+            return new EditorMapSaveResult
+            {
+                Saved = false,
+                Error = "This map has never been saved, so it has no file yet. Ask the user where to save it and pass filePath."
+            };
+        }
+
+        bool isNewPath = string.IsNullOrWhiteSpace(currentPath) ||
+            !string.Equals(Path.GetFullPath(currentPath), targetPath, StringComparison.OrdinalIgnoreCase);
+
+        if (isNewPath && File.Exists(targetPath) && !overwrite)
+        {
+            return new EditorMapSaveResult
+            {
+                Saved = false,
+                FilePath = targetPath,
+                Error = $"A different file already exists at {targetPath}. Ask the user before replacing it, then pass overwrite: true."
+            };
+        }
+
+        string directory = Path.GetDirectoryName(targetPath);
+        if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+        {
+            return new EditorMapSaveResult { Saved = false, FilePath = targetPath, Error = $"The directory {directory} does not exist." };
+        }
+
+        Exception saveFailure = null;
+        void OnSaveFailed(object sender, EventArgs e) => saveFailure = sender as Exception ?? new IOException("Saving the map failed.");
+
+        map.MapSaveFailed += OnSaveFailed;
+        isSavingForMcp = true;
+        map.LoadedINI.FilePath = targetPath;
+
+        try
+        {
+            map.Save();
+        }
+        catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+        {
+            saveFailure = ex;
+        }
+        finally
+        {
+            isSavingForMcp = false;
+            map.MapSaveFailed -= OnSaveFailed;
+        }
+
+        if (saveFailure != null)
+        {
+            map.LoadedINI.FilePath = currentPath;
+            RefreshWindowTitle();
+            Logger.Log("MCP map save failed: " + saveFailure.Message);
+            return new EditorMapSaveResult
+            {
+                Saved = false,
+                FilePath = targetPath,
+                Error = "Failed to write the map file. Make sure WAE has write access to the path. Returned error: " + saveFailure.Message
+            };
+        }
+
+        if (isNewPath && UserSettings.Instance.LastScenarioPath.GetValue() != targetPath)
+        {
+            UserSettings.Instance.RecentFiles.PutEntry(targetPath);
+            UserSettings.Instance.LastScenarioPath.UserDefinedValue = targetPath;
+            _ = UserSettings.Instance.SaveSettingsAsync();
+        }
+
+        return new EditorMapSaveResult
+        {
+            Saved = true,
+            FilePath = targetPath,
+            SavedToNewPath = isNewPath,
+            Issues = map.CheckForIssues()
+        };
     }
 
     private void CheckForIssuesAfterManualSave(object sender, EventArgs e)

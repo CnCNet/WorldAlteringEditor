@@ -46,7 +46,7 @@ public interface ICursorActionTarget : IMapView
 /// <summary>
 /// Handles user input on the map and utilizes <see cref="MapView"/> to draw the map.
 /// </summary>
-public class MapUI : XNAControl, ICursorActionTarget, IMutationTarget, IMapScreenCropper
+public class MapUI : XNAControl, ICursorActionTarget, IMutationTarget, IMapScreenCropper, IEditorViewController
 {
     private const float RightClickScrollRateDivisor = 48f;
     private const double ZoomStep = 0.1;
@@ -116,6 +116,108 @@ public class MapUI : XNAControl, ICursorActionTarget, IMutationTarget, IMapScree
         => mapView.TryRequestWholeMapPreview(maxPixelWidth, maxPixelHeight, cancellationToken, out previewTask);
 
     public void StopScreenCropRequests() => mapView.StopScreenCropRequests();
+
+    #region Camera control for MCP
+
+    /// <summary>
+    /// How long after the user last moved or zoomed the view an MCP camera move is refused.
+    /// </summary>
+    private static readonly TimeSpan UserCameraActivityGracePeriod = TimeSpan.FromSeconds(2);
+
+    private Point2D lastObservedCameraTopLeft;
+    private double lastObservedZoomLevel = double.NaN;
+    private DateTime lastUserCameraChangeUtc = DateTime.MinValue;
+
+    /// <summary>
+    /// Detects camera changes made by the user since the previous frame.
+    /// MCP camera moves update the observed state themselves, so they are not counted.
+    /// </summary>
+    private void TrackUserCameraChanges()
+    {
+        if (Camera.TopLeftPoint != lastObservedCameraTopLeft || Camera.ZoomLevel != lastObservedZoomLevel)
+        {
+            if (!double.IsNaN(lastObservedZoomLevel))
+                lastUserCameraChangeUtc = DateTime.UtcNow;
+
+            RecordObservedCameraState();
+        }
+    }
+
+    private void RecordObservedCameraState()
+    {
+        lastObservedCameraTopLeft = Camera.TopLeftPoint;
+        lastObservedZoomLevel = Camera.ZoomLevel;
+    }
+
+    private string GetUserMapInteractionReason()
+    {
+        if (isRightClickScrolling)
+            return "The user is scrolling the map.";
+
+        if (isDraggingObject || isRotatingObject)
+            return "The user is moving or rotating an object on the map.";
+
+        if (IsActive && (Cursor.LeftDown || Cursor.RightDown))
+            return "The user is holding a mouse button on the map, for example while painting.";
+
+        if (DateTime.UtcNow - lastUserCameraChangeUtc < UserCameraActivityGracePeriod)
+            return "The user moved or zoomed the map view within the last two seconds.";
+
+        return null;
+    }
+
+    public EditorCameraState GetCameraState()
+    {
+        int viewWidth = GetCameraWidthInPixels();
+        int viewHeight = GetCameraHeightInPixels();
+
+        var centerPixel = new Point2D(Camera.TopLeftPoint.X + viewWidth / 2,
+            Camera.TopLeftPoint.Y - Constants.MapYBaseline + viewHeight / 2);
+        Point2D centerCell = CellMath.CellCoordsFromPixelCoords_2D(centerPixel, Map);
+
+        return new EditorCameraState
+        {
+            CenterCellX = centerCell.X,
+            CenterCellY = centerCell.Y,
+            ZoomLevel = Math.Round(Camera.ZoomLevel, 3),
+            VisibleCellsAcross = viewWidth / Constants.CellSizeX,
+            VisibleCellsDown = viewHeight / Constants.CellSizeY
+        };
+    }
+
+    public EditorCameraMoveResult MoveCamera(int centerCellX, int centerCellY, double? zoomLevel, bool force)
+    {
+        if (!force)
+        {
+            string interactionReason = GetUserMapInteractionReason();
+            if (interactionReason != null)
+            {
+                return new EditorCameraMoveResult
+                {
+                    Moved = false,
+                    NotMovedReason = interactionReason + " The camera was left where the user put it.",
+                    Camera = GetCameraState()
+                };
+            }
+        }
+
+        if (zoomLevel.HasValue)
+            Camera.ZoomLevel = zoomLevel.Value;
+
+        Camera.CenterOnCell(new Point2D(centerCellX, centerCellY));
+        RecordObservedCameraState();
+
+        return new EditorCameraMoveResult
+        {
+            Moved = true,
+            Camera = GetCameraState()
+        };
+    }
+
+    private int GetCameraWidthInPixels() => (int)(Width / Camera.ZoomLevel);
+    private int GetCameraHeightInPixels() => (int)(Height / Camera.ZoomLevel);
+
+    #endregion
 
     public Camera Camera => mapView.Camera;
     public TechnoBase TechnoUnderCursor { get; set; }
@@ -622,6 +724,8 @@ public class MapUI : XNAControl, ICursorActionTarget, IMutationTarget, IMapScree
         // Scroll rate is designed for 60 FPS
         // 1000 ms (1 second) divided by 60 frames =~ 16.667 ms / frame
         float scrollRate = (float)(this.scrollRate * (gameTime.ElapsedGameTime.TotalMilliseconds / 16.667));
+
+        TrackUserCameraChanges();
 
         if (IsActive)
         {

@@ -12,6 +12,13 @@ public class MutationManager
 
     public int Revision { get; private set; }
 
+    /// <summary>
+    /// Raised when a guarded mutation could not be undone or redone because the map
+    /// has changed in a way that would make the operation unsafe. The mutation is
+    /// removed from the history so that the rest of the history stays usable.
+    /// </summary>
+    public event EventHandler<MutationDiscardedEventArgs> MutationDiscarded;
+
     private long nextMutationId = 1;
 
     /// <summary>
@@ -34,7 +41,27 @@ public class MutationManager
         ArgumentNullException.ThrowIfNull(affectedCells);
 
         PerformMutation(mutation);
+        AssignHistoryMetadata(mutation, origin, toolName, affectedCells);
+    }
 
+    /// <summary>
+    /// Records a mutation whose effect has already been applied to the map, so that
+    /// it can be undone and redone like any other mutation. Use this when the change
+    /// has to be committed atomically by other code before it is known to have succeeded.
+    /// </summary>
+    public void RecordPerformedMutation(Mutation mutation, string origin, string toolName, MutationAffectedCells affectedCells)
+    {
+        ArgumentNullException.ThrowIfNull(mutation);
+        ArgumentNullException.ThrowIfNull(affectedCells);
+
+        RedoList.Clear();
+        UndoList.Add(mutation);
+        Revision++;
+        AssignHistoryMetadata(mutation, origin, toolName, affectedCells);
+    }
+
+    private void AssignHistoryMetadata(Mutation mutation, string origin, string toolName, MutationAffectedCells affectedCells)
+    {
         mutation.SetHistoryMetadata(new MutationHistoryMetadata(nextMutationId, Revision,
             string.IsNullOrWhiteSpace(origin) ? MCPMutationOrigin : origin,
             string.IsNullOrWhiteSpace(toolName) ? mutation.GetType().Name : toolName,
@@ -82,8 +109,22 @@ public class MutationManager
             return;
 
         int lastUndoIndex = UndoList.Count - 1;
-        UndoList[lastUndoIndex].Undo();
-        RedoList.Add(UndoList[lastUndoIndex]);
+        IMutation mutation = UndoList[lastUndoIndex];
+
+        if (mutation is IGuardedMutation guardedMutation)
+        {
+            string blockReason = guardedMutation.GetUndoBlockReason();
+            if (blockReason != null)
+            {
+                UndoList.RemoveAt(lastUndoIndex);
+                Revision++;
+                MutationDiscarded?.Invoke(this, new MutationDiscardedEventArgs(mutation, blockReason, isUndo: true));
+                return;
+            }
+        }
+
+        mutation.Undo();
+        RedoList.Add(mutation);
         UndoList.RemoveAt(lastUndoIndex);
         Revision++;
     }
@@ -99,8 +140,22 @@ public class MutationManager
             return;
 
         int lastRedoIndex = RedoList.Count - 1;
-        RedoList[lastRedoIndex].Perform();
-        UndoList.Add(RedoList[lastRedoIndex]);
+        IMutation mutation = RedoList[lastRedoIndex];
+
+        if (mutation is IGuardedMutation guardedMutation)
+        {
+            string blockReason = guardedMutation.GetRedoBlockReason();
+            if (blockReason != null)
+            {
+                RedoList.RemoveAt(lastRedoIndex);
+                Revision++;
+                MutationDiscarded?.Invoke(this, new MutationDiscardedEventArgs(mutation, blockReason, isUndo: false));
+                return;
+            }
+        }
+
+        mutation.Perform();
+        UndoList.Add(mutation);
         RedoList.RemoveAt(lastRedoIndex);
         Revision++;
     }

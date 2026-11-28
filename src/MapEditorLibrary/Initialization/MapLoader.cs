@@ -1316,7 +1316,11 @@ public static class MapLoader
             }
 
             house.HouseType = houseType;
-            if (houseType != null)
+
+            // A country with its own Color= keeps it. In RA2/YR the house and the country are stored
+            // in separate sections with separate colors, so overwriting the country's color with the
+            // house's would change the map on save even if the user edited nothing.
+            if (houseType != null && string.IsNullOrWhiteSpace(houseType.Color))
             {
                 houseType.Color = house.Color;
                 houseType.XNAColor = house.XNAColor;

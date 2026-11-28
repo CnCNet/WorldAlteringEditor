@@ -4,6 +4,7 @@ using MapEditorLibrary.CCEngine;
 using MapEditorLibrary.Models;
 using MapEditorLibrary.Models.Enums;
 using MapEditorMCP;
+using MapEditorMCP.MCPMutations;
 using Rampastring.Tools;
 
 namespace MapEditorMCP.Scripting;
@@ -1394,6 +1395,8 @@ internal sealed class ScriptingChangePlanner
             throw;
         }
 
+        AppliedChanges = CaptureAppliedChanges(snapshot);
+
         try
         {
             map.NotifyScriptingChanged(GetAffectedModelTypes());
@@ -1404,6 +1407,76 @@ internal sealed class ScriptingChangePlanner
             // retry an operation that was successfully committed.
             Logger.Log("Failed to notify a scripting window after an MCP scripting change: " + ex.Message);
         }
+    }
+
+    /// <summary>
+    /// After a successful apply, the per-element record of what changed, used to make the
+    /// change set undoable and reviewable. Null if nothing was applied.
+    /// </summary>
+    public IReadOnlyList<ScriptingElementChange> AppliedChanges { get; private set; }
+
+    private List<ScriptingElementChange> CaptureAppliedChanges(ApplySnapshot snapshot)
+    {
+        var changes = new List<ScriptingElementChange>();
+
+        void AddUpdates<TModel>(ScriptingElementKind kind, Dictionary<TModel, TModel> beforeValues) where TModel : class
+        {
+            foreach (var beforeValue in beforeValues)
+            {
+                changes.Add(new ScriptingElementChange(kind, ScriptingElementChangeType.Updated, beforeValue.Key,
+                    beforeValue.Value, ScriptingModelOperations.Snapshot(kind, beforeValue.Key), -1, null));
+            }
+        }
+
+        void AddCreates<TOperation, TModel>(ScriptingElementKind kind, List<PendingCreate<TOperation, TModel>> creates)
+            where TOperation : class where TModel : class
+        {
+            foreach (var pending in creates)
+            {
+                changes.Add(new ScriptingElementChange(kind, ScriptingElementChangeType.Created, pending.Model,
+                    null, ScriptingModelOperations.Snapshot(kind, pending.Model), -1, null));
+            }
+        }
+
+        AddUpdates(ScriptingElementKind.TaskForce, snapshot.TaskForceValues);
+        AddUpdates(ScriptingElementKind.Script, snapshot.ScriptValues);
+        AddUpdates(ScriptingElementKind.TeamType, snapshot.TeamTypeValues);
+        AddUpdates(ScriptingElementKind.AITrigger, snapshot.AITriggerValues);
+        AddUpdates(ScriptingElementKind.LocalVariable, snapshot.LocalVariableValues);
+        AddUpdates(ScriptingElementKind.Trigger, snapshot.TriggerValues);
+        AddUpdates(ScriptingElementKind.Tag, snapshot.TagValues);
+
+        AddCreates(ScriptingElementKind.TaskForce, taskForceCreates);
+        AddCreates(ScriptingElementKind.Script, scriptCreates);
+        AddCreates(ScriptingElementKind.TeamType, teamTypeCreates);
+        AddCreates(ScriptingElementKind.AITrigger, aiTriggerCreates);
+        AddCreates(ScriptingElementKind.LocalVariable, localVariableCreates);
+        AddCreates(ScriptingElementKind.Trigger, triggerCreates);
+        AddCreates(ScriptingElementKind.Tag, tagCreates);
+
+        foreach (PendingDelete pendingDelete in deletes)
+        {
+            System.Collections.IList originalList = pendingDelete.Kind switch
+            {
+                ScriptingElementKind.TaskForce => snapshot.TaskForces,
+                ScriptingElementKind.Script => snapshot.Scripts,
+                ScriptingElementKind.TeamType => snapshot.TeamTypes,
+                ScriptingElementKind.AITrigger => snapshot.AITriggers,
+                ScriptingElementKind.LocalVariable => snapshot.LocalVariables,
+                ScriptingElementKind.Trigger => snapshot.Triggers,
+                ScriptingElementKind.Tag => snapshot.Tags,
+                _ => throw new InvalidOperationException($"Cannot delete a {pendingDelete.Kind}.")
+            };
+
+            int originalIndex = originalList.IndexOf(pendingDelete.Model);
+            string id = GetElementId(pendingDelete.Kind, pendingDelete.Model);
+            IniSection removedSection = snapshot.IniSections.Find(section => section.Id == id)?.Section;
+
+            changes.Add(new ScriptingElementChange(pendingDelete.Kind, ScriptingElementChangeType.Deleted, pendingDelete.Model,
+                ScriptingModelOperations.Snapshot(pendingDelete.Kind, pendingDelete.Model), null, originalIndex, removedSection));
+        }
+
+        return changes;
     }
 
     private IReadOnlyCollection<Type> GetAffectedModelTypes()
@@ -1562,7 +1635,7 @@ internal sealed class ScriptingChangePlanner
         }
     }
 
-    private static void CopyTaskForce(TaskForce source, TaskForce destination)
+    internal static void CopyTaskForce(TaskForce source, TaskForce destination)
     {
         destination.Name = source.Name;
         destination.Group = source.Group;
@@ -1571,7 +1644,7 @@ internal sealed class ScriptingChangePlanner
             destination.TechnoTypes[i] = source.TechnoTypes[i]?.Clone();
     }
 
-    private static void CopyScript(Script source, Script destination)
+    internal static void CopyScript(Script source, Script destination)
     {
         destination.Name = source.Name;
         destination.EditorColor = source.EditorColor;
@@ -1579,7 +1652,7 @@ internal sealed class ScriptingChangePlanner
         destination.Actions.AddRange(source.Actions.Select(action => action.Clone()));
     }
 
-    private static void CopyTeamType(TeamType source, TeamType destination)
+    internal static void CopyTeamType(TeamType source, TeamType destination)
     {
         destination.Name = source.Name;
         destination.Group = source.Group;
@@ -1601,7 +1674,7 @@ internal sealed class ScriptingChangePlanner
             destination.EnableFlag(flag);
     }
 
-    private static void CopyAITrigger(AITriggerType source, AITriggerType destination)
+    internal static void CopyAITrigger(AITriggerType source, AITriggerType destination)
     {
         destination.Name = source.Name;
         destination.PrimaryTeam = source.PrimaryTeam;
@@ -1624,13 +1697,13 @@ internal sealed class ScriptingChangePlanner
         destination.Enabled = source.Enabled;
     }
 
-    private static void CopyLocalVariable(LocalVariable source, LocalVariable destination)
+    internal static void CopyLocalVariable(LocalVariable source, LocalVariable destination)
     {
         destination.Name = source.Name;
         destination.InitialState = source.InitialState;
     }
 
-    private static void CopyTrigger(Trigger source, Trigger destination)
+    internal static void CopyTrigger(Trigger source, Trigger destination)
     {
         destination.HouseType = source.HouseType;
         destination.LinkedTrigger = source.LinkedTrigger;
@@ -1646,56 +1719,56 @@ internal sealed class ScriptingChangePlanner
         destination.Actions.AddRange(source.Actions.Select(action => action.DoClone()));
     }
 
-    private static void CopyTag(Tag source, Tag destination)
+    internal static void CopyTag(Tag source, Tag destination)
     {
         destination.Name = source.Name;
         destination.Repeating = source.Repeating;
         destination.Trigger = source.Trigger;
     }
 
-    private static TaskForce SnapshotTaskForce(TaskForce source)
+    internal static TaskForce SnapshotTaskForce(TaskForce source)
     {
         var snapshot = new TaskForce(source.ININame);
         CopyTaskForce(source, snapshot);
         return snapshot;
     }
 
-    private static Script SnapshotScript(Script source)
+    internal static Script SnapshotScript(Script source)
     {
         var snapshot = new Script(source.ININame);
         CopyScript(source, snapshot);
         return snapshot;
     }
 
-    private static TeamType SnapshotTeamType(TeamType source)
+    internal static TeamType SnapshotTeamType(TeamType source)
     {
         var snapshot = new TeamType(source.ININame);
         CopyTeamType(source, snapshot);
         return snapshot;
     }
 
-    private static AITriggerType SnapshotAITrigger(AITriggerType source)
+    internal static AITriggerType SnapshotAITrigger(AITriggerType source)
     {
         var snapshot = new AITriggerType(source.ININame);
         CopyAITrigger(source, snapshot);
         return snapshot;
     }
 
-    private static LocalVariable SnapshotLocalVariable(LocalVariable source)
+    internal static LocalVariable SnapshotLocalVariable(LocalVariable source)
     {
         var snapshot = new LocalVariable(source.Index);
         CopyLocalVariable(source, snapshot);
         return snapshot;
     }
 
-    private static Trigger SnapshotTrigger(Trigger source)
+    internal static Trigger SnapshotTrigger(Trigger source)
     {
         var snapshot = new Trigger(source.ID);
         CopyTrigger(source, snapshot);
         return snapshot;
     }
 
-    private static Tag SnapshotTag(Tag source)
+    internal static Tag SnapshotTag(Tag source)
     {
         var snapshot = new Tag { ID = source.ID };
         CopyTag(source, snapshot);
@@ -1744,7 +1817,7 @@ internal sealed class ScriptingChangePlanner
         return model;
     }
 
-    private static string GetElementId(ScriptingElementKind kind, object model)
+    internal static string GetElementId(ScriptingElementKind kind, object model)
     {
         return kind switch
         {
@@ -1758,10 +1831,10 @@ internal sealed class ScriptingChangePlanner
         };
     }
 
-    private static int? GetElementIndex(ScriptingElementKind kind, object model)
+    internal static int? GetElementIndex(ScriptingElementKind kind, object model)
         => kind == ScriptingElementKind.LocalVariable ? ((LocalVariable)model).Index : null;
 
-    private static string GetElementName(ScriptingElementKind kind, object model)
+    internal static string GetElementName(ScriptingElementKind kind, object model)
     {
         return kind switch
         {
