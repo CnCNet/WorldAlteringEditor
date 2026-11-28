@@ -87,11 +87,8 @@ public class MainMenu : EditorWindow
     private FileBrowserListBox lbFileList;
 
     private SettingsPanel settingsPanel;
-    private MapSetup mapSetup;
     private DarkeningPanel loadingDarkeningPanel;
-
-    private int loadingStage;
-    private bool nextLoadingStage = false;
+    private bool loadingDialogDrawn;
 
     public override void Initialize()
     {
@@ -279,7 +276,7 @@ public class MainMenu : EditorWindow
             if (CheckGameDirectory())
             {
                 tbMapPath.Text = Program.args[0];
-                loadingStage++;
+                ShowLoadingDarkeningPanel();
             }
         }
     }
@@ -333,7 +330,7 @@ public class MainMenu : EditorWindow
         ClearCreateNewMapWindow(createNewMapWindow);
         Parent.RemoveChild(this);
 
-        mapSetup = new MapSetup();
+        var mapSetup = new MapSetup();
         string error = mapSetup.InitializeMap(gameDirectory, true, null, e, WindowManager);
         if (!string.IsNullOrWhiteSpace(error))
             throw new InvalidOperationException("Failed to create new map! Returned error message: " + error);
@@ -539,45 +536,34 @@ public class MainMenu : EditorWindow
         if (!settingsPanel.Validate())
             return;
 
-        loadingStage = 1;
+        ShowLoadingDarkeningPanel();
     }
 
     public override void Update(GameTime gameTime)
     {
-        if (loadingStage == 1)
-        {
-            ShowLoadingDarkeningPanel();
-        }
-        else if (loadingStage == 3)
-        {
-            LoadMap(tbMapPath.Text);
-        }
-        else if (loadingStage == 5)
-        {
-            LoadTheater();
-        }
-
-        if (loadingStage > 0 && nextLoadingStage)
-        {
-            loadingStage++;
-            nextLoadingStage = false;
-        }
-
         base.Update(gameTime);
+
+        if (loadingDialogDrawn)
+        {
+            loadingDialogDrawn = false;
+            LoadMap(tbMapPath.Text);
+            WindowManager.RequestRedraw();
+        }
     }
 
     public override void Draw(GameTime gameTime)
     {
         base.Draw(gameTime);
 
-        if (loadingStage > 0)
-        {
-            nextLoadingStage = true;
-        }
+        if (loadingDarkeningPanel is { Visible: true })
+            loadingDialogDrawn = true;
     }
 
     private void ShowLoadingDarkeningPanel()
     {
+        if (loadingDarkeningPanel != null)
+            return;
+
         var messageBox = new EditorMessageBox(WindowManager,
             Translate(this, "Loading.Title", "Loading"),
             Translate(this, "Loading.Description", "Please wait, loading map..."),
@@ -586,40 +572,32 @@ public class MainMenu : EditorWindow
         loadingDarkeningPanel = new DarkeningPanel(WindowManager);
         AddChild(loadingDarkeningPanel);
         loadingDarkeningPanel.AddChild(messageBox);
+
+        WindowManager.RequestRedraw();
     }
 
     private void LoadMap(string mapPath)
     {
-        mapSetup = new MapSetup();
+        var mapSetup = new MapSetup();
         string error = mapSetup.InitializeMap(gameDirectory, false, mapPath, null, WindowManager);
 
         if (error == null)
         {
             ApplySettings();
+            mapSetup.LoadTheaterGraphics(WindowManager);
+            WindowManager.RemoveControl(Parent);
+            Parent.Kill();
 
             return;
         }
 
-        loadingStage = 0;
         EditorMessageBox.Show(WindowManager, 
             Translate(this, "MapLoadError.Title", "Error Loading File"),
             error,
             MessageBoxButtons.OK);
 
-        loadingDarkeningPanel.Disable();
         RemoveChild(loadingDarkeningPanel);
-
-        WindowManager.AddCallback(() =>
-        {
-            loadingDarkeningPanel.Kill();
-            loadingDarkeningPanel = null;
-        });
-    }
-
-    private void LoadTheater()
-    {
-        mapSetup.LoadTheaterGraphics(WindowManager);
-        WindowManager.RemoveControl(Parent);
-        Parent.Kill();
+        loadingDarkeningPanel.Kill();
+        loadingDarkeningPanel = null;
     }
 }
